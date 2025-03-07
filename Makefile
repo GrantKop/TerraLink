@@ -28,7 +28,7 @@ clean:
 
 run: build
 	@if [ -d build ] && [ -d build/Debug ]; then \
-		cd build/Debug && ./Fabrivis.exe; \
+		cd build/Debug && ./TerraLink.exe; \
 	fi
 
 vcpkg:
@@ -37,4 +37,4 @@ vcpkg:
 	@cd vcpkg && ./vcpkg install glfw3 glad glm stb
 
 gdb: 
-	@cd build/Debug && gdb Fabrivis.exe
+	@cd build/Debug && gdb TerraLink.exe

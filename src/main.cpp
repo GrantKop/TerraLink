@@ -3,11 +3,12 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "graphics/VertexBuffer.h"
+#include "graphics/VertexArrayObject.h"
+#include "graphics/Shader.h"
 #include "input/DetectInput.h"
 
 // Cube vertices with normals (Position x, y, z | Normal nx, ny, nz)
-float cubeVertices[] = {
+GLfloat cubeVertices[] = {
     // Back face
     -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, // 0 - Back Bottom Left
      0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, // 1 - Back Bottom Right
@@ -45,8 +46,7 @@ float cubeVertices[] = {
      0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f  // 6 - Top Front Right
 };
 
-
-unsigned int cubeIndices[] = {
+GLuint cubeIndices[] = {
     // Front face
     4, 5, 6,  6, 7, 4,
     // Back face
@@ -68,20 +68,18 @@ int main() {
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, "Fabrivis", 800, 600)) {
+    if (!createWindow(window, "TerraLink", 900, 700)) {
         glfwTerminate();
         return -1;
     }
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
-    VertexBuffer vb;
-    vb.setData<float>(0, 144, cubeVertices, GL_STATIC_DRAW);
-    vb.setAttribPointer<float>(0, 3, GL_FLOAT, 6, 0);
-    shaderProgram.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-    glm::mat4 blockModel = glm::mat4(1.0f);
-    blockModel = glm::translate(blockModel, glm::vec3(0.0f, 0.0f, 0.0f));
-    shaderProgram.setMat4("Model", blockModel);
+    VertexArrayObject VAO;
+    VAO.addVertexBuffer(cubeVertices, sizeof(cubeVertices));
+    VAO.addElementBuffer(cubeIndices, sizeof(cubeIndices));
+    VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0);
+    VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -89,23 +87,25 @@ int main() {
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
     
+    // Main program loop
     while (!glfwWindowShouldClose(window)) {
 
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        deltaTime = glfwGetTime() - lastFrame;
+        lastFrame += deltaTime;
 
         processInput(window, &camera, deltaTime);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shaderProgram.use();
 
         camera.updateCameraMatrix(0.1f, 100.0f, window);
-        shaderProgram.setMat4("cameraMatrix", camera.cameraMatrix);
+        shaderProgram.setUniform4("cameraMatrix", camera.cameraMatrix);
 
-        vb.draw(GL_TRIANGLES, 36, GL_UNSIGNED_INT, cubeIndices, 1);
+        VAO.bind();
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        VAO.unbind();
 
         glfwSwapBuffers(window);
         glfwPollEvents();

@@ -13,7 +13,7 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 
 bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, unsigned int height, GLFWframebuffersizefun = framebufferSizeCallback);
 
-static int checkGLError();
+int checkGLError();
 
 #define CHECK_GL_ERROR() { \
     int err = checkGLError(); \

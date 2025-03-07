@@ -1,11 +1,9 @@
 #include "utils/GLUtils.h"
 
-// Load glad
 bool loadGlad() {
     return gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 }
 
-// Initialize GLFW
 void initGLFW(unsigned int versionMajor, unsigned int versionMinor) {
     glfwInit();
 
@@ -19,12 +17,10 @@ void initGLFW(unsigned int versionMajor, unsigned int versionMinor) {
 
 }
 
-// Callback for window size change
 void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-// Create window
 bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, unsigned int height, GLFWframebuffersizefun framebufferSizeCallback) {
 
     window = glfwCreateWindow(width, height, title, NULL, NULL);
@@ -47,7 +43,7 @@ bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, un
     return true;
 }
 
-static int checkGLError() {
+int checkGLError() {
     GLenum err;
 
     while ((err = glGetError()) != GL_NO_ERROR) {

@@ -13,22 +13,30 @@
 
 class Shader {
     public:
-        Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+        Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, std::string geometryShaderPath = "");
         ~Shader();
 
-        int ID;
+        GLuint ID;
 
         bool use();
+        void deleteShader();
 
         void setMat4(const std::string& name, const glm::mat4& mat);
+        void setMat3(const std::string& name, const glm::mat3& mat);
+        void setVec4(const std::string& name, const glm::vec4& vec);
         void setVec3(const std::string& name, const glm::vec3& vec);
+
+        void setUniform4(const std::string& name, const glm::mat4& mat);
+        void setUniform3(const std::string& name, const glm::mat3& mat);
+        void setUniform4(const std::string& name, const glm::vec4& vec);
+        void setUniform3(const std::string& name, const glm::vec3& vec);
 
     private:
         std::string readFile(const char* filename);
 
-        int genShader(const char* filepath, GLenum type);
+        GLuint genShader(const char* filepath, GLenum type);
 
-        int genShaderProgram(const char* vertexShaderPath, const char* fragmentShaderPath);
+        GLuint genShaderProgram(const char* vertexShaderPath, const char* fragmentShaderPath, const char* geometryShaderPath = "");
 };
 
 #endif
