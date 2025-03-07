@@ -1,0 +1,9 @@
+# Visual Studio Code directory
+*.vscode
+
+# Build directory
+build/*
+!build/.gitkeep
+
+# vcpkg directory
+vcpkg/*
