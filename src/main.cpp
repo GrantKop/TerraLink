@@ -64,12 +64,35 @@ GLuint cubeIndices[] = {
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
+const char* windowTitle = "TerraLink";
+
+int _fpsCount = 0, fps = 0;
+float prevTime = 0.0f;
+
+char* fpsCount() {
+
+    float curTime = glfwGetTime();
+    ++_fpsCount;
+    if (curTime - prevTime > 1.0f) {
+        prevTime = curTime;
+        fps = _fpsCount;
+        _fpsCount = 0;
+    }
+
+    std::string temp = std::string(windowTitle).substr(0,9) + "  //  " + std::to_string(fps) + " fps";
+
+    char* result = new char[temp.length() + 1];
+    std::strcpy(result, temp.c_str());
+
+    return result;
+}
+
 int main() {
 
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, "TerraLink", 900, 700)) {
+    if (!createWindow(window, windowTitle, 900, 700)) {
         glfwTerminate();
         return -1;
     }
@@ -116,6 +139,8 @@ int main() {
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        glfwSetWindowTitle(window, fpsCount());
     }
 
     VAO.deleteBuffers();
