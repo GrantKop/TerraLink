@@ -5,16 +5,16 @@ Shader::Shader(const std::string& vertexShaderPath, const std::string& fragmentS
 
     if (shaderID != -1) {
         this->ID = shaderID;
+    } else {
+        std::cerr << "Shader creation failed, shader ID set to 0." << std::endl;
+        this->ID = 0;
     }
 }
 
-Shader::~Shader() {
-    deleteShader();
-}
+Shader::~Shader() {}
 
-bool Shader::use() {
+void Shader::use() {
     glUseProgram(this->ID);
-    return true;
 }
 
 void Shader::deleteShader() {
@@ -22,42 +22,42 @@ void Shader::deleteShader() {
 }
 
 void Shader::setMat4(const std::string& name, const glm::mat4& mat) {
-    glUseProgram(this->ID);
+    use();
     glUniformMatrix4fv(glGetUniformLocation(this->ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
 void Shader::setMat3(const std::string& name, const glm::mat3& mat) {
-    glUseProgram(this->ID);
+    use();
     glUniformMatrix3fv(glGetUniformLocation(this->ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
 void Shader::setVec3(const std::string& name, const glm::vec3& vec) {
-    glUseProgram(this->ID);
+    use();
     glUniform4fv(glGetUniformLocation(this->ID, name.c_str()), 1, glm::value_ptr(vec));
 }
 
 void Shader::setVec4(const std::string& name, const glm::vec4& vec) {
-    glUseProgram(this->ID);
+    use();
     glUniform4fv(glGetUniformLocation(this->ID, name.c_str()), 1, glm::value_ptr(vec));
 }
 
 void Shader::setUniform3(const std::string& name, const glm::mat3& mat) {
-    glUseProgram(this->ID);
+    use();
     glUniformMatrix3fv(glGetUniformLocation(this->ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
 void Shader::setUniform4(const std::string& name, const glm::mat4& mat) {
-    glUseProgram(this->ID);
+    use();
     glUniformMatrix4fv(glGetUniformLocation(this->ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
 void Shader::setUniform3(const std::string& name, const glm::vec3& vec) {
-    glUseProgram(this->ID);
+    use();
     glUniform3fv(glGetUniformLocation(this->ID, name.c_str()), 1, glm::value_ptr(vec));
 }
 
 void Shader::setUniform4(const std::string& name, const glm::vec4& vec) {
-    glUseProgram(this->ID);
+    use();
     glUniform4fv(glGetUniformLocation(this->ID, name.c_str()), 1, glm::value_ptr(vec));
 }
 

@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <vector>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -18,7 +19,7 @@ class Shader {
 
         GLuint ID;
 
-        bool use();
+        void use();
         void deleteShader();
 
         void setMat4(const std::string& name, const glm::mat4& mat);

@@ -20,7 +20,7 @@ static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     std::cout << "Scroll offset: (" << xoffset << ", " << yoffset << ")" << std::endl;
 }
 
-void processInput(GLFWwindow* window, Camera* camera, float deltaTime) {
+void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3 *lightpos) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
@@ -55,5 +55,18 @@ void processInput(GLFWwindow* window, Camera* camera, float deltaTime) {
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         camera->firstClick = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        lightpos->x += 0.01f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        lightpos->x -= 0.01f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        lightpos->z -= 0.01f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        lightpos->z += 0.01f;
     }
 }

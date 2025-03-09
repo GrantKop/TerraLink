@@ -19,7 +19,6 @@ class VertexArrayObject {
 
     private:
         GLuint VAO, VBO, EBO;
-        std::vector<GLuint> attributes;
 
 };
 

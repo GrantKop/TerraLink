@@ -6,16 +6,16 @@ VertexArrayObject::VertexArrayObject() {
     glGenBuffers(1, &EBO);
 }
 
-VertexArrayObject::~VertexArrayObject() {
-    deleteBuffers();
-}
+VertexArrayObject::~VertexArrayObject() {}
 
 void VertexArrayObject::bind() {
-    glBindVertexArray(VAO);
+    glBindVertexArray(this->VAO);
 }
 
 void VertexArrayObject::unbind() {
     glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void VertexArrayObject::deleteBuffers() {
@@ -25,20 +25,18 @@ void VertexArrayObject::deleteBuffers() {
 }
 
 void VertexArrayObject::addVertexBuffer(GLfloat* vertices, GLsizeiptr size, GLenum usage) {
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
     glBufferData(GL_ARRAY_BUFFER, size, vertices, usage);
 }
 
 void VertexArrayObject::addElementBuffer(GLuint* indices, GLsizeiptr size, GLenum usage) {
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, usage);
 }
 
 void VertexArrayObject::addAttribute(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void* pointer) {
-    glBindVertexArray(VAO);
-    glEnableVertexAttribArray(index);
+    glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
     glVertexAttribPointer(index, size, type, normalized, stride, pointer);
-    attributes.push_back(index);
+    glEnableVertexAttribArray(index);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
