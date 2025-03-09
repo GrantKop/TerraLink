@@ -7,6 +7,7 @@
 #include "graphics/VertexArrayObject.h"
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
+#include "core/registers/AtlasRegister.h"
 
 // Cube vertices with normals (Position x, y, z | Normal nx, ny, nz | Texture tx, ty)
 GLfloat cubeVertices[] = {
@@ -97,7 +98,7 @@ const char* windowTitle = "TerraLink";
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
 
-char* fpsCount() {
+std::string fpsCount() {
 
     float curTime = glfwGetTime();
     ++_fpsCount;
@@ -107,12 +108,7 @@ char* fpsCount() {
         _fpsCount = 0;
     }
 
-    std::string temp = std::string(windowTitle).substr(0,9) + "  //  " + std::to_string(fps) + " fps";
-
-    char* result = new char[temp.length() + 1];
-    std::strcpy(result, temp.c_str());
-
-    return result;
+    return std::string(windowTitle).substr(0,9) + "  //  " + std::to_string(fps) + " fps";
 }
 
 int main() {
@@ -124,6 +120,8 @@ int main() {
         glfwTerminate();
         return -1;
     }
+
+    registerAtlas("../../assets/textures/");
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
@@ -158,8 +156,8 @@ int main() {
     shaderProgram.setUniform4("model", cubeModel);
     shaderProgram.setUniform4("lightColor", lightColor);
 
-    Texture stone("../../assets/textures/blocks/stone_0.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-    stone.setUniform(shaderProgram, "tex0", 0);
+    Texture atlas("../../assets/textures/blocks/block_atlas.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
+    atlas.setUniform(shaderProgram, "tex0", 0);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -184,7 +182,7 @@ int main() {
         shaderProgram.setUniform4("cameraMatrix", camera.cameraMatrix);
         shaderProgram.setUniform3("camPos", glm::vec3(camera.position.x, camera.position.y, camera.position.z));
         shaderProgram.setUniform3("lightPos", glm::vec3(lightPos.x, lightPos.y, lightPos.z));
-        stone.bind();
+        atlas.bind();
         VAO.bind();
         glDrawElements(GL_TRIANGLES, sizeof(cubeIndices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
@@ -200,12 +198,12 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-        glfwSetWindowTitle(window, fpsCount());
+        glfwSetWindowTitle(window, fpsCount().c_str());
     }
 
     VAO.deleteBuffers();
     lightVAO.deleteBuffers();
-    stone.deleteTexture();
+    atlas.deleteTexture();
     shaderProgram.deleteShader();
     lightShader.deleteShader();
     glfwTerminate();
