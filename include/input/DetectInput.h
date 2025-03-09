@@ -12,6 +12,6 @@ static void mouseButtonCallback(GLFWwindow* window, int button, int action, int 
 
 static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
-void processInput(GLFWwindow* window, Camera* camera, float deltaTime);
+void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3 *lightpos);
 
 #endif
