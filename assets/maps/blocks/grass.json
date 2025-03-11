@@ -1,0 +1,11 @@
+{
+    "model": "blockFull",
+    "textures": {
+        "top": "grass_top",
+        "bottom": "dirt",
+        "front": "grass_side",
+        "back": "grass_side",
+        "left": "grass_side",
+        "right": "grass_side"
+    }
+}

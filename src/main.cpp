@@ -121,7 +121,7 @@ int main() {
         return -1;
     }
 
-    registerAtlas("../../assets/textures/");
+    registerAtlas();
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 

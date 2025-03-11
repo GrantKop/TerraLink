@@ -10,7 +10,6 @@
 
 #if defined(_WIN32)
 #include <filesystem>
-namespace fs = std::filesystem;
 #else
 #include <dirent.h>
 #endif
@@ -31,7 +30,7 @@ std::vector<TextureFile> loadTextures(const char* path);
 void createAtlas(const char* path);
 
 // Registers an atlas with the given path
-void registerAtlas(std::string path);
+void registerAtlas();
 
 void linkBlocksToAtlas();
 

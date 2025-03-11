@@ -34,7 +34,7 @@ run: build
 vcpkg:
 	@git clone https://github.com/microsoft/vcpkg.git
 	@./vcpkg/bootstrap-vcpkg.bat
-	@cd vcpkg && ./vcpkg install glfw3 glad glm stb
+	@cd vcpkg && ./vcpkg install glfw3 glad glm stb nlohmann-json
 
 gdb: 
 	@cd build/Debug && gdb TerraLink.exe
