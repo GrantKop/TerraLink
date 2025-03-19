@@ -41,8 +41,8 @@ struct Block {
     bool isTransparent;
     bool isAir;
 
-    std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
+    int atlasX;
+    int atlasY;
 
     std::vector<std::string> textures;
     std::string model;
@@ -58,7 +58,8 @@ class BlockRegister {
 public:
     std::vector<Block> blocks;
 
-    BlockRegister() {}
+    BlockRegister();
+    ~BlockRegister();
 
     Block getBlockByName(std::string name);
     Block getBlockByIndex(int index);

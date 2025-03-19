@@ -103,6 +103,7 @@ int main() {
         return -1;
     }
 
+    BlockRegister* blockRegister;
     registerAtlas();
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");

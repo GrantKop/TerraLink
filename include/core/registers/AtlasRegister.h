@@ -7,6 +7,7 @@
 #include <stb_image.h>
 
 #include "stb_image_write.h"
+#include "core/registers/BlockRegister.h"
 
 #if defined(_WIN32)
 #include <filesystem>
@@ -32,7 +33,7 @@ void createAtlas(const char* path);
 // Registers an atlas with the given path
 void registerAtlas();
 
-void linkBlocksToAtlas();
+void linkBlocksToAtlas(BlockRegister* blockRegister);
 
 
 #endif

@@ -118,8 +118,10 @@ void createAtlas(const char* path) {
 
 // Registers an atlas with the given path
 void registerAtlas() {
-    std::string blockPath = "../../assets/textures/blocks/";
 
-    createAtlas(blockPath.c_str());
+    createAtlas("../../assets/textures/blocks/");
 
 }
+
+void linkBlocksToAtlas(BlockRegister* blockRegister) {}
+

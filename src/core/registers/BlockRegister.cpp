@@ -13,6 +13,14 @@ std::unordered_map<std::string, BLOCKTYPE> createBlockTypeMap()  {
     };
 };
 
+// Constructor for the block register
+BlockRegister::BlockRegister() {
+    loadBlocks();
+}
+
+// Destructor for the block register
+BlockRegister::~BlockRegister() {}
+
 // Retrieves a block by its name from the registered blocks
 Block BlockRegister::getBlockByName(std::string name) {
     for (Block block : blocks) {
