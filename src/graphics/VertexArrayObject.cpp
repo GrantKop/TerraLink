@@ -24,14 +24,14 @@ void VertexArrayObject::deleteBuffers() {
     glDeleteBuffers(1, &EBO);
 }
 
-void VertexArrayObject::addVertexBuffer(GLfloat* vertices, GLsizeiptr size, GLenum usage) {
+void VertexArrayObject::addVertexBuffer(std::vector<Vertex>& vertices, GLenum usage) {
     glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-    glBufferData(GL_ARRAY_BUFFER, size, vertices, usage);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), usage);
 }
 
-void VertexArrayObject::addElementBuffer(GLuint* indices, GLsizeiptr size, GLenum usage) {
+void VertexArrayObject::addElementBuffer(std::vector<GLuint>& indices, GLenum usage) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, usage);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), usage);
 }
 
 void VertexArrayObject::addAttribute(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void* pointer) {

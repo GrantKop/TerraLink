@@ -1,5 +1,8 @@
 {
-    "model": "blockFull",
+    "model": "block_full",
+    "blockType": "dirt",
+    "solid": true,
+    "transparent": false,
     "textures": {
         "all": "dirt"
     }

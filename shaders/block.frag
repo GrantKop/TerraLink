@@ -22,7 +22,6 @@ void main()
 
     float specularLight = 0.5;
     vec3 viewDirection = normalize(camPos - curPos);
-    vec3 reflectionDirection = reflect(-lightDirection, Normal);
 
     vec3 halfwayVec = normalize(viewDirection + lightDirection);
 

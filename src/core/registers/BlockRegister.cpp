@@ -1,5 +1,19 @@
 #include "core/registers/BlockRegister.h"
 
+// Function to create a mapping from string names to block type enums
+std::unordered_map<std::string, BLOCKTYPE> createBlockTypeMap()  {
+    return {
+        ENUM_ENTRY(AIR),
+        ENUM_ENTRY(DIRT),
+        ENUM_ENTRY(GRASS),
+        ENUM_ENTRY(STONE),
+        ENUM_ENTRY(WOOD),
+        ENUM_ENTRY(LEAVES),
+        ENUM_ENTRY(SAND)
+    };
+};
+
+// Retrieves a block by its name from the registered blocks
 Block BlockRegister::getBlockByName(std::string name) {
     for (Block block : blocks) {
         if (block.name == name) {
@@ -10,6 +24,7 @@ Block BlockRegister::getBlockByName(std::string name) {
     return Block();
 }
 
+// Retrieves a block by its index from the registered blocks
 Block BlockRegister::getBlockByIndex(int index) {
     if (index < blocks.size()) {
         return blocks[index];
@@ -18,6 +33,7 @@ Block BlockRegister::getBlockByIndex(int index) {
     return Block();
 }
 
+// Returns the index of a block by its name, or -1 if not found
 int BlockRegister::getBlockIndex(std::string name) {
     for (int i = 0; i < blocks.size(); i++) {
         if (blocks[i].name == name) {
@@ -28,44 +44,64 @@ int BlockRegister::getBlockIndex(std::string name) {
     return -1;
 }
 
-void BlockRegister::registerBlock(std::string name, std::vector<std::string> states, std::vector<std::string> textures, std::string model) {
-    Block block;
-    block.name = name;
-    // block.vertices = vertices;
-    // block.indices = indices;
+// Registers a new block with the specified properties
+void BlockRegister::registerBlock(
+        std::string name, std::vector<std::string> states, std::vector<std::string> textures, std::string model,
+        bool solid, bool transparent, bool air, BLOCKTYPE type) {
+
+    Block block(name, blocks.size(), solid, transparent, air, type);
+
+    // Assign additional properties to the block
     block.states = states;
     block.textures = textures;
     block.model = model;
+
+    // Set the block ID to the current size of the blocks vector
     block.ID = blocks.size();
+    // Add the new block to the vector of registered blocks
     blocks.push_back(block);
 }
 
-void BlockRegister::parseJson(std::string contents) {
+// Parses a JSON file to create and register a block
+void BlockRegister::parseJson(std::string contents, std::string fileName) {
 
     nlohmann::json blockJson = nlohmann::json::parse(contents);
 
-    std::string name = blockJson["name"];
+    // Extract the block name from the file name
+    std::string name = fileName.substr(0, fileName.find_last_of("."));
 
-    // Get all listed texture values 
+    // Determine the block type from the JSON data
+    BLOCKTYPE type = blockTypeMap[blockJson["block_type"].get<std::string>()];
+
+    // Extract physical properties from the JSON data
+    bool solid = blockJson["solid"];
+    bool transparent = blockJson["transparent"];
+
+    // Extract texture information from the JSON data
     std::vector<std::string> textures;
     for (auto& [key, value] : blockJson["textures"].items()) {
         std::string texture = key + ":" + value.get<std::string>();
         textures.push_back(texture);
     }
 
-    // Get all states listed
+    // Extract state information from the JSON data
     std::vector<std::string> states;
     for (auto& [key, value] : blockJson["states"].items()) {
         std::string state = key + ":" + value.get<std::string>();
         states.push_back(state);
     }
-    
 
-    registerBlock(name, states, textures, blockJson["mesh"].get<std::string>());
+    // Register the block with all extracted properties
+    registerBlock(name, states, textures, blockJson["mesh"].get<std::string>(), solid, transparent, false, type);
 }
 
+// Loads blocks from JSON files in a specified directory
 void BlockRegister::loadBlocks() {
 
+    // Register a default air block
+    registerBlock("air", {}, {}, "air", false, false, true, AIR);
+
+    // Platform-specific directory handling
     #if defined(_WIN32)
     if (!std::filesystem::exists("../../assets/models/blocks/")) {
         std::cerr << "Error locating folder: ../../assets/models/blocks/" << std::endl;
@@ -82,7 +118,7 @@ void BlockRegister::loadBlocks() {
             buffer << blockFile.rdbuf();
             std::string contents = buffer.str();
             blockFile.close();
-            parseJson(contents);
+            parseJson(contents, entry.path().filename().string());
         }
     }
     #else
@@ -103,7 +139,7 @@ void BlockRegister::loadBlocks() {
                     buffer << blockFile.rdbuf();
                     std::string contents = buffer.str();
                     blockFile.close();
-                    parseJson(contents);
+                    parseJson(contents, filename);
                 }
             }
         }

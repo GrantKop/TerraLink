@@ -1,5 +1,8 @@
 {
-    "model": "blockFull",
+    "model": "block_full",
+    "block_type": "grass",
+    "solid": true,
+    "transparent": false,
     "textures": {
         "top": "grass_top",
         "bottom": "dirt",
