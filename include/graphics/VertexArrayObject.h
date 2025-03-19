@@ -4,6 +4,8 @@
 #include <vector>
 #include <glad/glad.h>
 
+#include "graphics/Vertex.h"
+
 class VertexArrayObject {
     public:
         VertexArrayObject();
@@ -13,8 +15,8 @@ class VertexArrayObject {
         void unbind();
         void deleteBuffers();
 
-        void addVertexBuffer(GLfloat* vertices, GLsizeiptr size, GLenum usage = GL_STATIC_DRAW);
-        void addElementBuffer(GLuint* indices, GLsizeiptr size, GLenum usage = GL_STATIC_DRAW);
+        void addVertexBuffer(std::vector<Vertex>& vertices, GLenum usage = GL_STATIC_DRAW);
+        void addElementBuffer(std::vector<GLuint>& indices, GLenum usage = GL_STATIC_DRAW);
         void addAttribute(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void* pointer);
 
     private:

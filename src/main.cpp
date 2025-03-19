@@ -8,87 +8,69 @@
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
+#include "core/registers/BlockRegister.h"
 
 // Cube vertices with normals (Position x, y, z | Normal nx, ny, nz | Texture tx, ty)
-GLfloat cubeVertices[] = {
-    // Back face
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // 0 - Back Bottom Left
-     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // 1 - Back Bottom Right
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // 2 - Back Top Right
-    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // 3 - Back Top Left
-
+std::vector<Vertex> cubeVertices = {
     // Front face
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // 4 - Front Bottom Left
-     0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // 5 - Front Bottom Right
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // 6 - Front Top Right
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // 7 - Front Top Left
-
-    // Left face
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // 8 - Front Top Left
-    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // 9 - Back Top Left
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // 10 - Back Bottom Left
-    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // 11 - Front Bottom Left
-
-    // Right face
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // 12 - Front Top Right
-     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // 13 - Back Top Right
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // 14 - Back Bottom Right
-     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // 15 - Front Bottom Right
-
-    // Bottom face
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // 16 - Back Bottom Left
-     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // 17 - Back Bottom Right
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // 18 - Front Bottom Right
-    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // 19 - Front Bottom Left
-
+    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f)}},
+    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 1.0f)}},
+    // Back face
+    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 1.0f)}},
+    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 1.0f)}},
     // Top face
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f, // 20 - Back Top Left
-     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // 21 - Back Top Right
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // 22 - Front Top Right
-    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f  // 23 - Front Top Left
+    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 1.0f)}},
+    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f)}},
+    // Bottom face
+    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(1.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(1.0f, 1.0f)}},
+    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 1.0f)}},
+    // Right face
+    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(1.0f, 0.0f)}},
+    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(1.0f, 1.0f)}},
+    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 1.0f)}},
+    // Left face
+    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f)}},
+    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(1.0f, 0.0f)}},
+    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(1.0f, 1.0f)}},
+    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 1.0f)}}
 };
 
-GLuint cubeIndices[] = {
-    // Front face
-    4, 5, 6, 6, 7, 4,
-    // Back face
-    2, 1, 0, 0, 3, 2,
-    // Left face
-    8, 9, 10, 10, 11, 8,
-    // Right face
-    14, 13, 12, 12, 15, 14,
-    // Bottom face
+std::vector<GLuint> cubeIndices = {
+    0, 1, 2, 2, 3, 0,
+    6, 5, 4, 4, 7, 6,
+    10, 9, 8, 8, 11, 10,
+    12, 13, 14, 14, 15, 12,
     16, 17, 18, 18, 19, 16,
-    // Top face
     22, 21, 20, 20, 23, 22
 };
 
-GLfloat lightVertices[] =
-{ //     COORDINATES     //
-	-0.1f, -0.1f,  0.1f,
-	-0.1f, -0.1f, -0.1f,
-	 0.1f, -0.1f, -0.1f,
-	 0.1f, -0.1f,  0.1f,
-	-0.1f,  0.1f,  0.1f,
-	-0.1f,  0.1f, -0.1f,
-	 0.1f,  0.1f, -0.1f,
-	 0.1f,  0.1f,  0.1f
+std::vector<Vertex> lightVertices = {
+    {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
+    {Vertex{glm::vec3( 0.1f, -0.1f,  0.1f)}},
+    {Vertex{glm::vec3( 0.1f,  0.1f,  0.1f)}},
+    {Vertex{glm::vec3(-0.1f,  0.1f,  0.1f)}},
+    {Vertex{glm::vec3(-0.1f, -0.1f, -0.1f)}},
+    {Vertex{glm::vec3( 0.1f, -0.1f, -0.1f)}},
+    {Vertex{glm::vec3( 0.1f,  0.1f, -0.1f)}},
+    {Vertex{glm::vec3(-0.1f,  0.1f, -0.1f)}}
 };
 
-GLuint lightIndices[] =
-{
-	0, 1, 2,
-	0, 2, 3,
-	7, 4, 0,
-	3, 7, 0,
-	6, 7, 3,
-	2, 6, 3,
-	5, 6, 2,
-	1, 5, 2,
-	4, 5, 1,
-	0, 4, 1,
-	6, 5, 4,
-	7, 6, 4
+std::vector<GLuint> lightIndices = {
+    0, 1, 2, 2, 3, 0,
+    6, 5, 4, 4, 7, 6,
+    7, 4, 0, 0, 3, 7,
+    1, 5, 6, 6, 2, 1,
+    5, 1, 0, 0, 4, 5,
+    3, 2, 6, 6, 7, 3
 };
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -121,27 +103,25 @@ int main() {
         return -1;
     }
 
-    registerAtlas("../../assets/textures/");
+    registerAtlas();
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
     VertexArrayObject VAO;
     VAO.bind();
-    VAO.addVertexBuffer(cubeVertices, sizeof(cubeVertices));
-    VAO.addElementBuffer(cubeIndices, sizeof(cubeIndices));
-    VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)0);
-    VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-    VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
-    VAO.unbind();
+    VAO.addVertexBuffer(cubeVertices);
+    VAO.addElementBuffer(cubeIndices);
+    VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
 
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
 
     VertexArrayObject lightVAO;
     lightVAO.bind();
-    lightVAO.addVertexBuffer(lightVertices, sizeof(lightVertices));
-    lightVAO.addElementBuffer(lightIndices, sizeof(lightIndices));
-    lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
-    lightVAO.unbind();
+    lightVAO.addVertexBuffer(lightVertices);
+    lightVAO.addElementBuffer(lightIndices);
+    lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
     glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     glm::vec3 lightPos = glm::vec3(1.2f, 1.2f, 1.2f);
@@ -184,7 +164,7 @@ int main() {
         shaderProgram.setUniform3("lightPos", glm::vec3(lightPos.x, lightPos.y, lightPos.z));
         atlas.bind();
         VAO.bind();
-        glDrawElements(GL_TRIANGLES, sizeof(cubeIndices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, cubeIndices.size(), GL_UNSIGNED_INT, 0);
 
         glUseProgram(lightShader.ID);
         lightShader.setUniform4("cameraMatrix", camera.cameraMatrix);
@@ -193,12 +173,14 @@ int main() {
         lightModel = glm::translate(lightModel, lightPos);
         lightShader.setMat4("model", lightModel);
         lightVAO.bind();
-        glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, lightIndices.size(), GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
 
         glfwSetWindowTitle(window, fpsCount().c_str());
+
+        CHECK_GL_ERROR();
     }
 
     VAO.deleteBuffers();

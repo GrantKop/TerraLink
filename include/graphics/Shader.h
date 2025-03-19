@@ -32,6 +32,9 @@ class Shader {
         void setUniform4(const std::string& name, const glm::vec4& vec);
         void setUniform3(const std::string& name, const glm::vec3& vec);
 
+        void setFloat(const std::string& name, float value);
+        void setInt(const std::string& name, int value);
+
     private:
         std::string readFile(const char* filename);
 

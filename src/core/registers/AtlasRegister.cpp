@@ -23,11 +23,11 @@ std::vector<TextureFile> loadTextures(const char* path) {
     std::vector<TextureFile> textures;
 
     #if defined(_WIN32)
-    if (!fs::exists(path)) {
+    if (!std::filesystem::exists(path)) {
         std::cerr << "Error locating folder: " << path << std::endl;
         return textures;
     }
-    for (const auto& entry : fs::directory_iterator(path)) {
+    for (const auto& entry : std::filesystem::directory_iterator(path)) {
         if (entry.is_regular_file() && entry.path().extension() == ".png") {
             if (entry.path().filename() != "block_atlas.png") {
                 TextureFile texture;
@@ -117,8 +117,8 @@ void createAtlas(const char* path) {
 }
 
 // Registers an atlas with the given path
-void registerAtlas(std::string path) {
-    std::string blockPath = path + "blocks/";
+void registerAtlas() {
+    std::string blockPath = "../../assets/textures/blocks/";
 
     createAtlas(blockPath.c_str());
 

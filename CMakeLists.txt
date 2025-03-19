@@ -35,5 +35,10 @@ set(glm_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/glm")
 find_package(glm CONFIG REQUIRED)
 target_include_directories(TerraLink PRIVATE ${glm_INCLUDE_DIRS})
 
+# nlohmann-json (header-only)
+set(nlohmann_json_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/nlohmann_json")
+find_package(nlohmann_json CONFIG REQUIRED)
+target_include_directories(TerraLink PRIVATE ${nlohmann_json_INCLUDE_DIRS})
+
 # STB (header-only)
 include_directories(${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/include)
