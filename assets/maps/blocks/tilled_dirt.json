@@ -1,0 +1,14 @@
+{
+    "model": "block_full",
+    "block_type": "dirt",
+    "solid": true,
+    "transparent": false,
+    "textures": {
+        "top": "tilled_dirt",
+        "bottom": "dirt",
+        "front": "dirt",
+        "back": "dirt",
+        "left": "dirt",
+        "right": "dirt"
+    }
+}

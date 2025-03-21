@@ -53,9 +53,8 @@ int BlockRegister::getBlockIndex(std::string name) {
 }
 
 // Registers a new block with the specified properties
-void BlockRegister::registerBlock(
-        std::string name, std::vector<std::string> states, std::vector<std::string> textures, std::string model,
-        bool solid, bool transparent, bool air, BLOCKTYPE type) {
+void BlockRegister::registerBlock(std::string name, std::vector<std::string> states, std::vector<std::string> textures,
+                                  std::string model, bool solid, bool transparent, bool air, BLOCKTYPE type) {
 
     Block block(name, blocks.size(), solid, transparent, air, type);
 
@@ -77,8 +76,18 @@ void BlockRegister::parseJson(std::string contents, std::string fileName) {
 
     // Extract the block name from the file name
     std::string name = fileName.substr(0, fileName.find_last_of("."));
+    if (name == "air") {
+        std::cerr << "Block name cannot be 'air'" << std::endl;
+        return;
+    }
 
     // Determine the block type from the JSON data
+    std::string blockType = blockJson["block_type"].get<std::string>();
+    std::transform(blockType.begin(), blockType.end(), blockType.begin(), ::toupper);
+    if (blockTypeMap.find(blockType) == blockTypeMap.end()) {
+        std::cerr << "Invalid block type: " << blockType << std::endl;
+        return;
+    }
     BLOCKTYPE type = blockTypeMap[blockJson["block_type"].get<std::string>()];
 
     // Extract physical properties from the JSON data
@@ -100,7 +109,7 @@ void BlockRegister::parseJson(std::string contents, std::string fileName) {
     }
 
     // Register the block with all extracted properties
-    registerBlock(name, states, textures, blockJson["mesh"].get<std::string>(), solid, transparent, false, type);
+    registerBlock(name, states, textures, blockJson["model"].get<std::string>(), solid, transparent, false, type);
 }
 
 // Loads blocks from JSON files in a specified directory
@@ -111,17 +120,18 @@ void BlockRegister::loadBlocks() {
 
     // Platform-specific directory handling
     #if defined(_WIN32)
-    if (!std::filesystem::exists("../../assets/models/blocks/")) {
-        std::cerr << "Error locating folder: ../../assets/models/blocks/" << std::endl;
+    if (!std::filesystem::exists("../../assets/maps/blocks/")) {
+        std::cerr << "Error locating folder: ../../assets/maps/blocks/" << std::endl;
         return;
     }
-    for (const auto& entry : std::filesystem::directory_iterator("../../assets/models/blocks/")) {
+    for (const auto& entry : std::filesystem::directory_iterator("../../assets/maps/blocks/")) {
         if (entry.is_regular_file() && entry.path().extension() == ".json") {
             std::ifstream blockFile(entry.path().string());
             if (!blockFile.is_open()) {
                 std::cerr << "Failed to open block file: " << entry.path().string() << std::endl;
                 continue;
             }
+
             std::stringstream buffer;
             buffer << blockFile.rdbuf();
             std::string contents = buffer.str();
@@ -132,12 +142,12 @@ void BlockRegister::loadBlocks() {
     #else
     DIR* dir;
     struct dirent* ent;
-    if ((dir = opendir("gameFiles/register/blocks")) != NULL) {
+    if ((dir = opendir("../../assets/maps/blocks/")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
             if (ent->d_type == DT_REG) {
                 std::string filename = ent->d_name;
                 if (filename.substr(filename.find_last_of(".") + 1) == "json") {
-                    std::string fullPath = "gameFiles/register/blocks/" + filename;
+                    std::string fullPath = "../../assets/maps/blocks/" + filename;
                     std::ifstream blockFile(fullPath);
                     if (!blockFile.is_open()) {
                         std::cerr << "Failed to open block file: " << fullPath << std::endl;

@@ -1,0 +1,9 @@
+{
+    "model": "block_full",
+    "block_type": "leaves",
+    "solid": true,
+    "transparent": true,
+    "textures": {
+        "all": "leaves"
+    }
+}
