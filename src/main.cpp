@@ -11,6 +11,7 @@
 #include "core/registers/BlockRegister.h"
 
 // Cube vertices with normals (Position x, y, z | Normal nx, ny, nz | Texture tx, ty)
+// Json reading library reads textures on map in alphabetical order, default blocks must be created with BaBoFLRT order in mind
 std::vector<Vertex> cubeVertices = {
     // Back face
     {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
@@ -107,9 +108,7 @@ int main() {
     Atlas blockAtlas("../../assets/textures/blocks/");
     blockAtlas.linkBlocksToAtlas(&blockRegister);
 
-    for (int i = 0; i < cubeVertices.size(); i++) {
-        cubeVertices[i].texCoords = blockRegister.blocks[9].vertices[i].texCoords;
-    }
+    for (int i = 0; i < cubeVertices.size(); i++) cubeVertices[i].texCoords = blockRegister.blocks[2].vertices[i].texCoords;
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
@@ -145,13 +144,13 @@ int main() {
     Texture atlas("../../assets/textures/blocks/block_atlas.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
     atlas.setUniform(shaderProgram, "tex0", 0);
 
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
     // Enable alpha values for textures
     // glEnable(GL_BLEND);
     // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame

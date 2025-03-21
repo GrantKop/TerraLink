@@ -10,9 +10,8 @@ Atlas::Atlas(const char* path) {
 
     numTextures = textures.size();
 
-    // Size in textures squared that the atlas will hold
     this->size = findLargestAtlas(numTextures);
-    // Size of each texture in the atlas
+
     largestTexture = findLargestTexture(textures);
 
     width = this->size * largestTexture;
@@ -36,7 +35,6 @@ Atlas::Atlas(const char* path) {
                 atlasData[atlasIndex + 2] = textures[i].data[textureIndex + 2]; // Blue
                 atlasData[atlasIndex + 3] = textures[i].data[textureIndex + 3]; // Alpha
 
-                // Store the texture coordinates for where the texture is in the atlas, where the top left corner is (0, 0) and the bottom right corner is (1, 1)
                 textureMap[textures[i].name] = std::make_pair(xOffset, yOffset);
             }
         }
@@ -50,15 +48,17 @@ Atlas::Atlas(const char* path) {
 
 Atlas::~Atlas() {}
 
+// Returns the size of the atlas
 int Atlas::getSize() {
     return this->size;
 }
 
+// Returns the atlas texture
 Texture* Atlas::getAtlas() {
     return this->atlas;
 }
 
-// Finds the largest square atlas size for a given number of files, in powers of 2
+// Finds the largest square atlas size for a given number of files, in powers of 2 since those are most efficient in OpenGL
 int Atlas::findLargestAtlas(int numFiles) {
     int largest = 1;
     while (largest * largest < numFiles) {
@@ -67,6 +67,7 @@ int Atlas::findLargestAtlas(int numFiles) {
     return largest;
 }
 
+// Finds the texture with the largest size in a vector of textures
 int Atlas::findLargestTexture(std::vector<TextureFile> textures) {
     int largest = 1;
     for (TextureFile texture : textures) {
@@ -129,6 +130,7 @@ std::vector<TextureFile> Atlas::loadTextures(const char* path) {
     return textures;
 }
 
+// Adds vertice texture coordinates to blocks based on the atlas
 void Atlas::linkBlocksToAtlas(BlockRegister* blockRegister) {
     if (blocksLinked) {
         std::cout << "Blocks already linked to atlas\n";
@@ -158,6 +160,7 @@ void Atlas::linkBlocksToAtlas(BlockRegister* blockRegister) {
     }
 }
 
+// Linking function for blocks that are the default cube model
 void Atlas::block_full_linking(Block& block, std::string texture, std::string textureKey, float s, float t) {
 
     Vertex vertex;

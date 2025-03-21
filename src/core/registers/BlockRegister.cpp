@@ -13,12 +13,10 @@ std::unordered_map<std::string, BLOCKTYPE> createBlockTypeMap()  {
     };
 };
 
-// Constructor for the block register
 BlockRegister::BlockRegister() {
     loadBlocks();
 }
 
-// Destructor for the block register
 BlockRegister::~BlockRegister() {}
 
 // Retrieves a block by its name from the registered blocks
@@ -58,14 +56,12 @@ void BlockRegister::registerBlock(std::string name, std::vector<std::string> sta
 
     Block block(name, blocks.size(), solid, transparent, air, type);
 
-    // Assign additional properties to the block
     block.states = states;
     block.textures = textures;
     block.model = model;
 
-    // Set the block ID to the current size of the blocks vector
+    // TODO: Potentially find a better ID system, since block IDs can change if blocks are removed or added
     block.ID = blocks.size();
-    // Add the new block to the vector of registered blocks
     blocks.push_back(block);
 }
 
@@ -74,14 +70,15 @@ void BlockRegister::parseJson(std::string contents, std::string fileName) {
 
     nlohmann::json blockJson = nlohmann::json::parse(contents);
 
-    // Extract the block name from the file name
     std::string name = fileName.substr(0, fileName.find_last_of("."));
-    if (name == "air") {
-        std::cerr << "Block name cannot be 'air'" << std::endl;
-        return;
+    std::replace(name.begin(), name.end(), '_', ' ');
+    name[0] = std::toupper(name[0]);
+    for (int i = 1; i < name.size(); i++) {
+        if (name[i - 1] == ' ') {
+            name[i] = std::toupper(name[i]);
+        }
     }
 
-    // Determine the block type from the JSON data
     std::string blockType = blockJson["block_type"].get<std::string>();
     std::transform(blockType.begin(), blockType.end(), blockType.begin(), ::toupper);
     if (blockTypeMap.find(blockType) == blockTypeMap.end()) {
@@ -90,35 +87,33 @@ void BlockRegister::parseJson(std::string contents, std::string fileName) {
     }
     BLOCKTYPE type = blockTypeMap[blockJson["block_type"].get<std::string>()];
 
-    // Extract physical properties from the JSON data
     bool solid = blockJson["solid"];
     bool transparent = blockJson["transparent"];
 
     // Extract texture information from the JSON data
+    // This happens in alphabetical order regardless of the order in the JSON file
     std::vector<std::string> textures;
     for (auto& [key, value] : blockJson["textures"].items()) {
         std::string texture = key + ":" + value.get<std::string>();
         textures.push_back(texture);
     }
 
-    // Extract state information from the JSON data
+    // TODO: Use states for flipping textures, or modifying textures in shaders, etc
     std::vector<std::string> states;
     for (auto& [key, value] : blockJson["states"].items()) {
         std::string state = key + ":" + value.get<std::string>();
         states.push_back(state);
     }
 
-    // Register the block with all extracted properties
     registerBlock(name, states, textures, blockJson["model"].get<std::string>(), solid, transparent, false, type);
 }
 
 // Loads blocks from JSON files in a specified directory
 void BlockRegister::loadBlocks() {
 
-    // Register a default air block
+    // Registers a default air block as block 0 in the vector
     registerBlock("air", {}, {}, "air", false, false, true, AIR);
 
-    // Platform-specific directory handling
     #if defined(_WIN32)
     if (!std::filesystem::exists("../../assets/maps/blocks/")) {
         std::cerr << "Error locating folder: ../../assets/maps/blocks/" << std::endl;
