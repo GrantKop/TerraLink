@@ -1,25 +1,84 @@
 #include "core/registers/AtlasRegister.h"
 
-// Finds the largest square atlas size for a given number of files, in powers of 2
-int findLargestAtlas(int numFiles) {
-    int size = 1;
-    while (size * size < numFiles) {
-        size *= 2;
+Atlas::Atlas(const char* path) {
+    
+    std::vector<TextureFile> textures = loadTextures(path);
+    if (textures.size() == 0) {
+        std::cerr << "No textures loaded for atlas creation" << std::endl;
+        return;
     }
-    return size;
+
+    numTextures = textures.size();
+
+    this->size = findLargestAtlas(numTextures);
+
+    largestTexture = findLargestTexture(textures);
+
+    width = this->size * largestTexture;
+
+    unsigned char* atlasData = new unsigned char[width * width * 4];
+
+    // Initialize atlas with transparent black (0, 0, 0, 0)
+    memset(atlasData, 0, width * width * 4);
+
+    for (int i = 0; i < numTextures; i++) {
+        int xOffset = (i % this->size) * largestTexture;
+        int yOffset = (i / this->size) * largestTexture;
+
+        for (int y = 0; y < largestTexture; y++) {
+            for (int x = 0; x < largestTexture; x++) {
+                int atlasIndex = ((yOffset + y) * width + (xOffset + x)) * 4;
+                int textureIndex = (y * largestTexture + x) * 4;
+
+                atlasData[atlasIndex] = textures[i].data[textureIndex];         // Red
+                atlasData[atlasIndex + 1] = textures[i].data[textureIndex + 1]; // Green
+                atlasData[atlasIndex + 2] = textures[i].data[textureIndex + 2]; // Blue
+                atlasData[atlasIndex + 3] = textures[i].data[textureIndex + 3]; // Alpha
+
+                textureMap[textures[i].name] = std::make_pair(xOffset, yOffset);
+            }
+        }
+
+        stbi_image_free(textures[i].data);
+    }
+
+    stbi_write_png((std::string(path) + "block_atlas.png").c_str(), width, width, 4, atlasData, width * 4);
+    delete[] atlasData;
 }
 
-int findLargestTexture(std::vector<TextureFile> textures) {
-    int size = 1;
+Atlas::~Atlas() {}
+
+// Returns the size of the atlas
+int Atlas::getSize() {
+    return this->size;
+}
+
+// Returns the atlas texture
+Texture* Atlas::getAtlas() {
+    return this->atlas;
+}
+
+// Finds the largest square atlas size for a given number of files, in powers of 2 since those are most efficient in OpenGL
+int Atlas::findLargestAtlas(int numFiles) {
+    int largest = 1;
+    while (largest * largest < numFiles) {
+        largest *= 2;
+    }
+    return largest;
+}
+
+// Finds the texture with the largest size in a vector of textures
+int Atlas::findLargestTexture(std::vector<TextureFile> textures) {
+    int largest = 1;
     for (TextureFile texture : textures) {
-        if (texture.width > size) {
-            size = texture.width;
+        if (texture.width > largest) {
+            largest = texture.width;
         }
     }
-    return size;
+    return largest;
 }
 
-std::vector<TextureFile> loadTextures(const char* path) {
+std::vector<TextureFile> Atlas::loadTextures(const char* path) {
     std::vector<TextureFile> textures;
 
     #if defined(_WIN32)
@@ -71,55 +130,154 @@ std::vector<TextureFile> loadTextures(const char* path) {
     return textures;
 }
 
-void createAtlas(const char* path) {
-    
-    std::vector<TextureFile> textures = loadTextures(path);
-    if (textures.size() == 0) {
-        std::cerr << "No textures loaded for atlas creation" << std::endl;
+// Adds vertice texture coordinates to blocks based on the atlas
+void Atlas::linkBlocksToAtlas(BlockRegister* blockRegister) {
+    if (blocksLinked) {
+        std::cout << "Blocks already linked to atlas\n";
         return;
     }
 
-    int count = textures.size();
+    blocksLinked = true;
 
-    // Size in textures squared that the atlas will hold
-    int size = findLargestAtlas(count);
-    // Size of each texture in the atlas
-    int offset = findLargestTexture(textures);
+    for (Block& block : blockRegister->blocks) {
+        for (std::string texture : block.textures) {
 
-    int totalSize = size * offset;
+            std::string textureKey = texture.substr(0, texture.find(":"));
+            texture = texture.substr(texture.find(":") + 1);
 
-    unsigned char* atlasData = new unsigned char[totalSize * totalSize * 4];
+            if (textureMap.find(texture) == textureMap.end()) {
+                std::cerr << "Error linking block texture to atlas: " << texture << std::endl;
+                continue;
+            }
 
-    // Initialize atlas with transparent black (0, 0, 0, 0)
-    memset(atlasData, 0, totalSize * totalSize * 4);
+            float s = (float)textureMap[texture].first / (float)width;
+            float t = ((float)width - (float)textureMap[texture].second - (float)largestTexture) / (float)width;
 
-    for (int i = 0; i < count; i++) {
-        int xOffset = (i % size) * offset;
-        int yOffset = (i / size) * offset;
-
-        for (int y = 0; y < offset; y++) {
-            for (int x = 0; x < offset; x++) {
-                int atlasIndex = ((yOffset + y) * totalSize + (xOffset + x)) * 4;
-                int textureIndex = (y * offset + x) * 4;
-
-                atlasData[atlasIndex] = textures[i].data[textureIndex];         // Red
-                atlasData[atlasIndex + 1] = textures[i].data[textureIndex + 1]; // Green
-                atlasData[atlasIndex + 2] = textures[i].data[textureIndex + 2]; // Blue
-                atlasData[atlasIndex + 3] = textures[i].data[textureIndex + 3]; // Alpha
+            if (block.model == "block_full") {
+                block_full_linking(block, texture, textureKey, s, t);
             }
         }
-
-        stbi_image_free(textures[i].data);
     }
-
-    stbi_write_png((std::string(path) + "block_atlas.png").c_str(), totalSize, totalSize, 4, atlasData, totalSize * 4);
-    delete[] atlasData;
 }
 
-// Registers an atlas with the given path
-void registerAtlas() {
-    std::string blockPath = "../../assets/textures/blocks/";
+// Linking function for blocks that are the default cube model
+void Atlas::block_full_linking(Block& block, std::string texture, std::string textureKey, float s, float t) {
 
-    createAtlas(blockPath.c_str());
+    Vertex vertex;
 
+    if (textureKey == "all") {
+        for (int i = 0; i < 24; i++) {
+            if (i % 4 == 0) {
+                vertex.texCoords = glm::vec2(s, t);
+            }
+            if (i % 4 == 1) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i % 4 == 2) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i % 4 == 3) {
+                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            block.vertices.push_back(vertex);
+        }
+    }
+    
+    if (textureKey == "top") {
+        for (int i = 0; i < 4; i++) {
+            if (i == 0) {
+                vertex.texCoords = glm::vec2(s, t);
+            }
+            if (i == 1) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i == 2) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 3) {
+                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            block.vertices.push_back(vertex);
+        }
+    } else if (textureKey == "bottom") {
+        for (int i = 0; i < 4; i++) {
+            if (i == 0) {
+                vertex.texCoords = glm::vec2(s, t);
+            }
+            if (i == 1) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i == 2) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 3) {
+                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            block.vertices.push_back(vertex);
+        }
+    } else if (textureKey == "front") {
+        for (int i = 0; i < 4; i++) {
+            if (i == 0) {
+                vertex.texCoords = glm::vec2(s, t);
+            }
+            if (i == 1) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i == 2) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 3) {
+                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            block.vertices.push_back(vertex);
+        }
+    } else if (textureKey == "back") {
+        for (int i = 0; i < 4; i++) {
+            if (i == 0) {
+                vertex.texCoords = glm::vec2(s, t);
+            }
+            if (i == 1) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i == 2) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 3) {
+                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            block.vertices.push_back(vertex);
+        }
+    } else if (textureKey == "left") {
+        for (int i = 0; i < 4; i++) {
+            if (i == 0) {
+                vertex.texCoords = glm::vec2(s, t);
+            }
+            if (i == 1) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i == 2) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 3) {
+                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            block.vertices.push_back(vertex);
+        }
+    } else if (textureKey == "right") {
+        for (int i = 0; i < 4; i++) {
+            if (i == 0) {
+                vertex.texCoords = glm::vec2(s, t);
+            }
+            if (i == 1) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i == 2) {
+                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 3) {
+                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            block.vertices.push_back(vertex);
+        }
+    }
 }

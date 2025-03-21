@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <algorithm>
 #include <vector>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
@@ -42,14 +43,13 @@ struct Block {
     bool isAir;
 
     std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
 
     std::vector<std::string> textures;
     std::string model;
 
     std::vector<std::string> states;
 
-    Block(std::string name, int ID, bool solid = true, bool transparent = false, bool air = false, BLOCKTYPE type = AIR)
+    Block(std::string name, int ID, bool solid = false, bool transparent = true, bool air = true, BLOCKTYPE type = AIR)
         : name(name), ID(ID), isSolid(solid), isTransparent(transparent), isAir(air), type(type) {}
     Block() {}
 };
@@ -58,7 +58,8 @@ class BlockRegister {
 public:
     std::vector<Block> blocks;
 
-    BlockRegister() {}
+    BlockRegister();
+    ~BlockRegister();
 
     Block getBlockByName(std::string name);
     Block getBlockByIndex(int index);

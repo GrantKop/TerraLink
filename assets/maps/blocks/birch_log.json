@@ -1,0 +1,14 @@
+{
+    "model": "block_full",
+    "block_type": "wood",
+    "solid": true,
+    "transparent": false,
+    "textures": {
+        "top": "birch_log",
+        "bottom": "birch_log",
+        "front": "birch_bark",
+        "back": "birch_bark",
+        "left": "birch_bark",
+        "right": "birch_bark"
+    }
+}

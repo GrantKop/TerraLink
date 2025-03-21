@@ -1,6 +1,6 @@
 {
     "model": "block_full",
-    "blockType": "stone",
+    "block_type": "stone",
     "solid": true,
     "transparent": false,
     "textures": {

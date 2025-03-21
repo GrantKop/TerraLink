@@ -1,9 +1,9 @@
 {
     "model": "block_full",
-    "block_type": "dirt",
+    "block_type": "wood",
     "solid": true,
     "transparent": false,
     "textures": {
-        "all": "dirt"
+        "all": "wood_planks"
     }
 }

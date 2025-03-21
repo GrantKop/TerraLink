@@ -1,9 +1,9 @@
 {
     "model": "block_full",
-    "block_type": "dirt",
+    "block_type": "leaves",
     "solid": true,
     "transparent": false,
     "textures": {
-        "all": "dirt"
+        "all": "snow"
     }
 }
