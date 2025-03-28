@@ -10,15 +10,6 @@
 #include "core/registers/AtlasRegister.h"
 #include "core/registers/BlockRegister.h"
 
-std::vector<GLuint> cubeIndices = {
-    2, 1, 0, 0, 3, 2,
-    6, 5, 4, 4, 7, 6,
-    10, 9, 8, 8, 11, 10,
-    14, 13, 12, 12, 15, 14,
-    18, 17, 16, 16, 19, 18,
-    22, 21, 20, 20, 23, 22
-};
-
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
     {Vertex{glm::vec3( 0.1f, -0.1f,  0.1f)}},
@@ -45,6 +36,8 @@ const char* windowTitle = "TerraLink";
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
+
+int BLOCK_NUM = 10;
 
 std::string fpsCount() {
 
@@ -74,14 +67,12 @@ int main() {
 
     blockAtlas.linkBlocksToAtlas(&blockRegister);
 
-    //for (int i = 0; i < cubeVertices.size(); i++) cubeVertices[i].texCoords = blockRegister.blocks[6].vertices[i].texCoords;
-
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
     VertexArrayObject VAO;
     VAO.bind();
-    VAO.addVertexBuffer(blockRegister.blocks[8].vertices);
-    VAO.addElementBuffer(cubeIndices);
+    VAO.addVertexBuffer(blockRegister.blocks[BLOCK_NUM].vertices);
+    VAO.addElementBuffer(blockRegister.blocks[BLOCK_NUM].indices);
     VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
     VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
@@ -140,7 +131,7 @@ int main() {
         shaderProgram.setUniform3("lightPos", glm::vec3(lightPos.x, lightPos.y, lightPos.z));
         atlas.bind();
         VAO.bind();
-        glDrawElements(GL_TRIANGLES, cubeIndices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, blockRegister.blocks[BLOCK_NUM].indices.size(), GL_UNSIGNED_INT, 0);
 
         glUseProgram(lightShader.ID);
         lightShader.setUniform4("cameraMatrix", camera.cameraMatrix);
