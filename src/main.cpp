@@ -10,50 +10,6 @@
 #include "core/registers/AtlasRegister.h"
 #include "core/registers/BlockRegister.h"
 
-// Cube vertices with normals (Position x, y, z | Normal nx, ny, nz | Texture tx, ty)
-// Json reading library reads textures on map in alphabetical order, default blocks must be created with BaBoFLRT order in mind
-std::vector<Vertex> cubeVertices = {
-    // Back face
-    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    // Bottom face
-    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    // Front face
-    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    // Left face
-    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    // Right face
-    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    // Top face
-    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}}
-};
-
-std::vector<GLuint> cubeIndices = {
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4,
-    8, 9, 10, 10, 11, 8,
-    12, 13, 14, 14, 15, 12,
-    16, 17, 18, 18, 19, 16,
-    20, 21, 22, 22, 23, 20
-};
-
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
     {Vertex{glm::vec3( 0.1f, -0.1f,  0.1f)}},
@@ -81,6 +37,8 @@ const char* windowTitle = "TerraLink";
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
 
+int BLOCK_NUM = 10;
+
 std::string fpsCount() {
 
     float curTime = glfwGetTime();
@@ -106,16 +64,15 @@ int main() {
 
     BlockRegister blockRegister;
     Atlas blockAtlas("../../assets/textures/blocks/");
-    blockAtlas.linkBlocksToAtlas(&blockRegister);
 
-    for (int i = 0; i < cubeVertices.size(); i++) cubeVertices[i].texCoords = blockRegister.blocks[2].vertices[i].texCoords;
+    blockAtlas.linkBlocksToAtlas(&blockRegister);
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
     VertexArrayObject VAO;
     VAO.bind();
-    VAO.addVertexBuffer(cubeVertices);
-    VAO.addElementBuffer(cubeIndices);
+    VAO.addVertexBuffer(blockRegister.blocks[BLOCK_NUM].vertices);
+    VAO.addElementBuffer(blockRegister.blocks[BLOCK_NUM].indices);
     VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
     VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
@@ -174,7 +131,7 @@ int main() {
         shaderProgram.setUniform3("lightPos", glm::vec3(lightPos.x, lightPos.y, lightPos.z));
         atlas.bind();
         VAO.bind();
-        glDrawElements(GL_TRIANGLES, cubeIndices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, blockRegister.blocks[BLOCK_NUM].indices.size(), GL_UNSIGNED_INT, 0);
 
         glUseProgram(lightShader.ID);
         lightShader.setUniform4("cameraMatrix", camera.cameraMatrix);

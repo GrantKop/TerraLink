@@ -43,6 +43,7 @@ struct Block {
     bool isAir;
 
     std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
 
     std::vector<std::string> textures;
     std::string model;
@@ -73,6 +74,8 @@ private:
     void parseJson(std::string contents, std::string fileName);
     void loadBlocks();
 
+    void linkModelToBlock(Block& block);
+    void link_block_full(Block& block);
 };
 
 #endif
