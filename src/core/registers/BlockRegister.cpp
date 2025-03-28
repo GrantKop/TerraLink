@@ -188,6 +188,7 @@ void BlockRegister::link_block_full(Block& block) {
     std::vector<glm::vec3> OBJvertices;
     std::vector<glm::vec3> OBJnormals;
     while (std::getline(file, line)) {
+        // Parse vertices
         if (line.substr(0, 2) == "v ") {
             std::istringstream s(line.substr(2));
 
@@ -199,6 +200,7 @@ void BlockRegister::link_block_full(Block& block) {
 
             OBJvertices.push_back(vertex);
 
+        // Parse normals
         } else if (line.substr(0, 3) == "vn ") {
             std::istringstream s(line.substr(3));
 
@@ -208,6 +210,7 @@ void BlockRegister::link_block_full(Block& block) {
 
             OBJnormals.push_back(normal);
 
+        // Parse faces
         } else if (line.substr(0, 2) == "f ") {
             std::istringstream s(line.substr(2));
 
@@ -235,18 +238,16 @@ void BlockRegister::link_block_full(Block& block) {
 
     int reorder[6] = {1, 3, 5, 2, 4, 0};
 
+    // Reorder faces to match BaBoFLRT
     for (int i = 0; i < 6; ++i) {
         const std::vector<Vertex>& face = tempFaces[reorder[i]];
 
-        // Get the base index before pushing this face's 4 vertices
         unsigned int baseIndex = static_cast<unsigned int>(block.vertices.size());
 
-        // Push the 4 vertices
         for (const auto& vertex : face) {
             block.vertices.push_back(vertex);
         }
 
-        // Push 6 indices (2 triangles): CCW winding
         block.indices.push_back(baseIndex + 2);
         block.indices.push_back(baseIndex + 1);
         block.indices.push_back(baseIndex + 0);
@@ -255,5 +256,4 @@ void BlockRegister::link_block_full(Block& block) {
         block.indices.push_back(baseIndex + 3);
         block.indices.push_back(baseIndex + 2);
     }
-
 }
