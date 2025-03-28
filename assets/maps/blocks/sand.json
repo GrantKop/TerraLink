@@ -1,0 +1,9 @@
+{
+    "model": "block_full",
+    "block_type": "sand",
+    "solid": true,
+    "transparent": false,
+    "textures": {
+        "all": "sand"
+    }
+}

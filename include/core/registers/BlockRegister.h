@@ -73,6 +73,8 @@ private:
     void parseJson(std::string contents, std::string fileName);
     void loadBlocks();
 
+    void linkModelToBlock(Block& block);
+    void link_block_full(Block& block);
 };
 
 #endif

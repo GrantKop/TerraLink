@@ -5,29 +5,28 @@
 #include <string>
 #include <vector>
 
-#include "VertexArrayObject.h"
+#include "graphics/VertexArrayObject.h"
 #include "graphics/Vertex.h"
-#include "graphics/Shader.h"
-#include "graphics/Texture.h"
-#include "core/camera/Camera.h"
 
 
 class Mesh {
 public:
-    Shader* shader;
+
+    Mesh();
+    virtual ~Mesh();
+
+    void setVertices(std::vector<Vertex>& vertices, std::vector<GLuint>& indices);
+    void uploadToGPU();
+    void virtual draw();
+    void cleanUp();
+
+private:
     VertexArrayObject VAO;
-    Texture* texture;
+
+    bool uploaded = false;
 
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
-
-    Mesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, Shader* shader, Texture* texture = nullptr);
-    ~Mesh();
-
-    void draw(Camera& camera);
-    void drawInstanced(int amount);
-
-private:
 
 };
 

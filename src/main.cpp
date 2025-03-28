@@ -10,48 +10,13 @@
 #include "core/registers/AtlasRegister.h"
 #include "core/registers/BlockRegister.h"
 
-// Cube vertices with normals (Position x, y, z | Normal nx, ny, nz | Texture tx, ty)
-// Json reading library reads textures on map in alphabetical order, default blocks must be created with BaBoFLRT order in mind
-std::vector<Vertex> cubeVertices = {
-    // Back face
-    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f)}},
-    // Bottom face
-    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f)}},
-    // Front face
-    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 0.0f, 1.0f)}},
-    // Left face
-    {Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(-1.0f, 0.0f, 0.0f)}},
-    // Right face
-    {Vertex{glm::vec3( 0.5f, -0.5f,  0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f, -0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}},
-    // Top face
-    {Vertex{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}},
-    {Vertex{glm::vec3( 0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}},
-    {Vertex{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}}
-};
-
 std::vector<GLuint> cubeIndices = {
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4,
-    8, 9, 10, 10, 11, 8,
-    12, 13, 14, 14, 15, 12,
-    16, 17, 18, 18, 19, 16,
-    20, 21, 22, 22, 23, 20
+    2, 1, 0, 0, 3, 2,
+    6, 5, 4, 4, 7, 6,
+    10, 9, 8, 8, 11, 10,
+    14, 13, 12, 12, 15, 14,
+    18, 17, 16, 16, 19, 18,
+    22, 21, 20, 20, 23, 22
 };
 
 std::vector<Vertex> lightVertices = {
@@ -106,15 +71,16 @@ int main() {
 
     BlockRegister blockRegister;
     Atlas blockAtlas("../../assets/textures/blocks/");
+
     blockAtlas.linkBlocksToAtlas(&blockRegister);
 
-    for (int i = 0; i < cubeVertices.size(); i++) cubeVertices[i].texCoords = blockRegister.blocks[2].vertices[i].texCoords;
+    //for (int i = 0; i < cubeVertices.size(); i++) cubeVertices[i].texCoords = blockRegister.blocks[6].vertices[i].texCoords;
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
     VertexArrayObject VAO;
     VAO.bind();
-    VAO.addVertexBuffer(cubeVertices);
+    VAO.addVertexBuffer(blockRegister.blocks[8].vertices);
     VAO.addElementBuffer(cubeIndices);
     VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
     VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));

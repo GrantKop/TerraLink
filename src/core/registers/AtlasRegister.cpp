@@ -163,121 +163,149 @@ void Atlas::linkBlocksToAtlas(BlockRegister* blockRegister) {
 // Linking function for blocks that are the default cube model
 void Atlas::block_full_linking(Block& block, std::string texture, std::string textureKey, float s, float t) {
 
-    Vertex vertex;
+    glm::vec2 texCoords;
 
     if (textureKey == "all") {
         for (int i = 0; i < 24; i++) {
             if (i % 4 == 0) {
-                vertex.texCoords = glm::vec2(s, t);
-            }
-            if (i % 4 == 1) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
-            }
-            if (i % 4 == 2) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s, t);
             }
             if (i % 4 == 3) {
-                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
             }
-            block.vertices.push_back(vertex);
+            if (i % 4 == 2) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i % 4 == 1) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < i) {
+                std::cerr << "Model block_full index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[i].texCoords = texCoords;
         }
     }
     
     if (textureKey == "top") {
         for (int i = 0; i < 4; i++) {
-            if (i == 0) {
-                vertex.texCoords = glm::vec2(s, t);
-            }
             if (i == 1) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+                texCoords = glm::vec2(s, t);
             }
-            if (i == 2) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            if (i == 0) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
             }
             if (i == 3) {
-                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
             }
-            block.vertices.push_back(vertex);
+            if (i == 2) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < 19+i) {
+                std::cerr << "Model block_full index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[20+i].texCoords = texCoords;
         }
     } else if (textureKey == "bottom") {
         for (int i = 0; i < 4; i++) {
-            if (i == 0) {
-                vertex.texCoords = glm::vec2(s, t);
-            }
-            if (i == 1) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            if (i == 3) {
+                texCoords = glm::vec2(s, t);
             }
             if (i == 2) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
             }
-            if (i == 3) {
-                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            if (i == 1) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
             }
-            block.vertices.push_back(vertex);
+            if (i == 0) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < 3+i) {
+                std::cerr << "Model block_full index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[4+i].texCoords = texCoords;
         }
     } else if (textureKey == "front") {
         for (int i = 0; i < 4; i++) {
             if (i == 0) {
-                vertex.texCoords = glm::vec2(s, t);
-            }
-            if (i == 1) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
-            }
-            if (i == 2) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s, t);
             }
             if (i == 3) {
-                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
             }
-            block.vertices.push_back(vertex);
+            if (i == 2) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 1) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < 7+i) {
+                std::cerr << "Model block_full index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[8+i].texCoords = texCoords;
         }
     } else if (textureKey == "back") {
         for (int i = 0; i < 4; i++) {
             if (i == 0) {
-                vertex.texCoords = glm::vec2(s, t);
-            }
-            if (i == 1) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
-            }
-            if (i == 2) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s, t);
             }
             if (i == 3) {
-                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
             }
-            block.vertices.push_back(vertex);
+            if (i == 2) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 1) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < i) {
+                std::cerr << "Model block_full index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[i].texCoords = texCoords;
         }
     } else if (textureKey == "left") {
         for (int i = 0; i < 4; i++) {
             if (i == 0) {
-                vertex.texCoords = glm::vec2(s, t);
-            }
-            if (i == 1) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
-            }
-            if (i == 2) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s, t);
             }
             if (i == 3) {
-                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
             }
-            block.vertices.push_back(vertex);
+            if (i == 2) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 1) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < 11+i) {
+                std::cerr << "Model block_full index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[12+i].texCoords = texCoords;
         }
     } else if (textureKey == "right") {
         for (int i = 0; i < 4; i++) {
             if (i == 0) {
-                vertex.texCoords = glm::vec2(s, t);
-            }
-            if (i == 1) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
-            }
-            if (i == 2) {
-                vertex.texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s, t);
             }
             if (i == 3) {
-                vertex.texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
             }
-            block.vertices.push_back(vertex);
+            if (i == 2) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i == 1) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < 15+i) {
+                std::cerr << "Model block_full index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[16+i].texCoords = texCoords;
         }
     }
 }

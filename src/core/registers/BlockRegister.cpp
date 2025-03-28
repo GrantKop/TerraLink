@@ -60,6 +60,8 @@ void BlockRegister::registerBlock(std::string name, std::vector<std::string> sta
     block.textures = textures;
     block.model = model;
 
+    linkModelToBlock(block);
+
     // TODO: Potentially find a better ID system, since block IDs can change if blocks are removed or added
     block.ID = blocks.size();
     blocks.push_back(block);
@@ -158,4 +160,84 @@ void BlockRegister::loadBlocks() {
         }
     }
     #endif
+}
+
+// Sets vertices and normals for a block based on its model
+void BlockRegister::linkModelToBlock(Block& block) {
+    if (block.model == "block_full") {
+        link_block_full(block);
+    }
+
+}
+
+// Model specific linking for the default cube model
+// Json reading library reads textures on map in alphabetical order, default blocks must be created with BaBoFLRT order in mind
+void BlockRegister::link_block_full(Block& block) {
+
+    std::ifstream file("../../assets/models/block_full.obj");
+    if (!file.is_open()) {
+        std::cerr << "Failed to open block model file: ../../assets/models/block_full.obj" << std::endl;
+        return;
+    }
+
+    std::vector<Vertex> face;
+    std::vector<Vertex> tempFaces[6];
+    int currentFaceIdx = 0;
+
+    std::string line;
+    std::vector<glm::vec3> OBJvertices;
+    std::vector<glm::vec3> OBJnormals;
+    while (std::getline(file, line)) {
+        if (line.substr(0, 2) == "v ") {
+            std::istringstream s(line.substr(2));
+
+            glm::vec3 vertex;
+
+            s >> vertex.x >> vertex.y >> vertex.z;
+
+            if (vertex.x == -1.0f) vertex.x = 1.0f;
+
+            OBJvertices.push_back(vertex);
+
+        } else if (line.substr(0, 3) == "vn ") {
+            std::istringstream s(line.substr(3));
+
+            glm::vec3 normal;
+
+            s >> normal.x >> normal.y >> normal.z;
+
+            OBJnormals.push_back(normal);
+
+        } else if (line.substr(0, 2) == "f ") {
+            std::istringstream s(line.substr(2));
+
+            std::string faceData;
+
+            while (s >> faceData) {
+                size_t vPos = faceData.find("//");
+                int vIndex = std::stoi(faceData.substr(0, vPos)) - 1;
+                int nIndex = std::stoi(faceData.substr(vPos + 2)) - 1;
+
+                Vertex vertex;
+                vertex.position = OBJvertices[vIndex];
+                vertex.normal = OBJnormals[nIndex];
+
+                face.push_back(vertex);
+            }
+
+            if (currentFaceIdx < 6) {
+                tempFaces[currentFaceIdx] = face;
+                currentFaceIdx++;
+                face.clear();
+            }
+        }
+    }
+
+    int reorder[6] = {1, 3, 5, 2, 4, 0};
+
+    for (int i = 0; i < 6; ++i) {
+        for (const auto& vertex : tempFaces[reorder[i]]) {
+            block.vertices.push_back(vertex);
+        }
+    }
 }

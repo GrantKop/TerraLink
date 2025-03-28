@@ -69,4 +69,10 @@ void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
         lightpos->z += 0.01f;
     }
+    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
+        lightpos->y += 0.01f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
+        lightpos->y -= 0.01f;
+    }
 }
