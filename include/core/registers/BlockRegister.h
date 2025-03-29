@@ -68,11 +68,15 @@ public:
 
 private:
     std::unordered_map<std::string, BLOCKTYPE> blockTypeMap = createBlockTypeMap();
+    std::unordered_map<std::string, int> nameToIndexMap;
 
     void registerBlock(std::string name, std::vector<std::string> states, std::vector<std::string> textures, std::string model,
                        bool solid = true, bool transparent = false, bool air = false, BLOCKTYPE type = AIR);
-    void parseJson(std::string contents, std::string fileName);
+    void parseBlockMapJson(std::string contents, std::string fileName);
     void loadBlocks();
+
+    void saveBlockRegistryJson();
+    void parseBlockRegistryJson();
 
     void linkModelToBlock(Block& block);
     void link_block_full(Block& block);
