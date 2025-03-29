@@ -1,0 +1,9 @@
+{
+    "model": "plant",
+    "block_type": "leaves",
+    "solid": false,
+    "transparent": true,
+    "textures": {
+        "all": "grass_plant"
+    }
+}

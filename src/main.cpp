@@ -37,7 +37,7 @@ const char* windowTitle = "TerraLink";
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
 
-int BLOCK_NUM = 10;
+int BLOCK_NUM = 1;
 
 std::string fpsCount() {
 

@@ -14,7 +14,9 @@ std::unordered_map<std::string, BLOCKTYPE> createBlockTypeMap()  {
 };
 
 BlockRegister::BlockRegister() {
+    parseBlockRegistryJson();
     loadBlocks();
+    saveBlockRegistryJson();
 }
 
 BlockRegister::~BlockRegister() {}
@@ -54,7 +56,12 @@ int BlockRegister::getBlockIndex(std::string name) {
 void BlockRegister::registerBlock(std::string name, std::vector<std::string> states, std::vector<std::string> textures,
                                   std::string model, bool solid, bool transparent, bool air, BLOCKTYPE type) {
 
-    Block block(name, blocks.size(), solid, transparent, air, type);
+    Block block;
+
+    block.isSolid = solid;
+    block.isTransparent = transparent;
+    block.isAir = air;
+    block.type = type;
 
     block.states = states;
     block.textures = textures;
@@ -62,13 +69,22 @@ void BlockRegister::registerBlock(std::string name, std::vector<std::string> sta
 
     linkModelToBlock(block);
 
-    // TODO: Potentially find a better ID system, since block IDs can change if blocks are removed or added
-    block.ID = blocks.size();
-    blocks.push_back(block);
+    // Use blocks.size() as ID if block name not found in the map
+    if (nameToIndexMap.find(name) == nameToIndexMap.end()) {
+        block.name = name;
+        block.ID = blocks.size();
+        blocks.push_back(block);
+        nameToIndexMap[name] = block.ID;
+    } else {
+        // set block to point to the existing block in the vector
+        block.ID = nameToIndexMap[name];
+        block.name = name;
+        blocks[nameToIndexMap[name]] = block;
+    }
 }
 
 // Parses a JSON file to create and register a block
-void BlockRegister::parseJson(std::string contents, std::string fileName) {
+void BlockRegister::parseBlockMapJson(std::string contents, std::string fileName) {
 
     nlohmann::json blockJson = nlohmann::json::parse(contents);
 
@@ -114,7 +130,10 @@ void BlockRegister::parseJson(std::string contents, std::string fileName) {
 void BlockRegister::loadBlocks() {
 
     // Registers a default air block as block 0 in the vector
-    registerBlock("air", {}, {}, "air", false, false, true, AIR);
+    if (blocks.size() == 0) {
+        blocks.push_back(Block("Air", 0, false, true, true, AIR));
+        nameToIndexMap["Air"] = 0;
+    }
 
     #if defined(_WIN32)
     if (!std::filesystem::exists("../../assets/maps/blocks/")) {
@@ -133,7 +152,7 @@ void BlockRegister::loadBlocks() {
             buffer << blockFile.rdbuf();
             std::string contents = buffer.str();
             blockFile.close();
-            parseJson(contents, entry.path().filename().string());
+            parseBlockMapJson(contents, entry.path().filename().string());
         }
     }
     #else
@@ -160,6 +179,47 @@ void BlockRegister::loadBlocks() {
         }
     }
     #endif
+}
+
+// Saves the block registry to a JSON file as names and IDs, for persistent ID storage
+void BlockRegister::saveBlockRegistryJson() {
+    nlohmann::json blockRegistryJson;
+
+    for (const auto& [name, id] : nameToIndexMap) {
+        blockRegistryJson[name] = id;
+    }
+
+    std::ofstream file("../../registry/block_registry.json");
+    if (!file) {
+        std::cerr << "Error opening file for writing: ../../registry/block_registry.json" << std::endl;
+        return;
+    }
+
+    file << blockRegistryJson.dump(4); // Pretty print with 4 spaces
+    file.close();
+}
+
+// Parses the block registry JSON file to create a mapping of block names to IDs
+void BlockRegister::parseBlockRegistryJson() {
+    std::ifstream file("../../registry/block_registry.json");
+    if (!file) {
+        std::cerr << "Error opening file for reading: ../../registry/block_registry.json" << std::endl;
+        return;
+    }
+
+    nlohmann::json blockRegistryJson;
+    file >> blockRegistryJson;
+
+    Block block;
+
+    for (auto& [name, id] : blockRegistryJson.items()) {
+        nameToIndexMap[name] = id.get<int>();
+        block.ID = id.get<int>();
+        block.name = name;
+        blocks.push_back(block);
+    }
+
+    file.close();
 }
 
 // Sets vertices and normals for a block based on its model
