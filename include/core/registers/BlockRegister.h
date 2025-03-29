@@ -7,10 +7,10 @@
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <unordered_map>
 #include <nlohmann/json.hpp>
 
 #include "graphics/Vertex.h"
+#include "core/world/Block.h"
 
 #if defined(_WIN32)
 #include <filesystem>
@@ -20,50 +20,20 @@
 
 #define ENUM_ENTRY(name) {#name, BLOCKTYPE::name}
 
-enum BLOCKTYPE {
-    AIR,
-    DIRT,
-    GRASS,
-    STONE,
-    WOOD,
-    LEAVES,
-    SAND
-};
-
 std::unordered_map<std::string, BLOCKTYPE> createBlockTypeMap();
-
-struct Block {
-    std::string name;
-    int ID;
-
-    BLOCKTYPE type;
-
-    bool isSolid;
-    bool isTransparent;
-    bool isAir;
-
-    std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
-
-    std::vector<std::string> textures;
-    std::string model;
-
-    std::vector<std::string> states;
-
-    Block(std::string name, int ID, bool solid = false, bool transparent = true, bool air = true, BLOCKTYPE type = AIR)
-        : name(name), ID(ID), isSolid(solid), isTransparent(transparent), isAir(air), type(type) {}
-    Block() {}
-};
 
 class BlockRegister {
 public:
     std::vector<Block> blocks;
 
+    static void setInstance(BlockRegister* instance);
+    static BlockRegister& instance();
+
     BlockRegister();
     ~BlockRegister();
 
-    Block getBlockByName(std::string name);
-    Block getBlockByIndex(int index);
+    const Block getBlockByName(std::string name);
+    const Block getBlockByIndex(int index);
     int getBlockIndex(std::string name);
 
 private:
@@ -80,6 +50,8 @@ private:
 
     void linkModelToBlock(Block& block);
     void link_block_full(Block& block);
+
+    static BlockRegister* s_instance;
 };
 
 #endif

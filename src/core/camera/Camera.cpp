@@ -22,22 +22,22 @@ void Camera::updateCameraMatrix(float nearPlane, float farPlane, GLFWwindow* win
 void Camera::updatePosition(CameraMovement direction, float deltaTime) {
     float velocity = movementSpeed * deltaTime;
 
-    if (direction == FORWARD) {
+    if (direction == CAM_FORWARD) {
         position += front * velocity;
     }
-    if (direction == BACKWARD) {
+    if (direction == CAM_BACKWARD) {
         position -= front * velocity;
     }
-    if (direction == LEFT) {
+    if (direction == CAM_LEFT) {
         position -= right * velocity;
     }
-    if (direction == RIGHT) {
+    if (direction == CAM_RIGHT) {
         position += right * velocity;
     }
-    if (direction == UP) {
+    if (direction == CAM_UP) {
         position += up * velocity;
     } 
-    if (direction == DOWN) {
+    if (direction == CAM_DOWN) {
         position -= up * velocity;
     }
 }

@@ -25,22 +25,22 @@ void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3
         glfwSetWindowShouldClose(window, true);
     }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        camera->updatePosition(FORWARD, deltaTime);
+        camera->updatePosition(CAM_FORWARD, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        camera->updatePosition(BACKWARD, deltaTime);
+        camera->updatePosition(CAM_BACKWARD, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera->updatePosition(LEFT, deltaTime);
+        camera->updatePosition(CAM_LEFT, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        camera->updatePosition(RIGHT, deltaTime);
+        camera->updatePosition(CAM_RIGHT, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        camera->updatePosition(UP, deltaTime);
+        camera->updatePosition(CAM_UP, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-        camera->updatePosition(DOWN, deltaTime);
+        camera->updatePosition(CAM_DOWN, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
         camera->movementSpeed = 3.5f;
@@ -58,21 +58,21 @@ void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3
     }
 
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        lightpos->x += 0.01f;
+        lightpos->x += 0.05f;
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        lightpos->x -= 0.01f;
+        lightpos->x -= 0.05f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-        lightpos->z -= 0.01f;
+        lightpos->z -= 0.05f;
     }
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        lightpos->z += 0.01f;
+        lightpos->z += 0.05f;
     }
     if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
-        lightpos->y += 0.01f;
+        lightpos->y += 0.05f;
     }
     if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
-        lightpos->y -= 0.01f;
+        lightpos->y -= 0.05f;
     }
 }
