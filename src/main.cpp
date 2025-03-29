@@ -32,7 +32,9 @@ std::vector<GLuint> lightIndices = {
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
-const char* windowTitle = "TerraLink";
+std::string programName = "TerraLink";
+std::string programVersion = "v0.1.0";
+std::string windowTitle = programName + " " + programVersion;
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
@@ -49,7 +51,7 @@ std::string fpsCount() {
         _fpsCount = 0;
     }
 
-    return std::string(windowTitle).substr(0,9) + "  //  " + std::to_string(fps) + " fps";
+    return std::string(windowTitle.c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
 int main() {
@@ -57,7 +59,7 @@ int main() {
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, windowTitle, 900, 700)) {
+    if (!createWindow(window, windowTitle.c_str(), 900, 700)) {
         glfwTerminate();
         return -1;
     }
