@@ -13,6 +13,23 @@ std::unordered_map<std::string, BLOCKTYPE> createBlockTypeMap()  {
     };
 };
 
+// Static instance of BlockRegister
+BlockRegister* BlockRegister::s_instance = nullptr;
+
+// Sets the static instance of BlockRegister
+void BlockRegister::setInstance(BlockRegister* instance) {
+    s_instance = instance;
+}
+
+// Returns the static instance of BlockRegister
+BlockRegister& BlockRegister::instance() {
+    if (!s_instance) {
+        s_instance = new BlockRegister();
+    }
+    return *s_instance;
+}
+
+// Default constructor
 BlockRegister::BlockRegister() {
     parseBlockRegistryJson();
     loadBlocks();
@@ -22,7 +39,7 @@ BlockRegister::BlockRegister() {
 BlockRegister::~BlockRegister() {}
 
 // Retrieves a block by its name from the registered blocks
-Block BlockRegister::getBlockByName(std::string name) {
+const Block BlockRegister::getBlockByName(std::string name) {
     for (Block block : blocks) {
         if (block.name == name) {
             return block;
@@ -33,7 +50,7 @@ Block BlockRegister::getBlockByName(std::string name) {
 }
 
 // Retrieves a block by its index from the registered blocks
-Block BlockRegister::getBlockByIndex(int index) {
+const Block BlockRegister::getBlockByIndex(int index) {
     if (index < blocks.size()) {
         return blocks[index];
     }
@@ -55,7 +72,6 @@ int BlockRegister::getBlockIndex(std::string name) {
 // Registers a new block with the specified properties
 void BlockRegister::registerBlock(std::string name, std::vector<std::string> states, std::vector<std::string> textures,
                                   std::string model, bool solid, bool transparent, bool air, BLOCKTYPE type) {
-
     Block block;
 
     block.isSolid = solid;

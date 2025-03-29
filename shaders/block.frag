@@ -14,7 +14,7 @@ out vec4 FragColor;
 
 void main()
 {
-    float ambient = 0.2;
+    float ambient = 0.6;
 
     vec3 Normal = normalize(normal);
     vec3 lightDirection = normalize(lightPos - curPos);

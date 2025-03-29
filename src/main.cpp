@@ -8,7 +8,7 @@
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
-#include "core/registers/BlockRegister.h"
+#include "core/world/Chunk.h"
 
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
@@ -69,12 +69,19 @@ int main() {
 
     blockAtlas.linkBlocksToAtlas(&blockRegister);
 
+    BlockRegister::setInstance(&blockRegister);
+
+    std::vector<Vertex> Tvertices;
+    std::vector<GLuint> Tindices;
+    Chunk chunk;
+    chunk.generateMesh(Tvertices, Tindices);
+
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
     VertexArrayObject VAO;
     VAO.bind();
-    VAO.addVertexBuffer(blockRegister.blocks[BLOCK_NUM].vertices);
-    VAO.addElementBuffer(blockRegister.blocks[BLOCK_NUM].indices);
+    VAO.addVertexBuffer(Tvertices);
+    VAO.addElementBuffer(Tindices);
     VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
     VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
@@ -133,7 +140,7 @@ int main() {
         shaderProgram.setUniform3("lightPos", glm::vec3(lightPos.x, lightPos.y, lightPos.z));
         atlas.bind();
         VAO.bind();
-        glDrawElements(GL_TRIANGLES, blockRegister.blocks[BLOCK_NUM].indices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, Tindices.size(), GL_UNSIGNED_INT, 0);
 
         glUseProgram(lightShader.ID);
         lightShader.setUniform4("cameraMatrix", camera.cameraMatrix);
