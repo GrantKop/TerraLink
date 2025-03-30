@@ -8,7 +8,7 @@
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
-#include "core/world/Chunk.h"
+#include "core/world/FlatWorld.h"
 
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
@@ -32,8 +32,10 @@ std::vector<GLuint> lightIndices = {
 
 Camera camera(glm::vec3(5.0f, 20.0f, 3.0f));
 
+const int VIEW_DISTANCE = 5;
+
 std::string programName = "TerraLink";
-std::string programVersion = "v0.1.0";
+std::string programVersion = "v0.1.3";
 std::string windowTitle = programName + " " + programVersion;
 
 int _fpsCount = 0, fps = 0;
@@ -73,8 +75,9 @@ int main() {
 
     std::vector<Vertex> Tvertices;
     std::vector<GLuint> Tindices;
-    Chunk chunk;
-    chunk.generateMesh(Tvertices, Tindices);
+    FlatWorld world;
+    world.generateChunks(2);
+    world.generateWorldMesh(Tvertices, Tindices);
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
@@ -110,7 +113,6 @@ int main() {
     Texture atlas("../../assets/textures/blocks/block_atlas.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
     atlas.setUniform(shaderProgram, "tex0", 0);
 
-
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
@@ -129,7 +131,7 @@ int main() {
 
         processInput(window, &camera, deltaTime, &lightPos);
 
-        camera.updateCameraMatrix(0.1f, 100.0f, window);
+        camera.updateCameraMatrix(0.1f, 300.0f, window);
 
         glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
