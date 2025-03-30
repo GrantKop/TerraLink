@@ -20,59 +20,27 @@ static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     std::cout << "Scroll offset: (" << xoffset << ", " << yoffset << ")" << std::endl;
 }
 
-void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3 *lightpos) {
+void processInput(GLFWwindow* window, glm::vec3 *lightpos) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        camera->updatePosition(CAM_FORWARD, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        camera->updatePosition(CAM_BACKWARD, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera->updatePosition(CAM_LEFT, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        camera->updatePosition(CAM_RIGHT, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        camera->updatePosition(CAM_UP, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-        camera->updatePosition(CAM_DOWN, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera->movementSpeed = 7.5f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
-        camera->movementSpeed = 3.5f;
-    }
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-        camera->processMouseMovement(window);
-    } 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        camera->firstClick = true;
-    }
 
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        lightpos->x += 0.07f;
+        lightpos->x += 0.12f;
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        lightpos->x -= 0.07f;
+        lightpos->x -= 0.12f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-        lightpos->z -= 0.07f;
+        lightpos->z -= 0.12f;
     }
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        lightpos->z += 0.07f;
+        lightpos->z += 0.12f;
     }
     if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
-        lightpos->y += 0.07f;
+        lightpos->y += 0.12f;
     }
     if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
-        lightpos->y -= 0.07f;
+        lightpos->y -= 0.12f;
     }
 }

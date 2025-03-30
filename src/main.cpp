@@ -9,6 +9,7 @@
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
 #include "core/world/FlatWorld.h"
+#include "core/player/Player.h"
 
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
@@ -30,18 +31,14 @@ std::vector<GLuint> lightIndices = {
     3, 2, 6, 6, 7, 3
 };
 
-Camera camera(glm::vec3(5.0f, 20.0f, 3.0f));
-
 const int VIEW_DISTANCE = 5;
 
 std::string programName = "TerraLink";
-std::string programVersion = "v0.1.3";
+std::string programVersion = "v0.1.4";
 std::string windowTitle = programName + " " + programVersion;
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
-
-int BLOCK_NUM = 1;
 
 std::string fpsCount() {
 
@@ -61,7 +58,7 @@ int main() {
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, windowTitle.c_str(), 1000, 800)) {
+    if (!createWindow(window, windowTitle.c_str(), 800, 600)) {
         glfwTerminate();
         return -1;
     }
@@ -72,6 +69,8 @@ int main() {
     blockAtlas.linkBlocksToAtlas(&blockRegister);
 
     BlockRegister::setInstance(&blockRegister);
+
+    Player player(window);
 
     std::vector<Vertex> Tvertices;
     std::vector<GLuint> Tindices;
@@ -98,7 +97,7 @@ int main() {
     lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
     glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    glm::vec3 lightPos = glm::vec3(8.f, 20.f, 8.f);
+    glm::vec3 lightPos = glm::vec3(8.f, 50.f, 8.f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
 
     glm::vec3 cubePos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -122,6 +121,8 @@ int main() {
 
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
+
+    glm::ivec2 lastChunkPos = player.getChunkPosition();
     
     // Main program loop
     while (!glfwWindowShouldClose(window)) {
@@ -129,29 +130,35 @@ int main() {
         deltaTime = glfwGetTime() - lastFrame;
         lastFrame += deltaTime;
 
-        processInput(window, &camera, deltaTime, &lightPos);
+        processInput(window, &lightPos);
 
-        camera.updateCameraMatrix(0.1f, 300.0f, window);
+        player.update(deltaTime, window);
 
-        glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
+        glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shaderProgram.ID);
-        shaderProgram.setUniform4("cameraMatrix", camera.cameraMatrix);
-        shaderProgram.setUniform3("camPos", glm::vec3(camera.position.x, camera.position.y, camera.position.z));
+        shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
+        shaderProgram.setUniform3("camPos", glm::vec3(player.getCamera().position.x, player.getCamera().position.y, player.getCamera().position.z));
         shaderProgram.setUniform3("lightPos", glm::vec3(lightPos.x, lightPos.y, lightPos.z));
         atlas.bind();
         VAO.bind();
         glDrawElements(GL_TRIANGLES, Tindices.size(), GL_UNSIGNED_INT, 0);
 
         glUseProgram(lightShader.ID);
-        lightShader.setUniform4("cameraMatrix", camera.cameraMatrix);
+        lightShader.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         
         lightModel = glm::mat4(1.0f);
         lightModel = glm::translate(lightModel, lightPos);
         lightShader.setMat4("model", lightModel);
         lightVAO.bind();
         glDrawElements(GL_TRIANGLES, lightIndices.size(), GL_UNSIGNED_INT, 0);
+
+        glm::ivec2 chunkPos = player.getChunkPosition();
+        if (chunkPos != lastChunkPos) {
+            //world.updateChunksAroundPlayer(chunkPos.x, chunkPos.y);
+            lastChunkPos = chunkPos;
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
