@@ -1,7 +1,15 @@
 #include "core/world/chunk.h"
 
 Chunk::Chunk() {
-    blocks.fill(0); // Initialize all blocks to air
+    blocks.fill(1); // Initialize all blocks to air
+    for (int x = 0; x < CHUNK_SIZE; ++x) {
+        for (int z = 0; z < CHUNK_SIZE; ++z) {
+            setBlockID(x, CHUNK_SIZE - 1, z, 2); // top layer (e.g., grass)
+            setBlockID(x, CHUNK_SIZE - 2, z, 3); // dirt
+            setBlockID(x, CHUNK_SIZE - 3, z, 3); // dirt
+            setBlockID(x, CHUNK_SIZE - 4, z, 3); // dirt
+        }
+    }
 }
 
 Chunk::~Chunk() {}
@@ -92,8 +100,6 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
     indices.clear();
 
     GLuint indexOffset = 0;
-
-    setBlockID(2, 1, 10, 1);
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int y = 0; y < CHUNK_SIZE; ++y) {
