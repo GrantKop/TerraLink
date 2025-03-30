@@ -8,7 +8,7 @@
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
-#include "core/world/Chunk.h"
+#include "core/world/FlatWorld.h"
 
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
@@ -30,10 +30,12 @@ std::vector<GLuint> lightIndices = {
     3, 2, 6, 6, 7, 3
 };
 
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(5.0f, 20.0f, 3.0f));
+
+const int VIEW_DISTANCE = 5;
 
 std::string programName = "TerraLink";
-std::string programVersion = "v0.1.0";
+std::string programVersion = "v0.1.3";
 std::string windowTitle = programName + " " + programVersion;
 
 int _fpsCount = 0, fps = 0;
@@ -59,7 +61,7 @@ int main() {
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, windowTitle.c_str(), 900, 700)) {
+    if (!createWindow(window, windowTitle.c_str(), 1000, 800)) {
         glfwTerminate();
         return -1;
     }
@@ -73,8 +75,9 @@ int main() {
 
     std::vector<Vertex> Tvertices;
     std::vector<GLuint> Tindices;
-    Chunk chunk;
-    chunk.generateMesh(Tvertices, Tindices);
+    FlatWorld world;
+    world.generateChunks(2);
+    world.generateWorldMesh(Tvertices, Tindices);
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
 
@@ -95,7 +98,7 @@ int main() {
     lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
     glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    glm::vec3 lightPos = glm::vec3(1.2f, 1.2f, 1.2f);
+    glm::vec3 lightPos = glm::vec3(8.f, 20.f, 8.f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
 
     glm::vec3 cubePos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -109,7 +112,6 @@ int main() {
 
     Texture atlas("../../assets/textures/blocks/block_atlas.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
     atlas.setUniform(shaderProgram, "tex0", 0);
-
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -129,9 +131,9 @@ int main() {
 
         processInput(window, &camera, deltaTime, &lightPos);
 
-        camera.updateCameraMatrix(0.1f, 100.0f, window);
+        camera.updateCameraMatrix(0.1f, 300.0f, window);
 
-        glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+        glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shaderProgram.ID);

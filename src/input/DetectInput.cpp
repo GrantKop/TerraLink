@@ -43,10 +43,10 @@ void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3
         camera->updatePosition(CAM_DOWN, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera->movementSpeed = 3.5f;
+        camera->movementSpeed = 7.5f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
-        camera->movementSpeed = 1.25f;
+        camera->movementSpeed = 3.5f;
     }
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -58,21 +58,21 @@ void processInput(GLFWwindow* window, Camera* camera, float deltaTime, glm::vec3
     }
 
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        lightpos->x += 0.05f;
+        lightpos->x += 0.07f;
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        lightpos->x -= 0.05f;
+        lightpos->x -= 0.07f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-        lightpos->z -= 0.05f;
+        lightpos->z -= 0.07f;
     }
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        lightpos->z += 0.05f;
+        lightpos->z += 0.07f;
     }
     if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
-        lightpos->y += 0.05f;
+        lightpos->y += 0.07f;
     }
     if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
-        lightpos->y -= 0.05f;
+        lightpos->y -= 0.07f;
     }
 }
