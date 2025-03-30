@@ -30,7 +30,7 @@ std::vector<GLuint> lightIndices = {
     3, 2, 6, 6, 7, 3
 };
 
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(5.0f, 20.0f, 3.0f));
 
 std::string programName = "TerraLink";
 std::string programVersion = "v0.1.0";
@@ -59,7 +59,7 @@ int main() {
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, windowTitle.c_str(), 900, 700)) {
+    if (!createWindow(window, windowTitle.c_str(), 1000, 800)) {
         glfwTerminate();
         return -1;
     }
@@ -95,7 +95,7 @@ int main() {
     lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
     glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    glm::vec3 lightPos = glm::vec3(1.2f, 1.2f, 1.2f);
+    glm::vec3 lightPos = glm::vec3(8.f, 20.f, 8.f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
 
     glm::vec3 cubePos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -131,7 +131,7 @@ int main() {
 
         camera.updateCameraMatrix(0.1f, 100.0f, window);
 
-        glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+        glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shaderProgram.ID);
