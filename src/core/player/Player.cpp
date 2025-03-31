@@ -91,6 +91,6 @@ void Player::handleInput(GLFWwindow* window, float deltaTime) {
             f11WasPressed = true;
         }
     } else {
-        f11WasPressed = false; // reset when key is released
+        f11WasPressed = false;
     }
 }

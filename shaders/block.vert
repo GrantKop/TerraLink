@@ -12,9 +12,9 @@ out vec2 texCoord;
 
 void main()
 {
-    curPos = vec3(model * vec4(aPos, 1.0));
+    curPos = aPos;
     normal = aNorm;
     texCoord = aTex;
 
-    gl_Position =  cameraMatrix * vec4(curPos, 1.0);
+    gl_Position =  cameraMatrix * vec4(aPos, 1.0);
 }

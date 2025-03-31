@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "core/registers/BlockRegister.h"
+#include "graphics/VertexArrayObject.h"
 
 constexpr int CHUNK_SIZE = 16;
 constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
@@ -33,20 +34,27 @@ namespace std {
     };
 }
 
+struct ChunkMesh {
+    VertexArrayObject VAO;
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
+    bool isUploaded = false;
+    bool needsUpdate = true;
+};
+
 class Chunk {
 public:
     Chunk();
     ~Chunk();
+
+    ChunkMesh mesh;
 
     const Block& getBlock(int x, int y, int z) const;
     int getBlockID(int x, int y, int z) const;
     void setBlockID(int x, int y, int z, int blockID);
 
     ChunkPosition getPosition() const;
-
-    // Generates mesh for a single chunk, ignoring neighboring chunks when selecting faces
-    // Deprecated: use generateMesh instead
-    void generateSingleChunkMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices) const;
+    void setPosition(const ChunkPosition& pos);
 
     // Generates mesh for a single chunk, considering neighboring chunks when selecting faces
     void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, 
