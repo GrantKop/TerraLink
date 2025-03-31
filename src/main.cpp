@@ -31,7 +31,7 @@ std::vector<GLuint> lightIndices = {
     3, 2, 6, 6, 7, 3
 };
 
-const int VIEW_DISTANCE = 5;
+const int VIEW_DISTANCE = 4;
 
 std::string programName = "TerraLink";
 std::string programVersion = "v0.1.4";
@@ -75,18 +75,8 @@ int main() {
     std::vector<Vertex> Tvertices;
     std::vector<GLuint> Tindices;
     FlatWorld world;
-    world.generateChunks(2);
-    world.generateWorldMesh(Tvertices, Tindices);
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
-
-    VertexArrayObject VAO;
-    VAO.bind();
-    VAO.addVertexBuffer(Tvertices);
-    VAO.addElementBuffer(Tindices);
-    VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-    VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-    VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
 
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
 
@@ -100,13 +90,8 @@ int main() {
     glm::vec3 lightPos = glm::vec3(8.f, 50.f, 8.f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
 
-    glm::vec3 cubePos = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::mat4 cubeModel = glm::mat4(1.0f);
-    cubeModel = glm::translate(cubeModel, cubePos);
-
     lightShader.setUniform4("lightColor", lightColor);
 
-    shaderProgram.setUniform4("model", cubeModel);
     shaderProgram.setUniform4("lightColor", lightColor);
 
     Texture atlas("../../assets/textures/blocks/block_atlas.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -122,7 +107,8 @@ int main() {
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
-    glm::ivec2 lastChunkPos = player.getChunkPosition();
+    glm::ivec3 lastChunkPos = player.getChunkPosition();
+    world.updateChunksAroundPlayer(lastChunkPos.x, lastChunkPos.y, lastChunkPos.z, VIEW_DISTANCE);
     
     // Main program loop
     while (!glfwWindowShouldClose(window)) {
@@ -130,21 +116,36 @@ int main() {
         deltaTime = glfwGetTime() - lastFrame;
         lastFrame += deltaTime;
 
-        processInput(window, &lightPos);
-
-        player.update(deltaTime, window);
-
         glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderProgram.ID);
-        shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
-        shaderProgram.setUniform3("camPos", glm::vec3(player.getCamera().position.x, player.getCamera().position.y, player.getCamera().position.z));
-        shaderProgram.setUniform3("lightPos", glm::vec3(lightPos.x, lightPos.y, lightPos.z));
-        atlas.bind();
-        VAO.bind();
-        glDrawElements(GL_TRIANGLES, Tindices.size(), GL_UNSIGNED_INT, 0);
+        processInput(window, &lightPos);
 
+        player.update(deltaTime, window);
+        
+        if (player.getChunkPosition() != lastChunkPos) {
+            lastChunkPos = player.getChunkPosition();
+            world.updateChunksAroundPlayer(lastChunkPos.x, lastChunkPos.y, lastChunkPos.z, VIEW_DISTANCE);
+            world.unloadDistantChunks(lastChunkPos, VIEW_DISTANCE + 1);
+        }
+
+        world.createChunks(1);
+        world.queueChunksForMeshing(player.getPosition());
+        world.generateNecessaryChunkMeshes(1, player.getPosition());
+        world.uploadChunkMeshes(1);
+
+        shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
+        shaderProgram.setUniform3("camPos", player.getCamera().position);
+        shaderProgram.setUniform3("lightPos", lightPos);
+        atlas.bind();
+
+        for (auto& [pos, chunk] : world.chunks) {
+            if (!chunk.mesh.isUploaded) continue;
+        
+            chunk.mesh.VAO.bind();
+            glDrawElements(GL_TRIANGLES, chunk.mesh.indices.size(), GL_UNSIGNED_INT, 0);
+        }
+        
         glUseProgram(lightShader.ID);
         lightShader.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         
@@ -154,21 +155,14 @@ int main() {
         lightVAO.bind();
         glDrawElements(GL_TRIANGLES, lightIndices.size(), GL_UNSIGNED_INT, 0);
 
-        glm::ivec2 chunkPos = player.getChunkPosition();
-        if (chunkPos != lastChunkPos) {
-            //world.updateChunksAroundPlayer(chunkPos.x, chunkPos.y);
-            lastChunkPos = chunkPos;
-        }
-
         glfwSwapBuffers(window);
         glfwPollEvents();
 
         glfwSetWindowTitle(window, fpsCount().c_str());
 
-        CHECK_GL_ERROR();
+        //CHECK_GL_ERROR();
     }
 
-    VAO.deleteBuffers();
     lightVAO.deleteBuffers();
     atlas.deleteTexture();
     shaderProgram.deleteShader();

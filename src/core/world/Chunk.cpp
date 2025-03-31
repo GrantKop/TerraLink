@@ -99,63 +99,9 @@ ChunkPosition Chunk::getPosition() const {
     return position;
 }
 
-// Generates the mesh for the chunk, ignoring neighboring chunks
-void Chunk::generateSingleChunkMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices) const {
-    vertices.clear();
-    indices.clear();
-
-    GLuint indexOffset = 0;
-
-    for (int x = 0; x < CHUNK_SIZE; ++x) {
-        for (int y = 0; y < CHUNK_SIZE; ++y) {
-            for (int z = 0; z < CHUNK_SIZE; ++z) {
-                const Block block = getBlock(x, y, z);
-
-                if (block.isAir) continue;
-
-                for (int face = 0; face < 6; ++face) {
-                    glm::ivec3 offset = FACE_OFFSETS[face];
-                    int nx = x + offset.x;
-                    int ny = y + offset.y;
-                    int nz = z + offset.z;
-
-                    // if neighbor block is out of bounds, add the face to the mesh
-                    if (nx < 0 || nx >= CHUNK_SIZE
-                     || ny < 0 || ny >= CHUNK_SIZE
-                     || nz < 0 || nz >= CHUNK_SIZE) {
-                        const auto& faceVertices = getFaceVertices(face, block);
-                        for (const auto& faceVertex : faceVertices) {
-                            Vertex modifiedVertex = faceVertex;
-                            modifiedVertex.position = glm::vec3(x, y, z) + faceVertex.position;
-                            vertices.push_back(modifiedVertex);
-                        }
-
-                        indices.insert(indices.end(), {
-                            indexOffset, indexOffset + 2, indexOffset + 1,
-                            indexOffset, indexOffset + 3, indexOffset + 2
-                        });
-                        indexOffset += 4;
-                        continue;
-                    }
-
-                    if (!BlockRegister::instance().getBlockByIndex(getBlockID(nx, ny, nz)).isTransparent) continue;
-
-                    const auto& faceVertices = getFaceVertices(face, block);
-                    for (const auto& faceVertex : faceVertices) {
-                        Vertex modifiedVertex = faceVertex;
-                        modifiedVertex.position = glm::vec3(x, y, z) + faceVertex.position;
-                        vertices.push_back(modifiedVertex);
-                    }
-
-                    indices.insert(indices.end(), {
-                        indexOffset, indexOffset + 2, indexOffset + 1,
-                        indexOffset, indexOffset + 3, indexOffset + 2
-                    });                    
-                    indexOffset += 4;
-                }
-            }
-        }
-    }
+// Sets the chunk position
+void Chunk::setPosition(const ChunkPosition& pos) {
+    position = pos;
 }
 
 // Generates the mesh for the chunk, considering neighboring chunks
@@ -191,7 +137,9 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                             const auto& faceVertices = getFaceVertices(face, block);
                             for (const auto& faceVertex : faceVertices) {
                                 Vertex modifiedVertex = faceVertex;
-                                modifiedVertex.position = glm::vec3(x, y, z) + faceVertex.position;
+                                glm::vec3 worldOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
+                                modifiedVertex.position = worldOffset + glm::vec3(x, y, z) + faceVertex.position;
+                                
                                 vertices.push_back(modifiedVertex);
                             }
 
@@ -211,7 +159,9 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                     const auto& faceVertices = getFaceVertices(face, block);
                     for (const auto& faceVertex : faceVertices) {
                         Vertex modifiedVertex = faceVertex;
-                        modifiedVertex.position = glm::vec3(x, y, z) + faceVertex.position;
+                        glm::vec3 worldOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
+                        modifiedVertex.position = worldOffset + glm::vec3(x, y, z) + faceVertex.position;
+
                         vertices.push_back(modifiedVertex);
                     }
 
