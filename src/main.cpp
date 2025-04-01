@@ -99,7 +99,7 @@ int main() {
     atlas.setUniform(shaderProgram, "tex0", 0);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
 
     // Enable alpha values for textures
     // glEnable(GL_BLEND);
@@ -121,7 +121,7 @@ int main() {
 
         player.update(deltaTime, window);
 
-        world.uploadChunkMeshes(3);
+        world.uploadChunkMeshes(10);
 
         shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         shaderProgram.setUniform3("camPos", player.getCamera().position);

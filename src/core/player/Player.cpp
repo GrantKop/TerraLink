@@ -68,7 +68,7 @@ void Player::handleInput(GLFWwindow* window, float deltaTime) {
         camera.updatePosition(CAM_DOWN, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera.movementSpeed = 7.5f;
+        camera.movementSpeed = 17.5f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
         camera.movementSpeed = 3.5f;

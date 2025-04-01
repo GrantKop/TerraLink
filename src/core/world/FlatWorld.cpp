@@ -104,7 +104,7 @@ void FlatWorld::generateMesh(const ChunkMeshTask& task) {
     chunk.mesh.needsUpdate = false;
     chunk.mesh.isUploaded = false;
 
-    meshUploadQueue.push(task.pos);
+    meshUploadQueue.push(&chunks[task.pos]);
 }
 
 // Sets a block at the specified world position
@@ -220,19 +220,17 @@ void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const in
 
 // Uploads the chunk meshes to the GPU
 void FlatWorld::uploadChunkMeshes(int maxPerFrame) {
-    int processedChunks = 0;
+    int uploadedChunks = 0;
 
-    while (processedChunks < maxPerFrame) {
-        ChunkPosition pos;
-        if (meshUploadQueue.empty()) break;
-        if (!meshUploadQueue.tryPop(pos)) break;
+    while (uploadedChunks < maxPerFrame) {
+        Chunk* chunkPtr = nullptr;
+        if (!meshUploadQueue.tryPop(chunkPtr)) break;
 
-        std::lock_guard<std::mutex> lock(chunkMutex);
-        auto it = chunks.find(pos);
-        if (it == chunks.end()) continue;
-
-        uploadMeshToGPU(it->second);
-        processedChunks++;
+        if (chunkPtr == nullptr || chunkPtr->mesh.isUploaded) break;
+        uploadMeshToGPU(*chunkPtr);
+        uploadedChunks++;
+        chunkPtr->mesh.needsUpdate = false;
+        chunkPtr->mesh.isUploaded = true;
     }
 }
 
@@ -251,9 +249,6 @@ void FlatWorld::uploadMeshToGPU(Chunk& chunk) {
     chunk.mesh.VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
     chunk.mesh.VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
-
-    chunk.mesh.isUploaded = true;
-    chunk.mesh.needsUpdate = false;
 }
 
 // Unloads distant chunks based on the player's position and view distance
