@@ -1,5 +1,18 @@
 #include "core/player/Player.h"
 
+Player* Player::s_instance = nullptr;
+
+void Player::setInstance(Player* instance) {
+    s_instance = instance;
+}
+
+Player& Player::instance() {
+    if (!s_instance) {
+        s_instance = new Player(nullptr); // Pass nullptr for window, will be set later
+    }
+    return *s_instance;
+}
+
 Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 20.0f, 3.0f)) {
     camera.updateCameraMatrix(0.1f, 300.0f, window);
 }
@@ -26,7 +39,7 @@ glm::vec3 Player::getPosition() const {
 
 // Returns the player's current chunk position as a glm::ivec3 object
 glm::ivec3 Player::getChunkPosition() const {
-    return glm::ivec3(floor(camera.position.x / CHUNK_SIZE), 0, floor(camera.position.z / CHUNK_SIZE));
+    return glm::ivec3(floor(camera.position.x / CHUNK_SIZE), floor(camera.position.y / CHUNK_SIZE), floor(camera.position.z / CHUNK_SIZE));
 }
 
 // Returns a reference to the player's camera object

@@ -40,6 +40,9 @@ struct ChunkMesh {
     std::vector<GLuint> indices;
     bool isUploaded = false;
     bool needsUpdate = true;
+    bool vaoInitialized = false;
+    bool shouldRender = true;
+    bool isEmpty = true;
 };
 
 class Chunk {
