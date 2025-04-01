@@ -77,7 +77,6 @@ int main() {
     FlatWorld world;
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
-
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
 
     VertexArrayObject lightVAO;
