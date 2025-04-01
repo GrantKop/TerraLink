@@ -98,7 +98,7 @@ int main() {
     atlas.setUniform(shaderProgram, "tex0", 0);
 
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
 
     // Enable alpha values for textures
     // glEnable(GL_BLEND);
