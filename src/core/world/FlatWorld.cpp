@@ -200,6 +200,7 @@ void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const in
     }
 }
 
+// Generates a spiral pattern of offsets for chunk generation
 std::vector<glm::ivec2> FlatWorld::generateSpiralOffsets(int radius) {
     std::vector<glm::ivec2> result;
 
@@ -215,7 +216,6 @@ std::vector<glm::ivec2> FlatWorld::generateSpiralOffsets(int radius) {
         }
 
         if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
-            // Rotate direction
             int temp = dx;
             dx = -dz;
             dz = temp;
