@@ -14,6 +14,7 @@ FlatWorld::~FlatWorld() {
     if (meshThread.joinable()) meshThread.join();
 }
 
+// Thread function for generating chunks around the player
 void FlatWorld::chunkWorkerThread() {
     glm::ivec3 lastChunkPos = {INT_MAX, INT_MAX, INT_MAX};
     while (running) {
@@ -52,14 +53,15 @@ void FlatWorld::chunkWorkerThread() {
     }
 }
 
+// Thread function for generating chunk meshes
 void FlatWorld::meshWorkerThread() {
     while (running) {
-        if (meshGenerationQueue.empty()) continue;
         ChunkMeshTask task = meshGenerationQueue.waitPop();
         generateMesh(task);
     }
 }
 
+// Generates the mesh for a chunk based on the task provided
 void FlatWorld::generateMesh(const ChunkMeshTask& task) {
     std::lock_guard<std::mutex> lock(chunkMutex);
     auto it = chunks.find(task.pos);
@@ -184,7 +186,6 @@ void FlatWorld::markNeighborsDirty(const ChunkPosition& pos) {
     };
 
     std::lock_guard<std::mutex> lock(chunkMutex);
-
     for (const auto& dir : directions) {
         ChunkPosition neighborPos = {
             pos.x + dir.x,
@@ -240,7 +241,7 @@ void FlatWorld::uploadMeshToGPU(Chunk& chunk) {
     if (chunk.mesh.isUploaded || chunk.mesh.vertices.empty() || chunk.mesh.indices.empty()) return;
 
     if (!chunk.mesh.vaoInitialized) {
-        chunk.mesh.VAO.init(); // Custom init function that calls glGen*
+        chunk.mesh.VAO.init();
         chunk.mesh.vaoInitialized = true;
     }
 
@@ -266,7 +267,6 @@ void FlatWorld::unloadDistantChunks(const glm::ivec3& centerChunk, const int VIE
     }
 
     std::vector<ChunkPosition> toRemove;
-
     for (const auto& [pos, chunk] : chunks) {
         if (shouldExist.count(pos) == 0) {
             toRemove.push_back(pos);
@@ -284,4 +284,3 @@ void FlatWorld::unloadDistantChunks(const glm::ivec3& centerChunk, const int VIE
         }
     }
 }
-
