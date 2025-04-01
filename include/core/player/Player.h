@@ -23,7 +23,7 @@ public:
 
     Camera& getCamera();
 
-    int VIEW_DISTANCE = 5;
+    int VIEW_DISTANCE = 10;
 
 private:
     Camera camera;

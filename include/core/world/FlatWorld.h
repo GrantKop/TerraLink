@@ -32,7 +32,7 @@ public:
 
     bool hasAllNeighbors(ChunkPosition pos) const;
     void markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset);
-    void markNeighborsDirty(const ChunkPosition& pos);
+    //void markNeighborsDirty(const ChunkPosition& pos);
 
     void queueChunksForMeshing(const glm::vec3& playerPos);
     void updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE);

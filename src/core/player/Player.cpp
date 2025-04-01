@@ -68,10 +68,10 @@ void Player::handleInput(GLFWwindow* window, float deltaTime) {
         camera.updatePosition(CAM_DOWN, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera.movementSpeed = 17.5f;
+        camera.movementSpeed = 20.0f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
-        camera.movementSpeed = 3.5f;
+        camera.movementSpeed = 6.5f;
     }
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);

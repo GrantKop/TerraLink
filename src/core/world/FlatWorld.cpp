@@ -46,7 +46,7 @@ void FlatWorld::chunkWorkerThread() {
         float distance = glm::distance(Player::instance().getPosition(), chunkCenter);
         meshGenerationQueue.push({pos, distance});
 
-        markNeighborsDirty(pos);
+        //markNeighborsDirty(pos);
         } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
@@ -178,27 +178,27 @@ void FlatWorld::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
 }
 
 // Marks the neighboring chunks as dirty, indicating that they need to be updated
-void FlatWorld::markNeighborsDirty(const ChunkPosition& pos) {
-    static const std::vector<glm::ivec3> directions = {
-        { 1, 0, 0 }, { -1, 0, 0 },
-        { 0, 0, 1 }, { 0, 0, -1 },
-        { 0, 1, 0 }, { 0, -1, 0 }
-    };
+// void FlatWorld::markNeighborsDirty(const ChunkPosition& pos) {
+//     static const std::vector<glm::ivec3> directions = {
+//         { 1, 0, 0 }, { -1, 0, 0 },
+//         { 0, 0, 1 }, { 0, 0, -1 },
+//         { 0, 1, 0 }, { 0, -1, 0 }
+//     };
 
-    std::lock_guard<std::mutex> lock(chunkMutex);
-    for (const auto& dir : directions) {
-        ChunkPosition neighborPos = {
-            pos.x + dir.x,
-            pos.y,
-            pos.z + dir.z
-        };
+//     std::lock_guard<std::mutex> lock(chunkMutex);
+//     for (const auto& dir : directions) {
+//         ChunkPosition neighborPos = {
+//             pos.x + dir.x,
+//             pos.y,
+//             pos.z + dir.z
+//         };
 
-        auto it = chunks.find(neighborPos);
-        if (it != chunks.end()) {
-            it->second.mesh.needsUpdate = true;
-        }
-    }
-}
+//         auto it = chunks.find(neighborPos);
+//         if (it != chunks.end()) {
+//             it->second.mesh.needsUpdate = true;
+//         }
+//     }
+// }
 
 // Updates the chunks around the player based on their position
 void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
