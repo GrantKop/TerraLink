@@ -44,7 +44,7 @@ public:
     std::unordered_map<ChunkPosition, Chunk, std::hash<ChunkPosition>> chunks;
 
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
-    ThreadSafeQueue<ChunkPosition> meshUploadQueue;
+    ThreadSafeQueue<Chunk*> meshUploadQueue;
     ThreadSafeQueue<ChunkMeshTask> meshGenerationQueue;
 
 private:

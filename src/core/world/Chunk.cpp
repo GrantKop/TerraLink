@@ -4,7 +4,7 @@ Chunk::Chunk() {
     blocks.fill(1); // Initialize all blocks to air
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int z = 0; z < CHUNK_SIZE; ++z) {
-            setBlockID(x, CHUNK_SIZE - 1, z, 2); // top layer (e.g., grass)
+            setBlockID(x, CHUNK_SIZE - 1, z, 2); // grass
             setBlockID(x, CHUNK_SIZE - 2, z, 3); // dirt
             setBlockID(x, CHUNK_SIZE - 3, z, 3); // dirt
             setBlockID(x, CHUNK_SIZE - 4, z, 3); // dirt
