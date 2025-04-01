@@ -6,7 +6,6 @@
 #include "core/registers/AtlasRegister.h"
 #include "core/world/FlatWorld.h"
 #include "core/player/Player.h"
-#include "core/threads/OpenMP.h"
 
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
@@ -29,7 +28,7 @@ std::vector<GLuint> lightIndices = {
 };
 
 std::string programName = "TerraLink";
-std::string programVersion = "v0.1.65";
+std::string programVersion = "v0.1.7";
 std::string windowTitle = programName + " " + programVersion;
 
 int _fpsCount = 0, fps = 0;
@@ -48,11 +47,14 @@ std::string fpsCount() {
     return std::string(windowTitle.c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
-ThreadBudget threadBudget;
-
 int main() {
 
-    setThreadBudget(threadBudget);
+#ifdef _OPENMP
+    //fprintf(stderr, "OpenMP is supported -- version = %d\n", _OPENMP);
+#else
+    fprintf(stderr, "No OpenMP support!\n");
+    return -1;
+#endif
 
     initGLFW(3, 3);
 

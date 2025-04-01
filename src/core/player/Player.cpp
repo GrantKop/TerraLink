@@ -14,12 +14,12 @@ Player& Player::instance() {
 }
 
 Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 20.0f, 3.0f)) {
-    camera.updateCameraMatrix(0.1f, 300.0f, window);
+    camera.updateCameraMatrix(0.1f, 500.0f, window);
 }
 
 void Player::update(float deltaTime, GLFWwindow* window) {
     handleInput(window, deltaTime);
-    camera.updateCameraMatrix(0.1f, 300.0f, window);
+    camera.updateCameraMatrix(0.1f, 500.0f, window);
 }
 
 // Sets the player's position using x, y, z coordinates

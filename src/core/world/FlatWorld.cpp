@@ -46,7 +46,6 @@ void FlatWorld::chunkWorkerThread() {
         float distance = glm::distance(Player::instance().getPosition(), chunkCenter);
         meshGenerationQueue.push({pos, distance});
 
-        //markNeighborsDirty(pos);
         } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
@@ -179,20 +178,54 @@ void FlatWorld::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
 
 // Updates the chunks around the player based on their position
 void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
-    const int radius = VIEW_DISTANCE + 1;
-    for (int x = -radius; x <= radius; ++x) {
-        for (int z = -radius; z <= radius; ++z) {
-            ChunkPosition pos = { playerChunk.x + x, 0, playerChunk.z + z };
-            if (chunks.find(pos) == chunks.end()) {
-                chunkCreationQueue.push(pos);
-            } else if (!chunks[pos].mesh.shouldRender) {
-                if (glm::distance(glm::vec3{playerChunk}, {pos.x, pos.y, pos.z}) <= VIEW_DISTANCE) {
+    auto spiral = generateSpiralOffsets(VIEW_DISTANCE);
+
+    for (const auto& offset : spiral) {
+        ChunkPosition pos = {
+            playerChunk.x + offset.x,
+            0,
+            playerChunk.z + offset.y
+        };
+
+        if (chunks.find(pos) == chunks.end()) {
+            chunkCreationQueue.push(pos);
+        } else if (!chunks[pos].mesh.shouldRender) {
+            if (std::max(std::abs(offset.x), std::abs(offset.y)) <= VIEW_DISTANCE) {
+                if (chunks[pos].mesh.shouldRender == false) {
                     chunks[pos].mesh.shouldRender = true;
                     chunkCreationQueue.push(pos);
                 }
             }
         }
     }
+}
+
+// Generates a spiral pattern of offsets for chunk generation
+std::vector<glm::ivec2> FlatWorld::generateSpiralOffsets(int radius) {
+    std::vector<glm::ivec2> result;
+
+    int x = 0, z = 0;
+    int dx = 0, dz = -1;
+
+    int sideLength = radius * 2 + 1;
+    int maxSteps = sideLength * sideLength;
+
+    for (int i = 0; i < maxSteps; ++i) {
+        if (std::abs(x) <= radius && std::abs(z) <= radius) {
+            result.push_back({x, z});
+        }
+
+        if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
+            int temp = dx;
+            dx = -dz;
+            dz = temp;
+        }
+
+        x += dx;
+        z += dz;
+    }
+
+    return result;
 }
 
 // Uploads the chunk meshes to the GPU
@@ -251,7 +284,6 @@ void FlatWorld::unloadDistantChunks(const glm::ivec3& centerChunk, const int VIE
             if (it->second.mesh.isUploaded) {
                 it->second.mesh.VAO.deleteBuffers();
                 it->second.mesh.vaoInitialized = false;
-                it->second.mesh.isUploaded = false;
             }
             chunks.erase(it);
         }
