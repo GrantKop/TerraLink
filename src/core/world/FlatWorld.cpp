@@ -1,49 +1,108 @@
 #include "core/world/FlatWorld.h"
 
-void FlatWorld::generateNecessaryChunkMeshes(int maxPerFrame, const glm::vec3& playerPos) {
+FlatWorld::FlatWorld() {
+    chunkThread = std::thread(&FlatWorld::chunkWorkerThread, this);
+    chunkThread.detach();
+    meshThread = std::thread(&FlatWorld::meshWorkerThread, this);
+    meshThread.detach();
+}
 
-    int processedChunks = 0;
+FlatWorld::~FlatWorld() {
+    running = false;
 
-    while (!meshGenerationQueue.empty() && processedChunks < maxPerFrame) {
-        ChunkMeshTask task = meshGenerationQueue.top();
-        meshGenerationQueue.pop();
+    if (chunkThread.joinable()) chunkThread.join();
+    if (meshThread.joinable()) meshThread.join();
+}
 
-        auto it = chunks.find(task.pos);
-        if (it == chunks.end()) continue;
+void FlatWorld::chunkWorkerThread() {
+    glm::ivec3 lastChunkPos = {INT_MAX, INT_MAX, INT_MAX};
+    while (running) {
+        if (Player::instance().getChunkPosition() != lastChunkPos) {
+            std::lock_guard<std::mutex> lock(chunkMutex);
+            lastChunkPos = Player::instance().getChunkPosition();
+            updateChunksAroundPlayer(lastChunkPos, Player::instance().VIEW_DISTANCE);
+            unloadDistantChunks(lastChunkPos, Player::instance().VIEW_DISTANCE + 1);
+        }
 
-        Chunk& chunk = it->second;
+        ChunkPosition pos;
+        if (chunkCreationQueue.tryPop(pos)) {
+        {
+            std::lock_guard<std::mutex> lock(this->chunkMutex);
+            if (chunks.find(pos) == chunks.end()) {
 
-        if (!chunk.mesh.needsUpdate) continue;
-
-        chunk.generateMesh(chunk.mesh.vertices, chunk.mesh.indices,
-            [xOffset = task.pos, this](glm::ivec3 offset, int x, int y, int z) -> int {
-                glm::ivec3 neighborChunkOffset = offset;
-                glm::ivec3 localCoord = glm::ivec3(x, y, z) + offset;
-            
-                ChunkPosition targetChunkPos = xOffset;
-                if (localCoord.x < 0) { localCoord.x += CHUNK_SIZE; targetChunkPos.x -= 1; }
-                else if (localCoord.x >= CHUNK_SIZE) { localCoord.x -= CHUNK_SIZE; targetChunkPos.x += 1; }
-            
-                if (localCoord.y < 0) { localCoord.y += CHUNK_SIZE; targetChunkPos.y -= 1; }
-                else if (localCoord.y >= CHUNK_SIZE) { localCoord.y -= CHUNK_SIZE; targetChunkPos.y += 1; }
-            
-                if (localCoord.z < 0) { localCoord.z += CHUNK_SIZE; targetChunkPos.z -= 1; }
-                else if (localCoord.z >= CHUNK_SIZE) { localCoord.z -= CHUNK_SIZE; targetChunkPos.z += 1; }
-            
-                auto it = chunks.find(targetChunkPos);
-                if (it != chunks.end()) {
-                    return it->second.getBlockID(localCoord.x, localCoord.y, localCoord.z);
+                Chunk chunk;
+                chunk.setPosition(pos);
+                if (glm::distance(glm::vec3{Player::instance().getChunkPosition()}, {pos.x, pos.y, pos.z}) > Player::instance().VIEW_DISTANCE) {
+                    chunk.mesh.shouldRender = false;
                 }
-            
-                return BlockRegister::instance().getBlockByIndex(0).ID;
-            });
-        
-        chunk.mesh.needsUpdate = false;
-        chunk.mesh.isUploaded = false;
-        
-        meshUploadQueue.push(task.pos);
-        processedChunks++;
+                chunks[pos] = std::move(chunk);
+            }
+        }
+
+        if (!chunks[pos].mesh.shouldRender) continue;
+
+        glm::vec3 chunkCenter = glm::vec3(pos.x, pos.y, pos.z) * (float)CHUNK_SIZE;
+        float distance = glm::distance(Player::instance().getPosition(), chunkCenter);
+        meshGenerationQueue.push({pos, distance});
+
+        markNeighborsDirty(pos);
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
     }
+}
+
+void FlatWorld::meshWorkerThread() {
+    while (running) {
+        if (meshGenerationQueue.empty()) continue;
+        ChunkMeshTask task = meshGenerationQueue.waitPop();
+        generateMesh(task);
+    }
+}
+
+void FlatWorld::generateMesh(const ChunkMeshTask& task) {
+    std::lock_guard<std::mutex> lock(chunkMutex);
+    auto it = chunks.find(task.pos);
+    if (it == chunks.end()) return;
+
+    if (!hasAllNeighbors(task.pos)) {
+        meshGenerationQueue.push(task);
+        return;
+    }
+
+    Chunk& chunk = it->second;
+    if (!chunk.mesh.needsUpdate) return;
+
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
+
+    chunk.generateMesh(vertices, indices,
+        [xOffset = task.pos, this](glm::ivec3 offset, int x, int y, int z) -> int {
+            glm::ivec3 localCoord = glm::ivec3(x, y, z) + offset;
+            ChunkPosition targetChunkPos = xOffset;
+            if (localCoord.x < 0) { localCoord.x += CHUNK_SIZE; targetChunkPos.x -= 1; }
+            else if (localCoord.x >= CHUNK_SIZE) { localCoord.x -= CHUNK_SIZE; targetChunkPos.x += 1; }
+
+            if (localCoord.y < 0) { localCoord.y += CHUNK_SIZE; targetChunkPos.y -= 1; }
+            else if (localCoord.y >= CHUNK_SIZE) { localCoord.y -= CHUNK_SIZE; targetChunkPos.y += 1; }
+
+            if (localCoord.z < 0) { localCoord.z += CHUNK_SIZE; targetChunkPos.z -= 1; }
+            else if (localCoord.z >= CHUNK_SIZE) { localCoord.z -= CHUNK_SIZE; targetChunkPos.z += 1; }
+
+            auto it = chunks.find(targetChunkPos);
+            if (it != chunks.end()) {
+                return it->second.getBlockID(localCoord.x, localCoord.y, localCoord.z);
+            }
+
+            return BlockRegister::instance().getBlockByIndex(0).ID;
+        });
+
+    chunk.mesh.vertices = std::move(vertices);
+    chunk.mesh.indices = std::move(indices);
+    chunk.mesh.needsUpdate = false;
+    chunk.mesh.isUploaded = false;
+
+    meshUploadQueue.push(task.pos);
 }
 
 // Sets a block at the specified world position
@@ -85,15 +144,17 @@ bool FlatWorld::hasAllNeighbors(ChunkPosition pos) const {
         glm::ivec3(-1, 0, 0), glm::ivec3(1, 0, 0),
         glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),
         glm::ivec3(0, -1, 0), glm::ivec3(0, 1, 0)
-    }) {
+    })
+    {
         ChunkPosition neighborPos = {
             pos.x + dir.x,
-            0,
+            pos.y,
             pos.z + dir.z
         };
 
-        if (chunks.find(neighborPos) == chunks.end())
+        if (chunks.find(neighborPos) == chunks.end()) {
             return false;
+        }
     }
 
     return true;
@@ -101,6 +162,7 @@ bool FlatWorld::hasAllNeighbors(ChunkPosition pos) const {
 
 // Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
 void FlatWorld::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
+    std::lock_guard<std::mutex> lock(chunkMutex);
     ChunkPosition neighborPos = {
         pos.x + offset.x,
         pos.y + offset.y,
@@ -116,15 +178,17 @@ void FlatWorld::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
 // Marks the neighboring chunks as dirty, indicating that they need to be updated
 void FlatWorld::markNeighborsDirty(const ChunkPosition& pos) {
     static const std::vector<glm::ivec3> directions = {
-        { 1, 0, 0 }, {-1, 0, 0},
+        { 1, 0, 0 }, { -1, 0, 0 },
         { 0, 0, 1 }, { 0, 0, -1 },
         { 0, 1, 0 }, { 0, -1, 0 }
     };
 
+    std::lock_guard<std::mutex> lock(chunkMutex);
+
     for (const auto& dir : directions) {
         ChunkPosition neighborPos = {
             pos.x + dir.x,
-            pos.y + dir.y,
+            pos.y,
             pos.z + dir.z
         };
 
@@ -135,27 +199,19 @@ void FlatWorld::markNeighborsDirty(const ChunkPosition& pos) {
     }
 }
 
-// Queues chunks for meshing based on the player's position
-void FlatWorld::queueChunksForMeshing(const glm::vec3& playerPos) {
-    for (auto& [pos, chunk] : chunks) {
-        if (chunk.mesh.needsUpdate && hasAllNeighbors(pos)) {
-            glm::vec3 chunkCenter = glm::vec3(pos.x, pos.y, pos.z) * (float)CHUNK_SIZE;
-            float distance = glm::distance(playerPos, chunkCenter);
-
-            meshGenerationQueue.push({pos, distance});
-        }
-    }
-}
-
 // Updates the chunks around the player based on their position
-void FlatWorld::updateChunksAroundPlayer(int centerX, int centerY, int centerZ, const int VIEW_DISTANCE) {
-    const int radius = VIEW_DISTANCE;
-
+void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
+    const int radius = VIEW_DISTANCE + 1;
     for (int x = -radius; x <= radius; ++x) {
         for (int z = -radius; z <= radius; ++z) {
-            ChunkPosition pos = { centerX + x, 0, centerZ + z };
+            ChunkPosition pos = { playerChunk.x + x, 0, playerChunk.z + z };
             if (chunks.find(pos) == chunks.end()) {
                 chunkCreationQueue.push(pos);
+            } else if (!chunks[pos].mesh.shouldRender) {
+                if (glm::distance(glm::vec3{playerChunk}, {pos.x, pos.y, pos.z}) <= VIEW_DISTANCE) {
+                    chunks[pos].mesh.shouldRender = true;
+                    chunkCreationQueue.push(pos);
+                }
             }
         }
     }
@@ -165,10 +221,12 @@ void FlatWorld::updateChunksAroundPlayer(int centerX, int centerY, int centerZ, 
 void FlatWorld::uploadChunkMeshes(int maxPerFrame) {
     int processedChunks = 0;
 
-    while (!meshUploadQueue.empty() && processedChunks < maxPerFrame) {
-        ChunkPosition pos = meshUploadQueue.front();
-        meshUploadQueue.pop();
+    while (processedChunks < maxPerFrame) {
+        ChunkPosition pos;
+        if (meshUploadQueue.empty()) break;
+        if (!meshUploadQueue.tryPop(pos)) break;
 
+        std::lock_guard<std::mutex> lock(chunkMutex);
         auto it = chunks.find(pos);
         if (it == chunks.end()) continue;
 
@@ -181,6 +239,11 @@ void FlatWorld::uploadChunkMeshes(int maxPerFrame) {
 void FlatWorld::uploadMeshToGPU(Chunk& chunk) {
     if (chunk.mesh.isUploaded || chunk.mesh.vertices.empty() || chunk.mesh.indices.empty()) return;
 
+    if (!chunk.mesh.vaoInitialized) {
+        chunk.mesh.VAO.init(); // Custom init function that calls glGen*
+        chunk.mesh.vaoInitialized = true;
+    }
+
     chunk.mesh.VAO.bind();
     chunk.mesh.VAO.addVertexBuffer(chunk.mesh.vertices);
     chunk.mesh.VAO.addElementBuffer(chunk.mesh.indices);
@@ -189,49 +252,36 @@ void FlatWorld::uploadMeshToGPU(Chunk& chunk) {
     chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
 
     chunk.mesh.isUploaded = true;
-}
-
-// Creates chunks based on the queued positions
-void FlatWorld::createChunks(int maxPerFrame) {
-    int createdChunks = 0;
-
-    while (!chunkCreationQueue.empty() && createdChunks < maxPerFrame) {
-        ChunkPosition pos = chunkCreationQueue.front();
-        chunkCreationQueue.pop();
-
-        if (chunks.find(pos) != chunks.end()) continue;
-
-        Chunk chunk;
-        chunk.setPosition(pos);
-        chunks[pos] = chunk;
-        markNeighborsDirty(pos);
-
-        createdChunks++;
-    }
+    chunk.mesh.needsUpdate = false;
 }
 
 // Unloads distant chunks based on the player's position and view distance
 void FlatWorld::unloadDistantChunks(const glm::ivec3& centerChunk, const int VIEW_DISTANCE) {
-    std::vector<ChunkPosition> chunksToUnload;
+    std::unordered_set<ChunkPosition> shouldExist;
 
-    for (auto& [pos, chunk] : chunks) {
-        int dx = pos.x - centerChunk.x;
-        int dy = pos.y - centerChunk.y;
-        int dz = pos.z - centerChunk.z;
-
-        if (abs(dx) > VIEW_DISTANCE || abs(dy) > VIEW_DISTANCE || abs(dz) > VIEW_DISTANCE) {
-            chunksToUnload.push_back(pos);
+    for (int x = -VIEW_DISTANCE; x <= VIEW_DISTANCE; ++x) {
+        for (int z = -VIEW_DISTANCE; z <= VIEW_DISTANCE; ++z) {
+            shouldExist.insert({centerChunk.x + x, 0, centerChunk.z + z});
         }
     }
 
-    for (const auto& pos : chunksToUnload) {
+    std::vector<ChunkPosition> toRemove;
+
+    for (const auto& [pos, chunk] : chunks) {
+        if (shouldExist.count(pos) == 0) {
+            toRemove.push_back(pos);
+        }
+    }
+
+    for (const auto& pos : toRemove) {
         auto it = chunks.find(pos);
         if (it != chunks.end()) {
             if (it->second.mesh.isUploaded) {
                 it->second.mesh.VAO.deleteBuffers();
+                it->second.mesh.vaoInitialized = false;
             }
-
             chunks.erase(it);
         }
     }
 }
+

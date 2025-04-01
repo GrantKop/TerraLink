@@ -1,15 +1,12 @@
 #include <iostream>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <stb_image.h>
-
 #include "graphics/VertexArrayObject.h"
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
 #include "core/world/FlatWorld.h"
 #include "core/player/Player.h"
+#include "core/threads/OpenMP.h"
 
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
@@ -31,10 +28,8 @@ std::vector<GLuint> lightIndices = {
     3, 2, 6, 6, 7, 3
 };
 
-const int VIEW_DISTANCE = 4;
-
 std::string programName = "TerraLink";
-std::string programVersion = "v0.1.4";
+std::string programVersion = "v0.1.65";
 std::string windowTitle = programName + " " + programVersion;
 
 int _fpsCount = 0, fps = 0;
@@ -53,7 +48,11 @@ std::string fpsCount() {
     return std::string(windowTitle.c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
+ThreadBudget threadBudget;
+
 int main() {
+
+    setThreadBudget(threadBudget);
 
     initGLFW(3, 3);
 
@@ -71,6 +70,7 @@ int main() {
     BlockRegister::setInstance(&blockRegister);
 
     Player player(window);
+    Player::setInstance(&player);
 
     std::vector<Vertex> Tvertices;
     std::vector<GLuint> Tindices;
@@ -81,6 +81,7 @@ int main() {
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
 
     VertexArrayObject lightVAO;
+    lightVAO.init();
     lightVAO.bind();
     lightVAO.addVertexBuffer(lightVertices);
     lightVAO.addElementBuffer(lightIndices);
@@ -107,9 +108,6 @@ int main() {
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
-    glm::ivec3 lastChunkPos = player.getChunkPosition();
-    world.updateChunksAroundPlayer(lastChunkPos.x, lastChunkPos.y, lastChunkPos.z, VIEW_DISTANCE);
-    
     // Main program loop
     while (!glfwWindowShouldClose(window)) {
 
@@ -122,17 +120,8 @@ int main() {
         processInput(window, &lightPos);
 
         player.update(deltaTime, window);
-        
-        if (player.getChunkPosition() != lastChunkPos) {
-            lastChunkPos = player.getChunkPosition();
-            world.updateChunksAroundPlayer(lastChunkPos.x, lastChunkPos.y, lastChunkPos.z, VIEW_DISTANCE);
-            world.unloadDistantChunks(lastChunkPos, VIEW_DISTANCE + 1);
-        }
 
-        world.createChunks(1);
-        world.queueChunksForMeshing(player.getPosition());
-        world.generateNecessaryChunkMeshes(1, player.getPosition());
-        world.uploadChunkMeshes(1);
+        world.uploadChunkMeshes(3);
 
         shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         shaderProgram.setUniform3("camPos", player.getCamera().position);
@@ -140,8 +129,8 @@ int main() {
         atlas.bind();
 
         for (auto& [pos, chunk] : world.chunks) {
-            if (!chunk.mesh.isUploaded) continue;
-        
+            if (!chunk.mesh.isUploaded || chunk.mesh.vertices.empty() || chunk.mesh.indices.empty()) continue;
+
             chunk.mesh.VAO.bind();
             glDrawElements(GL_TRIANGLES, chunk.mesh.indices.size(), GL_UNSIGNED_INT, 0);
         }
@@ -160,8 +149,11 @@ int main() {
 
         glfwSetWindowTitle(window, fpsCount().c_str());
 
-        //CHECK_GL_ERROR();
+        // CHECK_GL_ERROR();
     }
+
+    // world.chunkCreationQueue.stopThreads();
+    // world.meshGenerationQueue.stopThreads();
 
     lightVAO.deleteBuffers();
     atlas.deleteTexture();

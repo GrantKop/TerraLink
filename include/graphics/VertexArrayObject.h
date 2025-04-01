@@ -11,6 +11,8 @@ class VertexArrayObject {
         VertexArrayObject();
         ~VertexArrayObject();
 
+        void init();
+
         void bind();
         void unbind();
         void deleteBuffers();

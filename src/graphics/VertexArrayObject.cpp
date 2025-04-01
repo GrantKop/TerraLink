@@ -1,12 +1,18 @@
 #include "graphics/VertexArrayObject.h"
 
 VertexArrayObject::VertexArrayObject() {
+    this->VAO = 0;
+    this->VBO = 0;
+    this->EBO = 0;
+}
+
+VertexArrayObject::~VertexArrayObject() {}
+
+void VertexArrayObject::init() {
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
 }
-
-VertexArrayObject::~VertexArrayObject() {}
 
 void VertexArrayObject::bind() {
     glBindVertexArray(this->VAO);
