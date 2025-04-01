@@ -251,6 +251,7 @@ void FlatWorld::unloadDistantChunks(const glm::ivec3& centerChunk, const int VIE
             if (it->second.mesh.isUploaded) {
                 it->second.mesh.VAO.deleteBuffers();
                 it->second.mesh.vaoInitialized = false;
+                it->second.mesh.isUploaded = false;
             }
             chunks.erase(it);
         }
