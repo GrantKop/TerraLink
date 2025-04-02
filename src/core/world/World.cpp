@@ -1,7 +1,7 @@
 #include "core/world/World.h"
 
 World::World() {
-    int maxThreads = omp_get_max_threads();
+    //int maxThreads = omp_get_max_threads();
 
     chunkThread = std::thread(&World::chunkWorkerThread, this);
     meshThread = std::thread(&World::meshWorkerThread, this);
@@ -18,6 +18,16 @@ World::~World() {
     if (chunkThread.joinable()) chunkThread.join();
     if (meshThread.joinable()) meshThread.join();
 
+    for (auto& [pos, chunk] : chunks) {
+        if (chunk && chunk->mesh.isUploaded) {
+            chunk->mesh.VAO.deleteBuffers();
+            chunk->mesh.vaoInitialized = false;
+            chunk->mesh.vertices.clear();
+            chunk->mesh.indices.clear();
+        }
+    }    
+
+    chunks.clear();
 }
 
 // Thread function for generating chunks around the player
@@ -58,7 +68,7 @@ void World::chunkWorkerThread() {
     }
 }
 
-// Thread function for generating chunk meshes
+// Thread function for meshing chunks that have been marked for generation
 void World::meshWorkerThread() {
     while (running) {
         ChunkPosition pos;
@@ -306,8 +316,7 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
             chunkPtr->mesh.shouldRender = false;
             chunkRemovalQueue.push(chunkPtr);
             chunks.erase(pos);
-        }
-        
+        } 
     }
 }
 
