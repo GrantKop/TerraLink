@@ -40,7 +40,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
                 } else if (worldY < maxY && worldY >= maxY - 3) {
                     setBlockID(x, y, z, BlockRegister::instance().blocks[3].ID);
                 } else if (worldY == maxY) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[7].ID);
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[2].ID);
                 } else {
                     setBlockID(x, y, z, BlockRegister::instance().blocks[0].ID);
                 }
