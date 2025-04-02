@@ -4,13 +4,18 @@ FlatWorld::FlatWorld() {
     int maxThreads = omp_get_max_threads();
 
     chunkThread = std::thread(&FlatWorld::chunkWorkerThread, this);
-    chunkThread.detach();
+    //chunkThread.detach();
     meshThreadA = std::thread(&FlatWorld::meshWorkerThread, this);
-    meshThreadA.detach();
+    //meshThreadA.detach();
 }
 
 FlatWorld::~FlatWorld() {
     running = false;
+
+    chunkCreationQueue.stop();
+    meshGenerationQueue.stop();
+    meshUploadQueue.stop();
+    chunkRemovalQueue.stop();
 
     if (chunkThread.joinable()) chunkThread.join();
     if (meshThreadA.joinable()) meshThreadA.join();
@@ -57,7 +62,8 @@ void FlatWorld::chunkWorkerThread() {
 // Thread function for generating chunk meshes
 void FlatWorld::meshWorkerThread() {
     while (running) {
-        ChunkMeshTask task = meshGenerationQueue.waitPop();
+        ChunkMeshTask task;
+        if (!meshGenerationQueue.waitPop(task)) return;
         generateMesh(task);
     }
 }
