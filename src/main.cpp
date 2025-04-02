@@ -85,8 +85,8 @@ int main() {
     lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
     glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    glm::vec3 lightPos = glm::vec3(8.f, 50.f, 8.f);
-	glm::mat4 lightModel = glm::mat4(1.0f);
+    glm::vec3 lightPos = glm::vec3(8.f, 200.f, 8.f);
+	glm::mat4 lightModel = glm::mat4(5.0f);
 
     lightShader.setUniform4("lightColor", lightColor);
     shaderProgram.setUniform4("lightColor", lightColor);
@@ -126,7 +126,7 @@ int main() {
         atlas.bind();
 
         for (auto& [pos, chunk] : world.chunks) {
-            if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) continue;
+            if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty() || !chunk->mesh.shouldRender) continue;
 
             chunk->mesh.VAO.bind();
             glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);

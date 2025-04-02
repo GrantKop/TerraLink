@@ -49,6 +49,7 @@ void World::chunkWorkerThread() {
 
                 std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
                 chunk->setPosition(pos);
+                chunk->generateTerrain(0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
                 if (glm::distance(glm::vec3{Player::instance().getChunkPosition()}, {pos.x, pos.y, pos.z}) > Player::instance().VIEW_DISTANCE) {
                     chunk->mesh.shouldRender = false;
                 }
@@ -119,9 +120,14 @@ void World::generateMesh(const ChunkPosition& pos) {
     chunk->mesh.indices = std::move(indices);
     chunk->mesh.needsUpdate = false;
     chunk->mesh.isUploaded = false;
-    chunk->mesh.markedForUpload = true;
 
-    meshUploadQueue.push(chunks[pos]);
+    if (chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) {
+        chunk->mesh.markedForUpload = false;
+        chunk->mesh.shouldRender = false;
+    } else {
+        chunk->mesh.markedForUpload = true;
+        meshUploadQueue.push(chunk);
+    }
 }
 
 // Sets a block at the specified world position
@@ -161,7 +167,7 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
 bool World::hasAllNeighbors(ChunkPosition pos) const {
     for (const glm::ivec3& dir : {
         glm::ivec3(-1, 0, 0), glm::ivec3(1, 0, 0),
-        glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),
+        // glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),
         glm::ivec3(0, -1, 0), glm::ivec3(0, 1, 0)
     })
     {
@@ -200,19 +206,22 @@ void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VI
     int maxChunkPerFrame = 15;
 
     for (const auto& offset : spiral) {
-        ChunkPosition pos = {
-            playerChunk.x + offset.x,
-            0,
-            playerChunk.z + offset.y
-        };
-
-        if (chunks.find(pos) == chunks.end()) {
+        for (int y = minY; y <= maxY; ++y) {
+            ChunkPosition pos = {
+                playerChunk.x + offset.x,
+                y,
+                playerChunk.z + offset.y
+            };
             chunkCreationQueue.push(pos);
-        } else if (!chunks[pos]->mesh.shouldRender) {
-            if (std::max(std::abs(offset.x), std::abs(offset.y)) <= VIEW_DISTANCE) {
-                if (chunks[pos]->mesh.shouldRender == false) {
-                    chunks[pos]->mesh.shouldRender = true;
-                    chunkCreationQueue.push(pos);
+        
+            if (chunks.find(pos) == chunks.end()) {
+                chunkCreationQueue.push(pos);
+            } else if (!chunks[pos]->mesh.shouldRender) {
+                if (std::max(std::abs(offset.x), std::abs(offset.y)) <= VIEW_DISTANCE) {
+                    if (chunks[pos]->mesh.shouldRender == false) {
+                        chunks[pos]->mesh.shouldRender = true;
+                        chunkCreationQueue.push(pos);
+                    }
                 }
             }
         }
@@ -255,7 +264,12 @@ void World::uploadChunkMeshes(int maxPerFrame) {
         std::shared_ptr<Chunk> chunkPtr = nullptr;
         if (!meshUploadQueue.tryPop(chunkPtr)) break;
 
-        if (chunkPtr == nullptr || chunkPtr->mesh.isUploaded) break;
+        if (chunkPtr->mesh.vertices.empty() || chunkPtr->mesh.indices.empty()) {
+            chunkPtr->mesh.markedForUpload = false;
+            chunkPtr->mesh.needsUpdate = false;
+            continue;
+        }
+        if (chunkPtr == nullptr || chunkPtr->mesh.isUploaded) continue;
         try {
             uploadMeshToGPU(*chunkPtr);
         } catch (const std::exception& e) {
@@ -296,7 +310,9 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
 
     for (int x = -VIEW_DISTANCE; x <= VIEW_DISTANCE; ++x) {
         for (int z = -VIEW_DISTANCE; z <= VIEW_DISTANCE; ++z) {
-            shouldExist.insert({centerChunk.x + x, 0, centerChunk.z + z});
+            for (int y = minY; y <= maxY; ++y) {
+                shouldExist.insert({centerChunk.x + x, y, centerChunk.z + z});
+            }            
         }
     }
 

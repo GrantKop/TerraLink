@@ -1,18 +1,77 @@
 #include "core/world/chunk.h"
 
-Chunk::Chunk() {
-    blocks.fill(1); // Initialize all blocks to air
-    for (int x = 0; x < CHUNK_SIZE; ++x) {
-        for (int z = 0; z < CHUNK_SIZE; ++z) {
-            setBlockID(x, CHUNK_SIZE - 1, z, 2); // grass
-            setBlockID(x, CHUNK_SIZE - 2, z, 3); // dirt
-            setBlockID(x, CHUNK_SIZE - 3, z, 3); // dirt
-            setBlockID(x, CHUNK_SIZE - 4, z, 3); // dirt
-        }
+float Chunk::getHeight(float x, float z, int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude) {
+    float noiseValue = 0.0f;
+    float currentAmplitude = amplitude;
+    float currentFrequency = frequency;
+    
+    // Set random seed for noise consistency
+    // Assuming a setSeed function exists for your noise library; adjust based on your actual noise implementation
+    // setSeed(seed); // Uncomment and adjust if needed
+    
+    for (int i = 0; i < octaves; ++i) {
+        noiseValue += snoise2(x * currentFrequency, z * currentFrequency) * currentAmplitude;
+        currentAmplitude *= persistence;
+        currentFrequency *= lacunarity;
     }
+    
+    // Normalize and apply base height
+    float baseHeight = 64.0f;  // Keep existing base height
+    return noiseValue + baseHeight;
+}
+
+Chunk::Chunk() {
+    
+    blocks.fill(0);
+    mesh.isEmpty = true;
 }
 
 Chunk::~Chunk() {}
+
+// Generates terrain for the chunk using Perlin noise
+void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude) {
+    int worldMinY = position.y * CHUNK_SIZE;
+    int worldMaxY = (position.y + 1) * CHUNK_SIZE;
+
+    bool hasTerrain = false;
+    for (int x = 0; x < CHUNK_SIZE && !hasTerrain; ++x) {
+        for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
+            int worldX = position.x * CHUNK_SIZE + x;
+            int worldZ = position.z * CHUNK_SIZE + z;
+            float height = getHeight(worldX, worldZ, seed, octaves, persistence, lacunarity, frequency, amplitude);
+            if (height >= worldMinY) {
+                hasTerrain = true;
+            }
+        }
+    }
+
+    if (!hasTerrain) return;
+
+    for (int x = 0; x < CHUNK_SIZE; ++x) {
+        for (int y = 0; y < CHUNK_SIZE; ++y) {
+            for (int z = 0; z < CHUNK_SIZE; ++z) {
+                int worldX = position.x * CHUNK_SIZE + x;
+                int worldY = position.y * CHUNK_SIZE + y;
+                int worldZ = position.z * CHUNK_SIZE + z; 
+
+                float height = getHeight(worldX, worldZ, seed, octaves, persistence, lacunarity, frequency, amplitude);
+                int maxY = static_cast<int>(height); 
+
+                if (worldY < maxY - 3) {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[1].ID);
+                } else if (worldY < maxY && worldY >= maxY - 3) {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[3].ID);
+                } else if (worldY == maxY) {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[2].ID);
+                } else {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[0].ID);
+                }
+            }
+        }
+    }
+    
+    mesh.isEmpty = false;
+}
 
 // Converts 3D coordinates to a 1D index for the blocks array
 int Chunk::index(int x, int y, int z) const {

@@ -6,6 +6,7 @@
 
 #include "core/registers/BlockRegister.h"
 #include "graphics/VertexArrayObject.h"
+#include "core/world/TerrainGeneration.h"
 
 constexpr int CHUNK_SIZE = 16;
 constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
@@ -52,6 +53,9 @@ public:
     ~Chunk();
 
     ChunkMesh mesh;
+
+    void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
+    float getHeight(float x, float z, int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
 
     const Block& getBlock(int x, int y, int z) const;
     int getBlockID(int x, int y, int z) const;

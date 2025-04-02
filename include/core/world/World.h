@@ -51,6 +51,9 @@ private:
     std::atomic<bool> running = true;
     mutable std::mutex chunkMutex;
 
+    int minY = 2;
+    int maxY = 5;
+
 };
 
 #endif

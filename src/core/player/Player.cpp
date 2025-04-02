@@ -13,7 +13,7 @@ Player& Player::instance() {
     return *s_instance;
 }
 
-Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 20.0f, 3.0f)) {
+Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 130.0f, 3.0f)) {
     camera.updateCameraMatrix(0.1f, 500.0f, window);
 }
 
