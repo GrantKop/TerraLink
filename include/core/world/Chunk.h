@@ -43,6 +43,7 @@ struct ChunkMesh {
     bool vaoInitialized = false;
     bool shouldRender = true;
     bool isEmpty = true;
+    bool markedForUpload = false;
 };
 
 class Chunk {

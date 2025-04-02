@@ -123,6 +123,7 @@ int main() {
         player.update(deltaTime, window);
 
         world.uploadChunkMeshes(10);
+        world.unloadDistantChunks();
 
         shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         shaderProgram.setUniform3("camPos", player.getCamera().position);
@@ -130,10 +131,10 @@ int main() {
         atlas.bind();
 
         for (auto& [pos, chunk] : world.chunks) {
-            if (!chunk.mesh.isUploaded || chunk.mesh.vertices.empty() || chunk.mesh.indices.empty()) continue;
+            if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) continue;
 
-            chunk.mesh.VAO.bind();
-            glDrawElements(GL_TRIANGLES, chunk.mesh.indices.size(), GL_UNSIGNED_INT, 0);
+            chunk->mesh.VAO.bind();
+            glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
         }
         
         glUseProgram(lightShader.ID);
