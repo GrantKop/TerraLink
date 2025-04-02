@@ -40,17 +40,23 @@ public:
     void uploadChunkMeshes(int maxPerFrame = 2);
     void uploadMeshToGPU(Chunk& chunk);
 
-    void unloadDistantChunks(const glm::ivec3& centerChunk, const int VIEW_DISTANCE);
+    void queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_DISTANCE);
+    void unloadDistantChunks();
 
-    std::unordered_map<ChunkPosition, Chunk, std::hash<ChunkPosition>> chunks;
+    std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
 
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
-    ThreadSafeQueue<Chunk*> meshUploadQueue;
+    ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
     ThreadSafeQueue<ChunkMeshTask> meshGenerationQueue;
+    ThreadSafeQueue<std::shared_ptr<Chunk>> chunkRemovalQueue;
 
 private:
     std::thread chunkThread;
     std::thread meshThread;
+    
+    // Thread vectors for chunk and mesh generation in potential future
+    // std::vector<std::thread> meshThreads;
+    // std::vector<std::thread> chunkThreads;
 
     std::atomic<bool> running = true;
     mutable std::mutex chunkMutex;
