@@ -46,6 +46,7 @@ void World::chunkHelperThread() {
 
 // Thread function for generating chunks around the player
 void World::chunkWorkerThread() { 
+    constexpr int MIN_GENERATE_Y = -32;
     while (running) {
         ChunkPosition pos;
         if (!chunkCreationQueue.waitPop(pos)) return;
@@ -55,9 +56,8 @@ void World::chunkWorkerThread() {
             if (chunks.find(pos) != chunks.end()) continue;
         }
 
-        int surfaceHeight = Noise::getHeight(pos.x, pos.z, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
-        int chunkBaseY = pos.y * CHUNK_SIZE;
-        if (chunkBaseY + CHUNK_SIZE < surfaceHeight - 8) continue;
+        int chunkTopY = pos.y * CHUNK_SIZE + CHUNK_SIZE;
+        if (chunkTopY < MIN_GENERATE_Y) continue;
 
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
         chunk->setPosition(pos);
@@ -180,7 +180,7 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
 // Samples a block ID at the specified world position
 int World::sampleBlockID(int wx, int wy, int wz) const {
     
-    float height = Noise::getHeight(wx, wz, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
+    float height = Noise::getHeight(wx, wz, 0, 1, 0.5f, 2.0f, 0.01f, 2.0f);
     return wy < height ? BlockRegister::instance().getBlockByIndex(1).ID
                       : BlockRegister::instance().getBlockByIndex(0).ID;
 }
