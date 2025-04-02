@@ -1,28 +1,6 @@
 #include "core/world/chunk.h"
 
-float Chunk::getHeight(float x, float z, int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude) {
-    float noiseValue = 0.0f;
-    float currentAmplitude = amplitude;
-    float currentFrequency = frequency;
-    
-    // Set random seed for noise consistency
-    // Assuming a setSeed function exists for your noise library; adjust based on your actual noise implementation
-    // setSeed(seed); // Uncomment and adjust if needed
-    
-    for (int i = 0; i < octaves; ++i) {
-        noiseValue += snoise2(x * currentFrequency, z * currentFrequency) * currentAmplitude;
-        currentAmplitude *= persistence;
-        currentFrequency *= lacunarity;
-    }
-    
-    // Normalize and apply base height
-    float baseHeight = 64.0f;  // Keep existing base height
-    return noiseValue + baseHeight;
-}
-
 Chunk::Chunk() {
-    
-    blocks.fill(0);
     mesh.isEmpty = true;
 }
 
@@ -38,7 +16,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
         for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
             int worldX = position.x * CHUNK_SIZE + x;
             int worldZ = position.z * CHUNK_SIZE + z;
-            float height = getHeight(worldX, worldZ, seed, octaves, persistence, lacunarity, frequency, amplitude);
+            float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
             if (height >= worldMinY) {
                 hasTerrain = true;
             }
@@ -54,7 +32,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
                 int worldY = position.y * CHUNK_SIZE + y;
                 int worldZ = position.z * CHUNK_SIZE + z; 
 
-                float height = getHeight(worldX, worldZ, seed, octaves, persistence, lacunarity, frequency, amplitude);
+                float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
                 int maxY = static_cast<int>(height); 
 
                 if (worldY < maxY - 3) {

@@ -49,13 +49,6 @@ std::string fpsCount() {
 
 int main() {
 
-#ifdef _OPENMP
-    //fprintf(stderr, "OpenMP is supported -- version = %d\n", _OPENMP);
-#else
-    fprintf(stderr, "No OpenMP support!\n");
-    return -1;
-#endif
-
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
@@ -104,6 +97,7 @@ int main() {
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
+    try {
     // Main program loop
     while (!glfwWindowShouldClose(window)) {
 
@@ -126,7 +120,7 @@ int main() {
         atlas.bind();
 
         for (auto& [pos, chunk] : world.chunks) {
-            if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty() || !chunk->mesh.shouldRender) continue;
+            if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) continue;
 
             chunk->mesh.VAO.bind();
             glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
@@ -147,6 +141,12 @@ int main() {
         glfwSetWindowTitle(window, fpsCount().c_str());
 
         // CHECK_GL_ERROR();
+    }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cerr << "Unknown exception occurred." << std::endl;
     }
 
     lightVAO.deleteBuffers();

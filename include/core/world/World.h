@@ -13,6 +13,7 @@ public:
     World();
     ~World();
 
+    void chunkHelperThread();
     void chunkWorkerThread();
     void meshWorkerThread();
 
@@ -20,7 +21,7 @@ public:
 
     void setBlockAtWorldPosition(int wx, int wy, int wz, int blockID);
 
-    bool hasAllNeighbors(ChunkPosition pos) const;
+    int sampleBlockID(int x, int y, int z) const;
     void markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset);
 
     void queueChunksForMeshing(const glm::vec3& playerPos);
@@ -35,24 +36,23 @@ public:
 
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
 
+private:
+    std::thread chunkThread;
+    std::thread meshThread;
+    std::thread HchunkThread;
+
+    std::atomic<bool> running = true;
+    mutable std::mutex chunkMutex;
+
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
     ThreadSafeQueue<ChunkPosition> meshGenerationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> chunkRemovalQueue;
 
-private:
-    std::thread chunkThread;
-    std::thread meshThread;
-    
-    // Thread vectors for chunk and mesh generation in potential future
-    // std::vector<std::thread> meshThreads;
-    // std::vector<std::thread> chunkThreads;
+    std::unordered_set<ChunkPosition> queuedChunks;
 
-    std::atomic<bool> running = true;
-    mutable std::mutex chunkMutex;
-
-    int minY = 2;
-    int maxY = 5;
+    int minY = -2;
+    int maxY = 10;
 
 };
 
