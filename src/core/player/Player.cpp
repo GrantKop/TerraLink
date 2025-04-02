@@ -13,13 +13,13 @@ Player& Player::instance() {
     return *s_instance;
 }
 
-Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 20.0f, 3.0f)) {
+Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 130.0f, 3.0f)) {
     camera.updateCameraMatrix(0.1f, 500.0f, window);
 }
 
 void Player::update(float deltaTime, GLFWwindow* window) {
     handleInput(window, deltaTime);
-    camera.updateCameraMatrix(0.1f, 500.0f, window);
+    camera.updateCameraMatrix(0.1f, 800.0f, window);
 }
 
 // Sets the player's position using x, y, z coordinates
@@ -68,7 +68,7 @@ void Player::handleInput(GLFWwindow* window, float deltaTime) {
         camera.updatePosition(CAM_DOWN, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera.movementSpeed = 20.0f;
+        camera.movementSpeed = 22.0f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
         camera.movementSpeed = 6.5f;

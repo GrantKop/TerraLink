@@ -6,6 +6,7 @@
 
 #include "core/registers/BlockRegister.h"
 #include "graphics/VertexArrayObject.h"
+#include "noise/Noise.h"
 
 constexpr int CHUNK_SIZE = 16;
 constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
@@ -41,7 +42,6 @@ struct ChunkMesh {
     bool isUploaded = false;
     bool needsUpdate = true;
     bool vaoInitialized = false;
-    bool shouldRender = true;
     bool isEmpty = true;
     bool markedForUpload = false;
 };
@@ -52,6 +52,8 @@ public:
     ~Chunk();
 
     ChunkMesh mesh;
+
+    void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
 
     const Block& getBlock(int x, int y, int z) const;
     int getBlockID(int x, int y, int z) const;
@@ -65,7 +67,7 @@ public:
                       std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
 
 private:
-    std::array<int, CHUNK_VOLUME> blocks;
+    std::array<int, CHUNK_VOLUME> blocks = {0};
 
     int index(int x, int y, int z) const;
 

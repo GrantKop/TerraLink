@@ -49,13 +49,6 @@ std::string fpsCount() {
 
 int main() {
 
-#ifdef _OPENMP
-    //fprintf(stderr, "OpenMP is supported -- version = %d\n", _OPENMP);
-#else
-    fprintf(stderr, "No OpenMP support!\n");
-    return -1;
-#endif
-
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
@@ -85,8 +78,8 @@ int main() {
     lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
     glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    glm::vec3 lightPos = glm::vec3(8.f, 50.f, 8.f);
-	glm::mat4 lightModel = glm::mat4(1.0f);
+    glm::vec3 lightPos = glm::vec3(8.f, 200.f, 8.f);
+	glm::mat4 lightModel = glm::mat4(5.0f);
 
     lightShader.setUniform4("lightColor", lightColor);
     shaderProgram.setUniform4("lightColor", lightColor);
@@ -104,6 +97,7 @@ int main() {
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
+    try {
     // Main program loop
     while (!glfwWindowShouldClose(window)) {
 
@@ -147,6 +141,12 @@ int main() {
         glfwSetWindowTitle(window, fpsCount().c_str());
 
         // CHECK_GL_ERROR();
+    }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cerr << "Unknown exception occurred." << std::endl;
     }
 
     lightVAO.deleteBuffers();

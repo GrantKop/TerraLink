@@ -1,18 +1,55 @@
 #include "core/world/chunk.h"
 
 Chunk::Chunk() {
-    blocks.fill(1); // Initialize all blocks to air
-    for (int x = 0; x < CHUNK_SIZE; ++x) {
-        for (int z = 0; z < CHUNK_SIZE; ++z) {
-            setBlockID(x, CHUNK_SIZE - 1, z, 2); // grass
-            setBlockID(x, CHUNK_SIZE - 2, z, 3); // dirt
-            setBlockID(x, CHUNK_SIZE - 3, z, 3); // dirt
-            setBlockID(x, CHUNK_SIZE - 4, z, 3); // dirt
-        }
-    }
+    mesh.isEmpty = true;
 }
 
 Chunk::~Chunk() {}
+
+// Generates terrain for the chunk using Perlin noise
+void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude) {
+    int worldMinY = position.y * CHUNK_SIZE;
+    int worldMaxY = (position.y + 1) * CHUNK_SIZE;
+
+    bool hasTerrain = false;
+    for (int x = 0; x < CHUNK_SIZE && !hasTerrain; ++x) {
+        for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
+            int worldX = position.x * CHUNK_SIZE + x;
+            int worldZ = position.z * CHUNK_SIZE + z;
+            float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 2.0f);
+            if (height >= worldMinY) {
+                hasTerrain = true;
+            }
+        }
+    }
+
+    if (!hasTerrain) return;
+
+    for (int x = 0; x < CHUNK_SIZE; ++x) {
+        for (int y = 0; y < CHUNK_SIZE; ++y) {
+            for (int z = 0; z < CHUNK_SIZE; ++z) {
+                int worldX = position.x * CHUNK_SIZE + x;
+                int worldY = position.y * CHUNK_SIZE + y;
+                int worldZ = position.z * CHUNK_SIZE + z; 
+
+                float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 2.0f);
+                int maxY = static_cast<int>(height); 
+
+                if (worldY < maxY - 3) {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[1].ID);
+                } else if (worldY < maxY && worldY >= maxY - 3) {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[3].ID);
+                } else if (worldY == maxY) {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[2].ID);
+                } else {
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[0].ID);
+                }
+            }
+        }
+    }
+    
+    mesh.isEmpty = false;
+}
 
 // Converts 3D coordinates to a 1D index for the blocks array
 int Chunk::index(int x, int y, int z) const {
