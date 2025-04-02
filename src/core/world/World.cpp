@@ -1,13 +1,13 @@
-#include "core/world/FlatWorld.h"
+#include "core/world/World.h"
 
-FlatWorld::FlatWorld() {
-    int maxThreads = omp_get_max_threads();
+World::World() {
+    //int maxThreads = omp_get_max_threads();
 
-    chunkThread = std::thread(&FlatWorld::chunkWorkerThread, this);
-    meshThread = std::thread(&FlatWorld::meshWorkerThread, this);
+    chunkThread = std::thread(&World::chunkWorkerThread, this);
+    meshThread = std::thread(&World::meshWorkerThread, this);
 }
 
-FlatWorld::~FlatWorld() {
+World::~World() {
     running = false;
 
     chunkCreationQueue.stop();
@@ -18,10 +18,20 @@ FlatWorld::~FlatWorld() {
     if (chunkThread.joinable()) chunkThread.join();
     if (meshThread.joinable()) meshThread.join();
 
+    for (auto& [pos, chunk] : chunks) {
+        if (chunk && chunk->mesh.isUploaded) {
+            chunk->mesh.VAO.deleteBuffers();
+            chunk->mesh.vaoInitialized = false;
+            chunk->mesh.vertices.clear();
+            chunk->mesh.indices.clear();
+        }
+    }    
+
+    chunks.clear();
 }
 
 // Thread function for generating chunks around the player
-void FlatWorld::chunkWorkerThread() {
+void World::chunkWorkerThread() {
     glm::ivec3 lastChunkPos = {INT_MAX, INT_MAX, INT_MAX};
     while (running) {
         if (Player::instance().getChunkPosition() != lastChunkPos) {
@@ -50,7 +60,7 @@ void FlatWorld::chunkWorkerThread() {
 
         glm::vec3 chunkCenter = glm::vec3(pos.x, pos.y, pos.z) * (float)CHUNK_SIZE;
         float distance = glm::distance(Player::instance().getPosition(), chunkCenter);
-        meshGenerationQueue.push({pos, distance});
+        meshGenerationQueue.push(pos);
 
         } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -58,23 +68,23 @@ void FlatWorld::chunkWorkerThread() {
     }
 }
 
-// Thread function for generating chunk meshes
-void FlatWorld::meshWorkerThread() {
+// Thread function for meshing chunks that have been marked for generation
+void World::meshWorkerThread() {
     while (running) {
-        ChunkMeshTask task;
-        if (!meshGenerationQueue.waitPop(task)) return;
-        generateMesh(task);
+        ChunkPosition pos;
+        if (!meshGenerationQueue.waitPop(pos)) return;
+        generateMesh(pos);
     }
 }
 
 // Generates the mesh for a chunk based on the task provided
-void FlatWorld::generateMesh(const ChunkMeshTask& task) {
+void World::generateMesh(const ChunkPosition& pos) {
     std::lock_guard<std::mutex> lock(chunkMutex);
-    auto it = chunks.find(task.pos);
+    auto it = chunks.find(pos);
     if (it == chunks.end()) return;
 
-    if (!hasAllNeighbors(task.pos)) {
-        meshGenerationQueue.push(task);
+    if (!hasAllNeighbors(pos)) {
+        meshGenerationQueue.push(pos);
         return;
     }
 
@@ -85,7 +95,7 @@ void FlatWorld::generateMesh(const ChunkMeshTask& task) {
     std::vector<GLuint> indices;
 
     chunk->generateMesh(vertices, indices,
-        [xOffset = task.pos, this](glm::ivec3 offset, int x, int y, int z) -> int {
+        [xOffset = pos, this](glm::ivec3 offset, int x, int y, int z) -> int {
             glm::ivec3 localCoord = glm::ivec3(x, y, z) + offset;
             ChunkPosition targetChunkPos = xOffset;
             if (localCoord.x < 0) { localCoord.x += CHUNK_SIZE; targetChunkPos.x -= 1; }
@@ -111,11 +121,11 @@ void FlatWorld::generateMesh(const ChunkMeshTask& task) {
     chunk->mesh.isUploaded = false;
     chunk->mesh.markedForUpload = true;
 
-    meshUploadQueue.push(chunks[task.pos]);
+    meshUploadQueue.push(chunks[pos]);
 }
 
 // Sets a block at the specified world position
-void FlatWorld::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
+void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
     ChunkPosition chunkPos = {
         wx / CHUNK_SIZE,
         wy / CHUNK_SIZE,
@@ -148,7 +158,7 @@ void FlatWorld::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
 }
 
 // Checks if all neighboring chunks are present and loaded
-bool FlatWorld::hasAllNeighbors(ChunkPosition pos) const {
+bool World::hasAllNeighbors(ChunkPosition pos) const {
     for (const glm::ivec3& dir : {
         glm::ivec3(-1, 0, 0), glm::ivec3(1, 0, 0),
         glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),
@@ -170,7 +180,7 @@ bool FlatWorld::hasAllNeighbors(ChunkPosition pos) const {
 }
 
 // Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
-void FlatWorld::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
+void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
     std::lock_guard<std::mutex> lock(chunkMutex);
     ChunkPosition neighborPos = {
         pos.x + offset.x,
@@ -185,7 +195,7 @@ void FlatWorld::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
 }
 
 // Updates the chunks around the player based on their position
-void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
+void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
     auto spiral = generateSpiralOffsets(VIEW_DISTANCE);
     int maxChunkPerFrame = 15;
 
@@ -210,7 +220,7 @@ void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const in
 }
 
 // Generates a spiral pattern of offsets for chunk generation
-std::vector<glm::ivec2> FlatWorld::generateSpiralOffsets(int radius) {
+std::vector<glm::ivec2> World::generateSpiralOffsets(int radius) {
     std::vector<glm::ivec2> result;
 
     int x = 0, z = 0;
@@ -238,7 +248,7 @@ std::vector<glm::ivec2> FlatWorld::generateSpiralOffsets(int radius) {
 }
 
 // Uploads the chunk meshes to the GPU
-void FlatWorld::uploadChunkMeshes(int maxPerFrame) {
+void World::uploadChunkMeshes(int maxPerFrame) {
     int uploadedChunks = 0;
 
     while (uploadedChunks < maxPerFrame) {
@@ -262,7 +272,7 @@ void FlatWorld::uploadChunkMeshes(int maxPerFrame) {
 }
 
 // Uploads the mesh data to the GPU
-void FlatWorld::uploadMeshToGPU(Chunk& chunk) {
+void World::uploadMeshToGPU(Chunk& chunk) {
     if (chunk.mesh.isUploaded) return;
     assert(!chunk.mesh.vertices.empty());
     assert(!chunk.mesh.indices.empty());
@@ -281,7 +291,7 @@ void FlatWorld::uploadMeshToGPU(Chunk& chunk) {
 }
 
 // Unloads distant chunks based on the player's position and view distance
-void FlatWorld::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_DISTANCE) {
+void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_DISTANCE) {
     std::unordered_set<ChunkPosition> shouldExist;
 
     for (int x = -VIEW_DISTANCE; x <= VIEW_DISTANCE; ++x) {
@@ -306,13 +316,12 @@ void FlatWorld::queueChunksForRemoval(const glm::ivec3& centerChunk, const int V
             chunkPtr->mesh.shouldRender = false;
             chunkRemovalQueue.push(chunkPtr);
             chunks.erase(pos);
-        }
-        
+        } 
     }
 }
 
 // Unloads distant chunks that are no longer needed
-void FlatWorld::unloadDistantChunks() {
+void World::unloadDistantChunks() {
 
     std::shared_ptr<Chunk> chunkPtr = nullptr;
     if (!chunkRemovalQueue.tryPop(chunkPtr)) return;

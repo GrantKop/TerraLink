@@ -4,7 +4,7 @@
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
-#include "core/world/FlatWorld.h"
+#include "core/world/World.h"
 #include "core/player/Player.h"
 
 std::vector<Vertex> lightVertices = {
@@ -66,17 +66,13 @@ int main() {
 
     BlockRegister blockRegister;
     Atlas blockAtlas("../../assets/textures/blocks/");
-
     blockAtlas.linkBlocksToAtlas(&blockRegister);
-
     BlockRegister::setInstance(&blockRegister);
 
     Player player(window);
     Player::setInstance(&player);
 
-    std::vector<Vertex> Tvertices;
-    std::vector<GLuint> Tindices;
-    FlatWorld world;
+    World world;
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
@@ -93,7 +89,6 @@ int main() {
 	glm::mat4 lightModel = glm::mat4(1.0f);
 
     lightShader.setUniform4("lightColor", lightColor);
-
     shaderProgram.setUniform4("lightColor", lightColor);
 
     Texture atlas("../../assets/textures/blocks/block_atlas.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -153,9 +148,6 @@ int main() {
 
         // CHECK_GL_ERROR();
     }
-
-    // world.chunkCreationQueue.stopThreads();
-    // world.meshGenerationQueue.stopThreads();
 
     lightVAO.deleteBuffers();
     atlas.deleteTexture();
