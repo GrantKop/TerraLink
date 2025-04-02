@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "core/camera/Camera.h"
-#include "core/world/FlatWorld.h"
+#include "core/world/World.h"
 
 class Player {
 public:

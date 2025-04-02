@@ -1,5 +1,5 @@
-#ifndef FLAT_WORLD_H
-#define FLAT_WORLD_H
+#ifndef WORLD_H
+#define WORLD_H
 
 #include <unordered_set>
 #include <omp.h>
@@ -8,25 +8,15 @@
 #include "core/threads/ThreadSafeQueue.h"
 #include "core/player/Player.h"
 
-
-struct ChunkMeshTask {
-    ChunkPosition pos;
-    float priority;
-
-    bool operator<(const ChunkMeshTask& other) const {
-        return priority < other.priority;
-    }
-};
-
-class FlatWorld {
+class World {
 public:
-    FlatWorld();
-    ~FlatWorld();
+    World();
+    ~World();
 
     void chunkWorkerThread();
     void meshWorkerThread();
 
-    void generateMesh(const ChunkMeshTask& task);
+    void generateMesh(const ChunkPosition& pos);
 
     void setBlockAtWorldPosition(int wx, int wy, int wz, int blockID);
 
@@ -35,7 +25,7 @@ public:
 
     void queueChunksForMeshing(const glm::vec3& playerPos);
     void updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE);
-    std::vector<glm::ivec2> FlatWorld::generateSpiralOffsets(int radius);
+    std::vector<glm::ivec2> World::generateSpiralOffsets(int radius);
 
     void uploadChunkMeshes(int maxPerFrame = 2);
     void uploadMeshToGPU(Chunk& chunk);
@@ -47,7 +37,7 @@ public:
 
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
-    ThreadSafeQueue<ChunkMeshTask> meshGenerationQueue;
+    ThreadSafeQueue<ChunkPosition> meshGenerationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> chunkRemovalQueue;
 
 private:

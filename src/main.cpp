@@ -4,7 +4,7 @@
 #include "graphics/Texture.h"
 #include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
-#include "core/world/FlatWorld.h"
+#include "core/world/World.h"
 #include "core/player/Player.h"
 
 std::vector<Vertex> lightVertices = {
@@ -76,7 +76,7 @@ int main() {
 
     std::vector<Vertex> Tvertices;
     std::vector<GLuint> Tindices;
-    FlatWorld world;
+    World world;
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
