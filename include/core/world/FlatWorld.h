@@ -52,8 +52,10 @@ public:
 
 private:
     std::thread chunkThread;
-    std::thread meshThreadA;
-    std::thread meshThreadB;
+    std::thread meshThread;
+    // Thread vectors for chunk and mesh generation in potential future
+    // std::vector<std::thread> meshThreads;
+    // std::vector<std::thread> chunkThreads;
 
     std::atomic<bool> running = true;
     mutable std::mutex chunkMutex;

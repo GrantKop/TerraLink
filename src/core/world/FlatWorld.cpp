@@ -4,9 +4,7 @@ FlatWorld::FlatWorld() {
     int maxThreads = omp_get_max_threads();
 
     chunkThread = std::thread(&FlatWorld::chunkWorkerThread, this);
-    //chunkThread.detach();
-    meshThreadA = std::thread(&FlatWorld::meshWorkerThread, this);
-    //meshThreadA.detach();
+    meshThread = std::thread(&FlatWorld::meshWorkerThread, this);
 }
 
 FlatWorld::~FlatWorld() {
@@ -18,7 +16,8 @@ FlatWorld::~FlatWorld() {
     chunkRemovalQueue.stop();
 
     if (chunkThread.joinable()) chunkThread.join();
-    if (meshThreadA.joinable()) meshThreadA.join();
+    if (meshThread.joinable()) meshThread.join();
+
 }
 
 // Thread function for generating chunks around the player
@@ -188,6 +187,7 @@ void FlatWorld::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
 // Updates the chunks around the player based on their position
 void FlatWorld::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
     auto spiral = generateSpiralOffsets(VIEW_DISTANCE);
+    int maxChunkPerFrame = 15;
 
     for (const auto& offset : spiral) {
         ChunkPosition pos = {
