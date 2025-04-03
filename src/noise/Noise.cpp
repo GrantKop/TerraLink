@@ -1,5 +1,6 @@
 #include "noise/Noise.h"
 
+// Generates a height value using Perlin noise
 float Noise::getHeight(float x, float z, int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude)
 {
     float noiseValue = 0.0f;

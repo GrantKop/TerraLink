@@ -44,6 +44,8 @@ public:
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), 
     float yaw = -90.0f, float pitch = 0.0f);
 
+    ~Camera();
+
     void matrix(Shader& shaderProgram, const char* uniformName);
     void updateCameraMatrix(float nearPlane, float farPlane, GLFWwindow* window);
     void updatePosition(CameraMovement direction, float deltaTime);

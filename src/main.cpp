@@ -107,7 +107,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-        player.update(deltaTime, window, &lightPos);
+        player.update(deltaTime, &lightPos);
 
         world.uploadChunkMeshes(10);
         world.unloadDistantChunks();
