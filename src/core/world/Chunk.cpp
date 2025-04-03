@@ -16,7 +16,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
         for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
             int worldX = position.x * CHUNK_SIZE + x;
             int worldZ = position.z * CHUNK_SIZE + z;
-            float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 2.0f);
+            float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f,  0.1f, 16.0f);
             if (height >= worldMinY) {
                 hasTerrain = true;
             }
@@ -32,15 +32,15 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
                 int worldY = position.y * CHUNK_SIZE + y;
                 int worldZ = position.z * CHUNK_SIZE + z; 
 
-                float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 2.0f);
+                float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.1f, 16.0f);
                 int maxY = static_cast<int>(height); 
 
                 if (worldY < maxY - 3) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[1].ID);
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[7].ID);
                 } else if (worldY < maxY && worldY >= maxY - 3) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[3].ID);
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[12].ID);
                 } else if (worldY == maxY) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[2].ID);
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[12].ID);
                 } else {
                     setBlockID(x, y, z, BlockRegister::instance().blocks[0].ID);
                 }

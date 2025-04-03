@@ -13,6 +13,8 @@ public:
     World();
     ~World();
 
+    void init();
+
     void chunkHelperThread();
     void chunkWorkerThread();
     void meshWorkerThread();
@@ -41,7 +43,7 @@ private:
     std::thread meshThread;
     std::thread HchunkThread;
 
-    std::atomic<bool> running = true;
+    std::atomic<bool> running = false;
     mutable std::mutex chunkMutex;
 
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;

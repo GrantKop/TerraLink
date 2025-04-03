@@ -65,6 +65,7 @@ int main() {
     Player::setInstance(&player);
 
     World world;
+    world.init();
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
@@ -90,8 +91,8 @@ int main() {
     glEnable(GL_CULL_FACE);
 
     // Enable alpha values for textures
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame

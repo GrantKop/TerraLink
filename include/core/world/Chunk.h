@@ -39,11 +39,12 @@ struct ChunkMesh {
     VertexArrayObject VAO;
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
+
+    // Chunk mesh thread flags
     bool isUploaded = false;
     bool needsUpdate = true;
     bool vaoInitialized = false;
     bool isEmpty = true;
-    bool markedForUpload = false;
 };
 
 class Chunk {
