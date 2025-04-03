@@ -1,4 +1,4 @@
-#include "core/world/chunk.h"
+#include "core/world/Chunk.h"
 
 Chunk::Chunk() {
     mesh.isEmpty = true;
