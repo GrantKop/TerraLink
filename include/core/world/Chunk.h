@@ -6,6 +6,7 @@
 
 #include "core/registers/BlockRegister.h"
 #include "graphics/VertexArrayObject.h"
+#include "core/threads/ThreadSafeQueue.h"
 #include "noise/Noise.h"
 
 constexpr int CHUNK_SIZE = 16;
@@ -53,6 +54,7 @@ public:
     ~Chunk();
 
     ChunkMesh mesh;
+    mutable std::mutex meshMutex;
 
     void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
 

@@ -2,10 +2,8 @@
 #define WORLD_H
 
 #include <unordered_set>
-#include <omp.h>
 
 #include "core/world/Chunk.h"
-#include "core/threads/ThreadSafeQueue.h"
 #include "core/player/Player.h"
 
 class World {
@@ -45,7 +43,7 @@ private:
 
     std::atomic<bool> running = false;
     mutable std::mutex chunkMutex;
-
+    
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
     ThreadSafeQueue<ChunkPosition> meshGenerationQueue;

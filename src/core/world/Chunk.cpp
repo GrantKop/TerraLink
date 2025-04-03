@@ -8,6 +8,7 @@ Chunk::~Chunk() {}
 
 // Generates terrain for the chunk using Perlin noise
 void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude) {
+    std::lock_guard<std::mutex> lock(meshMutex);
     int worldMinY = position.y * CHUNK_SIZE;
     int worldMaxY = (position.y + 1) * CHUNK_SIZE;
 
@@ -54,7 +55,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
 // Converts 3D coordinates to a 1D index for the blocks array
 int Chunk::index(int x, int y, int z) const {
     if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
-        return -1; // Out of bounds
+        return -1;
     }
     return x + (y * CHUNK_SIZE * CHUNK_SIZE) + (z * CHUNK_SIZE);
 }

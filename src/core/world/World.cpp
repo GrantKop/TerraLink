@@ -89,21 +89,19 @@ void World::meshWorkerThread() {
 
 // Generates the mesh for a chunk based on the task provided
 void World::generateMesh(const ChunkPosition& pos) {
-
     std::shared_ptr<Chunk> chunk;
-    std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
     {
         std::lock_guard<std::mutex> lock(chunkMutex);
         auto it = chunks.find(pos);
         if (it == chunks.end()) return;
         chunk = it->second;
-        if (!chunk || !chunk->mesh.needsUpdate || chunk->mesh.isEmpty) return;
+        if (!chunk || chunk->mesh.isEmpty) return;
     }
-
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
     {
-    std::lock_guard<std::mutex> lock(chunkMutex);
-    chunk->generateMesh(vertices, indices,
+        std::lock_guard<std::mutex> lock(chunk->meshMutex);
+        chunk->generateMesh(vertices, indices,
         [xOffset = pos, this](glm::ivec3 offset, int x, int y, int z) -> int {
             glm::ivec3 localCoord = glm::ivec3(x, y, z) + offset;
             ChunkPosition targetChunkPos = xOffset;
@@ -117,9 +115,12 @@ void World::generateMesh(const ChunkPosition& pos) {
             if (localCoord.z < 0) { localCoord.z += CHUNK_SIZE; targetChunkPos.z -= 1; }
             else if (localCoord.z >= CHUNK_SIZE) { localCoord.z -= CHUNK_SIZE; targetChunkPos.z += 1; }
 
-            auto it = chunks.find(targetChunkPos);
-            if (it != chunks.end() && it->second) {
-                return it->second->getBlockID(localCoord.x, localCoord.y, localCoord.z);
+            {
+                std::lock_guard<std::mutex> chunkLock(chunkMutex);
+                auto it = chunks.find(targetChunkPos);
+                if (it != chunks.end() && it->second) {
+                    return it->second->getBlockID(localCoord.x, localCoord.y, localCoord.z);
+                }
             }
 
             int worldX = localCoord.x + targetChunkPos.x * CHUNK_SIZE;
@@ -129,15 +130,15 @@ void World::generateMesh(const ChunkPosition& pos) {
             return sampleBlockID(worldX, worldY, worldZ);
         });
     }
-
     {
         std::lock_guard<std::mutex> lock(chunkMutex);
         chunk->mesh.vertices = std::move(vertices);
         chunk->mesh.indices = std::move(indices);
         chunk->mesh.needsUpdate = false;
         chunk->mesh.isUploaded = false;
+        chunk->mesh.isEmpty = chunk->mesh.vertices.empty() || chunk->mesh.indices.empty();
 
-        if (chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) return;
+        if (chunk->mesh.isEmpty) return;
 
         meshUploadQueue.push(chunk);
     }
@@ -186,13 +187,13 @@ int World::sampleBlockID(int wx, int wy, int wz) const {
 
 // Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
 void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
-    std::lock_guard<std::mutex> lock(chunkMutex);
     ChunkPosition neighborPos = {
         pos.x + offset.x,
         pos.y + offset.y,
         pos.z + offset.z
     };
 
+    std::lock_guard<std::mutex> lock(chunkMutex);
     auto it = chunks.find(neighborPos);
     if (it != chunks.end()) {
         it->second->mesh.needsUpdate = true;
@@ -254,23 +255,35 @@ void World::uploadChunkMeshes(int maxPerFrame) {
     while (uploadedChunks < maxPerFrame) {
         std::shared_ptr<Chunk> chunkPtr = nullptr;
         if (!meshUploadQueue.tryPop(chunkPtr)) break;
+        if (!chunkPtr) continue;
 
-        if (chunkPtr->mesh.vertices.empty() || chunkPtr->mesh.indices.empty()) {
-            chunkPtr->mesh.needsUpdate = false;
-            continue;
+        {
+            std::unique_lock<std::mutex> lock(chunkPtr->meshMutex, std::try_to_lock);
+            if (!lock.owns_lock()) continue;
+            if (chunkPtr->mesh.vertices.empty() || chunkPtr->mesh.indices.empty()) {
+                chunkPtr->mesh.needsUpdate = false;
+                continue;
+            }
+
+            if (chunkPtr->mesh.isUploaded) continue;
+
+            try {
+                if (!lock.owns_lock()) {
+                    meshUploadQueue.push(chunkPtr);
+                    continue;
+                }
+                uploadMeshToGPU(*chunkPtr);
+                chunkPtr->mesh.needsUpdate = false;
+                chunkPtr->mesh.isUploaded = true;
+            } catch (const std::exception& e) {
+                std::cerr << "Caught exception during mesh upload: " << e.what() << std::endl;
+                continue;
+            } catch (...) {
+                std::cerr << "Caught unknown exception during mesh upload." << std::endl;
+                continue;
+            }
         }
-        if (chunkPtr == nullptr || chunkPtr->mesh.isUploaded) continue;
-        try {
-            uploadMeshToGPU(*chunkPtr);
-        } catch (const std::exception& e) {
-            std::cerr << "Caught exception during mesh upload: " << e.what() << std::endl;
-        } catch (...) {
-            std::cerr << "Caught unknown exception during mesh upload." << std::endl;
-        }
-        
         uploadedChunks++;
-        chunkPtr->mesh.needsUpdate = false;
-        chunkPtr->mesh.isUploaded = true;
     }
 }
 
