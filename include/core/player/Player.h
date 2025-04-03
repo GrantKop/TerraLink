@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#include "core/camera/Camera.h"
+#include "core/player/Camera.h"
 #include "core/world/World.h"
 
 class Player {
