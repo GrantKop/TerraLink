@@ -2,7 +2,6 @@
 
 #include "graphics/VertexArrayObject.h"
 #include "graphics/Texture.h"
-#include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
 #include "core/world/World.h"
 #include "core/player/Player.h"
@@ -107,9 +106,8 @@ int main() {
         glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        processInput(window, &lightPos);
 
-        player.update(deltaTime, window);
+        player.update(deltaTime, window, &lightPos);
 
         world.uploadChunkMeshes(10);
         world.unloadDistantChunks();

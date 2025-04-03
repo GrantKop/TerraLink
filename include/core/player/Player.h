@@ -13,7 +13,7 @@ public:
 
     Player(GLFWwindow* window);
 
-    void update(float deltaTime, GLFWwindow* window);
+    void update(float deltaTime, GLFWwindow* window, glm::vec3 *lightpos);
 
     void setPosition(float x, float y, float z);
     void setPosition(const glm::vec3& pos);
@@ -27,7 +27,7 @@ public:
 
 private:
     Camera camera;
-    void handleInput(GLFWwindow* window, float deltaTime);
+    void handleInput(GLFWwindow* window, float deltaTime, glm::vec3 *lightpos);
 
     static Player* s_instance;
 };

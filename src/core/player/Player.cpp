@@ -17,8 +17,8 @@ Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 130.0f, 3.0f)) {
     camera.updateCameraMatrix(0.1f, 500.0f, window);
 }
 
-void Player::update(float deltaTime, GLFWwindow* window) {
-    handleInput(window, deltaTime);
+void Player::update(float deltaTime, GLFWwindow* window, glm::vec3 *lightpos) {
+    handleInput(window, deltaTime, lightpos);
     camera.updateCameraMatrix(0.1f, 800.0f, window);
 }
 
@@ -48,7 +48,7 @@ Camera& Player::getCamera() {
 }
 
 // Handles input for the player, including movement and camera rotation
-void Player::handleInput(GLFWwindow* window, float deltaTime) {
+void Player::handleInput(GLFWwindow* window, float deltaTime, glm::vec3 *lightpos) {
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         camera.updatePosition(CAM_FORWARD, deltaTime);
     }
@@ -105,5 +105,28 @@ void Player::handleInput(GLFWwindow* window, float deltaTime) {
         }
     } else {
         f11WasPressed = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        lightpos->x += 0.12f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        lightpos->x -= 0.12f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        lightpos->z -= 0.12f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        lightpos->z += 0.12f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
+        lightpos->y += 0.12f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
+        lightpos->y -= 0.12f;
     }
 }
