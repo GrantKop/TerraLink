@@ -189,7 +189,7 @@ void BlockRegister::loadBlocks() {
                     buffer << blockFile.rdbuf();
                     std::string contents = buffer.str();
                     blockFile.close();
-                    parseJson(contents, filename);
+                    parseBlockMapJson(contents, filename);
                 }
             }
         }

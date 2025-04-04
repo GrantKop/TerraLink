@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#include "core/camera/Camera.h"
+#include "core/player/Camera.h"
 #include "core/world/World.h"
 
 class Player {
@@ -13,7 +13,7 @@ public:
 
     Player(GLFWwindow* window);
 
-    void update(float deltaTime, GLFWwindow* window);
+    void update(float deltaTime, glm::vec3 *lightpos);
 
     void setPosition(float x, float y, float z);
     void setPosition(const glm::vec3& pos);
@@ -21,13 +21,17 @@ public:
     glm::vec3 getPosition() const;
     glm::ivec3 getChunkPosition() const;
 
+    GLFWwindow* getWindow(); 
+
     Camera& getCamera();
 
     int VIEW_DISTANCE = 24;
 
 private:
     Camera camera;
-    void handleInput(GLFWwindow* window, float deltaTime);
+    GLFWwindow* window = nullptr;
+
+    void handleInput(float deltaTime, glm::vec3 *lightpos);
 
     static Player* s_instance;
 };

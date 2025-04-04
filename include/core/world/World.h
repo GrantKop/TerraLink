@@ -2,16 +2,16 @@
 #define WORLD_H
 
 #include <unordered_set>
-#include <omp.h>
 
 #include "core/world/Chunk.h"
-#include "core/threads/ThreadSafeQueue.h"
 #include "core/player/Player.h"
 
 class World {
 public:
     World();
     ~World();
+
+    void init();
 
     void chunkHelperThread();
     void chunkWorkerThread();
@@ -26,7 +26,7 @@ public:
 
     void queueChunksForMeshing(const glm::vec3& playerPos);
     void updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE);
-    std::vector<glm::ivec2> World::generateSpiralOffsets(int radius);
+    std::vector<glm::ivec2> generateSpiralOffsets(int radius);
 
     void uploadChunkMeshes(int maxPerFrame = 2);
     void uploadMeshToGPU(Chunk& chunk);
@@ -41,9 +41,9 @@ private:
     std::thread meshThread;
     std::thread HchunkThread;
 
-    std::atomic<bool> running = true;
+    std::atomic<bool> running = false;
     mutable std::mutex chunkMutex;
-
+    
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
     ThreadSafeQueue<ChunkPosition> meshGenerationQueue;

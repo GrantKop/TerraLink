@@ -1,11 +1,6 @@
 #include "core/world/World.h"
 
-World::World() {
-
-    chunkThread = std::thread(&World::chunkWorkerThread, this);
-    meshThread = std::thread(&World::meshWorkerThread, this);
-    HchunkThread = std::thread(&World::chunkHelperThread, this);
-}
+World::World() {}
 
 World::~World() {
     running = false;
@@ -29,6 +24,16 @@ World::~World() {
     }    
 
     chunks.clear();
+}
+
+// Initializes the world by starting the chunk generation and meshing threads
+void World::init() {
+    if (running) return;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    running = true;
+    chunkThread = std::thread(&World::chunkWorkerThread, this);
+    meshThread = std::thread(&World::meshWorkerThread, this);
+    HchunkThread = std::thread(&World::chunkHelperThread, this);
 }
 
 // Thread function for loading chunks around the player
@@ -67,9 +72,9 @@ void World::chunkWorkerThread() {
             std::lock_guard<std::mutex> lock(chunkMutex);
             chunks[pos] = std::move(chunk);
             queuedChunks.erase(pos);
+            meshGenerationQueue.push(pos);
         }
 
-        meshGenerationQueue.push(pos);
     }
 }
 
@@ -84,21 +89,19 @@ void World::meshWorkerThread() {
 
 // Generates the mesh for a chunk based on the task provided
 void World::generateMesh(const ChunkPosition& pos) {
-
     std::shared_ptr<Chunk> chunk;
-    std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
     {
         std::lock_guard<std::mutex> lock(chunkMutex);
         auto it = chunks.find(pos);
         if (it == chunks.end()) return;
         chunk = it->second;
-        if (!chunk) return;
+        if (!chunk || chunk->mesh.isEmpty) return;
     }
-
-    if (!chunk->mesh.needsUpdate) return;
-
-    chunk->generateMesh(vertices, indices,
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
+    {
+        std::lock_guard<std::mutex> lock(chunk->meshMutex);
+        chunk->generateMesh(vertices, indices,
         [xOffset = pos, this](glm::ivec3 offset, int x, int y, int z) -> int {
             glm::ivec3 localCoord = glm::ivec3(x, y, z) + offset;
             ChunkPosition targetChunkPos = xOffset;
@@ -113,7 +116,7 @@ void World::generateMesh(const ChunkPosition& pos) {
             else if (localCoord.z >= CHUNK_SIZE) { localCoord.z -= CHUNK_SIZE; targetChunkPos.z += 1; }
 
             {
-                std::lock_guard<std::mutex> lock(chunkMutex);
+                std::lock_guard<std::mutex> chunkLock(chunkMutex);
                 auto it = chunks.find(targetChunkPos);
                 if (it != chunks.end() && it->second) {
                     return it->second->getBlockID(localCoord.x, localCoord.y, localCoord.z);
@@ -123,24 +126,21 @@ void World::generateMesh(const ChunkPosition& pos) {
             int worldX = localCoord.x + targetChunkPos.x * CHUNK_SIZE;
             int worldY = localCoord.y + targetChunkPos.y * CHUNK_SIZE;
             int worldZ = localCoord.z + targetChunkPos.z * CHUNK_SIZE;
-                
-            return sampleBlockID(worldX, worldY, worldZ);
-    
-        });
 
+            return sampleBlockID(worldX, worldY, worldZ);
+        });
+    }
     {
         std::lock_guard<std::mutex> lock(chunkMutex);
         chunk->mesh.vertices = std::move(vertices);
         chunk->mesh.indices = std::move(indices);
         chunk->mesh.needsUpdate = false;
         chunk->mesh.isUploaded = false;
+        chunk->mesh.isEmpty = chunk->mesh.vertices.empty() || chunk->mesh.indices.empty();
 
-        if (chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) {
-            chunk->mesh.markedForUpload = false;
-        } else {
-            chunk->mesh.markedForUpload = true;
-            meshUploadQueue.push(chunk);
-        }
+        if (chunk->mesh.isEmpty) return;
+
+        meshUploadQueue.push(chunk);
     }
 }
 
@@ -180,20 +180,20 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
 // Samples a block ID at the specified world position
 int World::sampleBlockID(int wx, int wy, int wz) const {
     
-    float height = Noise::getHeight(wx, wz, 0, 1, 0.5f, 2.0f, 0.01f, 2.0f);
+    float height = Noise::getHeight(wx, wz, 0, 1, 0.5f, 2.0f, 0.1f, 16.0f);
     return wy < height ? BlockRegister::instance().getBlockByIndex(1).ID
                       : BlockRegister::instance().getBlockByIndex(0).ID;
 }
 
 // Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
 void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
-    std::lock_guard<std::mutex> lock(chunkMutex);
     ChunkPosition neighborPos = {
         pos.x + offset.x,
         pos.y + offset.y,
         pos.z + offset.z
     };
 
+    std::lock_guard<std::mutex> lock(chunkMutex);
     auto it = chunks.find(neighborPos);
     if (it != chunks.end()) {
         it->second->mesh.needsUpdate = true;
@@ -203,7 +203,6 @@ void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
 // Updates the chunks around the player based on their position
 void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
     auto spiral = generateSpiralOffsets(VIEW_DISTANCE);
-
     for (const auto& offset : spiral) {
         for (int y = minY; y <= maxY; ++y) {
             ChunkPosition pos = {
@@ -211,7 +210,6 @@ void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VI
                 y,
                 playerChunk.z + offset.y
             };
-
             {
                 std::lock_guard<std::mutex> lock(chunkMutex);
                 if (chunks.find(pos) != chunks.end() || queuedChunks.count(pos)) continue;
@@ -257,25 +255,35 @@ void World::uploadChunkMeshes(int maxPerFrame) {
     while (uploadedChunks < maxPerFrame) {
         std::shared_ptr<Chunk> chunkPtr = nullptr;
         if (!meshUploadQueue.tryPop(chunkPtr)) break;
+        if (!chunkPtr) continue;
 
-        if (chunkPtr->mesh.vertices.empty() || chunkPtr->mesh.indices.empty()) {
-            chunkPtr->mesh.markedForUpload = false;
-            chunkPtr->mesh.needsUpdate = false;
-            continue;
+        {
+            std::unique_lock<std::mutex> lock(chunkPtr->meshMutex, std::try_to_lock);
+            if (!lock.owns_lock()) continue;
+            if (chunkPtr->mesh.vertices.empty() || chunkPtr->mesh.indices.empty()) {
+                chunkPtr->mesh.needsUpdate = false;
+                continue;
+            }
+
+            if (chunkPtr->mesh.isUploaded) continue;
+
+            try {
+                if (!lock.owns_lock()) {
+                    meshUploadQueue.push(chunkPtr);
+                    continue;
+                }
+                uploadMeshToGPU(*chunkPtr);
+                chunkPtr->mesh.needsUpdate = false;
+                chunkPtr->mesh.isUploaded = true;
+            } catch (const std::exception& e) {
+                std::cerr << "Caught exception during mesh upload: " << e.what() << std::endl;
+                continue;
+            } catch (...) {
+                std::cerr << "Caught unknown exception during mesh upload." << std::endl;
+                continue;
+            }
         }
-        if (chunkPtr == nullptr || chunkPtr->mesh.isUploaded) continue;
-        try {
-            uploadMeshToGPU(*chunkPtr);
-        } catch (const std::exception& e) {
-            std::cerr << "Caught exception during mesh upload: " << e.what() << std::endl;
-        } catch (...) {
-            std::cerr << "Caught unknown exception during mesh upload." << std::endl;
-        }
-        
         uploadedChunks++;
-        chunkPtr->mesh.needsUpdate = false;
-        chunkPtr->mesh.isUploaded = true;
-        chunkPtr->mesh.markedForUpload = false;
     }
 }
 
@@ -324,7 +332,6 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
         std::lock_guard<std::mutex> lock(chunkMutex);
         auto it = chunks.find(pos);
         if (it != chunks.end()) {
-            if (it->second->mesh.markedForUpload) continue;
         
             std::shared_ptr<Chunk> chunkPtr = it->second;
             chunkRemovalQueue.push(chunkPtr);

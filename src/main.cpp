@@ -2,7 +2,6 @@
 
 #include "graphics/VertexArrayObject.h"
 #include "graphics/Texture.h"
-#include "input/DetectInput.h"
 #include "core/registers/AtlasRegister.h"
 #include "core/world/World.h"
 #include "core/player/Player.h"
@@ -66,6 +65,7 @@ int main() {
     Player::setInstance(&player);
 
     World world;
+    world.init();
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
@@ -91,8 +91,8 @@ int main() {
     glEnable(GL_CULL_FACE);
 
     // Enable alpha values for textures
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
@@ -107,9 +107,8 @@ int main() {
         glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        processInput(window, &lightPos);
 
-        player.update(deltaTime, window);
+        player.update(deltaTime, &lightPos);
 
         world.uploadChunkMeshes(10);
         world.unloadDistantChunks();

@@ -1,4 +1,4 @@
-#include "core/camera/Camera.h"
+#include "core/player/Camera.h"
 
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) 
     : position(position), front(glm::vec3(0.0f, 0.0f, -1.0f)), 
@@ -7,10 +7,14 @@ Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
     updateCameraVectors();
 }
 
+Camera::~Camera() {}
+
+// Sets the camera matrix in the shader program
 void Camera::matrix(Shader& shaderProgram, const char* uniformName) {
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, uniformName), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
 }
 
+// Updates the camera matrix based on the window size and projection type
 void Camera::updateCameraMatrix(float nearPlane, float farPlane, GLFWwindow* window) {
     int width, height;
     glfwGetWindowSize(window, &width, &height);
@@ -19,6 +23,7 @@ void Camera::updateCameraMatrix(float nearPlane, float farPlane, GLFWwindow* win
     cameraMatrix = perspectiveProjection * glm::lookAt(position, position + front, up);
 }
 
+// Updates the camera position based on the movement direction and delta time
 void Camera::updatePosition(CameraMovement direction, float deltaTime) {
     float velocity = movementSpeed * deltaTime;
 
@@ -42,6 +47,7 @@ void Camera::updatePosition(CameraMovement direction, float deltaTime) {
     }
 }
 
+// Updates the camera vectors based on the current yaw and pitch angles
 void Camera::updateCameraVectors() {
     glm::vec3 newFront;
     newFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
@@ -53,6 +59,7 @@ void Camera::updateCameraVectors() {
     up = glm::normalize(glm::cross(right, front));
 }
 
+// Processes mouse movement to update the camera orientation
 void Camera::processMouseMovement(GLFWwindow* window, bool constrainPitch) {
 
     int width, height;
@@ -82,6 +89,8 @@ void Camera::processMouseMovement(GLFWwindow* window, bool constrainPitch) {
     glfwSetCursorPos(window, (width / 2), (height / 2));
 }
 
+// Processes mouse scroll input to adjust the field of view (FOV)
+// Not in use
 void Camera::processMouseScroll(float yoffset) {
     if (fov >= 1.0f && fov <= 45.0f) {
         fov -= yoffset;

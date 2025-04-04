@@ -6,6 +6,7 @@
 
 #include "core/registers/BlockRegister.h"
 #include "graphics/VertexArrayObject.h"
+#include "core/threads/ThreadSafeQueue.h"
 #include "noise/Noise.h"
 
 constexpr int CHUNK_SIZE = 16;
@@ -39,11 +40,12 @@ struct ChunkMesh {
     VertexArrayObject VAO;
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
+
+    // Chunk mesh thread flags
     bool isUploaded = false;
     bool needsUpdate = true;
     bool vaoInitialized = false;
     bool isEmpty = true;
-    bool markedForUpload = false;
 };
 
 class Chunk {
@@ -52,6 +54,7 @@ public:
     ~Chunk();
 
     ChunkMesh mesh;
+    mutable std::mutex meshMutex;
 
     void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
 

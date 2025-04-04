@@ -28,6 +28,6 @@ void main()
     float specAmount = pow(max(dot(Normal, halfwayVec), 0.0), 8);
     float specular = specAmount * specularLight;
 
-    FragColor = texture(tex0, texCoord) * lightColor * (diffuse + ambient + specular);
-    //FragColor = texture(tex0, texCoord);
+    //FragColor = texture(tex0, texCoord) * lightColor * (diffuse + ambient + specular);
+    FragColor = texture(tex0, texCoord);
 } 
