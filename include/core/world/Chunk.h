@@ -3,6 +3,7 @@
 
 #include <array>
 #include <stdexcept>
+#include <chrono>
 
 #include "core/registers/BlockRegister.h"
 #include "graphics/VertexArrayObject.h"
@@ -54,7 +55,6 @@ public:
     ~Chunk();
 
     ChunkMesh mesh;
-    mutable std::mutex meshMutex;
 
     void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
 
@@ -65,7 +65,6 @@ public:
     ChunkPosition getPosition() const;
     void setPosition(const ChunkPosition& pos);
 
-    // Generates mesh for a single chunk, considering neighboring chunks when selecting faces
     void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, 
                       std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
 
@@ -74,7 +73,7 @@ private:
 
     int index(int x, int y, int z) const;
 
-    std::vector<Vertex> getFaceVertices(int face, const Block& block) const;
+    void getFaceVertices(int face, const Block& block, std::vector<Vertex>& vertices) const;
 
     ChunkPosition position;
 };

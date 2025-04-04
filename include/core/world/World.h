@@ -13,11 +13,11 @@ public:
 
     void init();
 
-    void chunkHelperThread();
+    void managerThread();
     void chunkWorkerThread();
     void meshWorkerThread();
 
-    void generateMesh(const ChunkPosition& pos);
+    void generateMesh(const std::shared_ptr<Chunk>& chunk);
 
     void setBlockAtWorldPosition(int wx, int wy, int wz, int blockID);
 
@@ -31,25 +31,27 @@ public:
     void uploadChunkMeshes(int maxPerFrame = 2);
     void uploadMeshToGPU(Chunk& chunk);
 
+    void uploadChunksToMap();
+
     void queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_DISTANCE);
     void unloadDistantChunks();
 
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
 
 private:
-    std::thread chunkThread;
-    std::thread meshThread;
-    std::thread HchunkThread;
+    std::vector<std::thread> chunkGenThreads;
+    std::vector<std::thread> meshGenThreads;
+    std::thread chunkManagerThread;
 
     std::atomic<bool> running = false;
-    mutable std::mutex chunkMutex;
     
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
+    ThreadSafeQueue<std::shared_ptr<Chunk>> meshGenerationQueue;
+    ThreadSafeQueue<std::shared_ptr<Chunk>> chunkUploadQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
-    ThreadSafeQueue<ChunkPosition> meshGenerationQueue;
-    ThreadSafeQueue<std::shared_ptr<Chunk>> chunkRemovalQueue;
+    ThreadSafeQueue<ChunkPosition> chunkRemovalQueue;
 
-    std::unordered_set<ChunkPosition> queuedChunks;
+    std::unordered_set<ChunkPosition> chunkPositionSet;
 
     int minY = -2;
     int maxY = 10;

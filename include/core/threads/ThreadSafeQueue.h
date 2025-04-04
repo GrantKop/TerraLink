@@ -38,6 +38,14 @@ public:
         return true;
     }
 
+    void drain(std::vector<T>& out) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        while (!queue_.empty()) {
+            out.push_back(std::move(queue_.front()));
+            queue_.pop();
+        }
+    }
+
     void stop() {
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -58,6 +66,11 @@ public:
 
     bool isStopped() const {
         return stopRequested_;
+    }
+
+    size_t size() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return queue_.size();
     }
 
 private:
