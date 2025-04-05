@@ -61,8 +61,8 @@ void World::managerThread() {
             for (const auto& chunk : drainedMesh) chunkPositionSet.erase(chunk->getPosition());
 
             updateChunksAroundPlayer(current, Player::instance().VIEW_DISTANCE);
-            queueChunksForRemoval(current, Player::instance().VIEW_DISTANCE + 1);
         }
+        queueChunksForRemoval(current, Player::instance().VIEW_DISTANCE + 1);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
@@ -86,6 +86,7 @@ void World::chunkWorkerThread() {
 
 // Thread function for meshing chunks that have been marked for generation
 void World::meshWorkerThread() {
+    thread_local const auto& blockList = BlockRegister::instance().blocks;
     while (running) {
         std::shared_ptr<Chunk> chunk;
 
@@ -200,11 +201,12 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
 
 // Samples a block ID at the specified world position
 int World::sampleBlockID(int wx, int wy, int wz) const {
-    
+    thread_local const auto& blockList = BlockRegister::instance().blocks;
+
     float height = Noise::getHeight(wx, wz, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
-    return wy < height ? BlockRegister::instance().getBlockByIndex(1).ID
-                      : BlockRegister::instance().getBlockByIndex(0).ID;
+    return wy < height ? blockList[1].ID : blockList[0].ID;
 }
+
 
 // Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
 // WIP
@@ -316,7 +318,7 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
         const ChunkPosition& pos = *it;
         if (pos.x > maxX || pos.x < minX || pos.z > maxZ || pos.z < minZ) {
             chunkRemovalQueue.push(pos);
-            it = chunkPositionSet.erase(it); // safely erase and update iterator
+            it = chunkPositionSet.erase(it);
         } else {
             ++it;
         }

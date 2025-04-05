@@ -53,7 +53,6 @@ private:
 
     std::unordered_set<ChunkPosition> chunkPositionSet;
 
-
     int minY = -2;
     int maxY = 10;
 

@@ -81,8 +81,9 @@ void Chunk::setPosition(const ChunkPosition& pos) {
 // Generates the mesh for the chunk, considering neighboring chunks
 void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
                          std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const {
-    using namespace std::chrono;
-    auto startTime = high_resolution_clock::now();
+
+    thread_local std::vector<bool> isTransparentCache;
+    thread_local const std::vector<Block>* blockListPtr = &BlockRegister::instance().blocks;
 
     vertices.clear();
     indices.clear();
@@ -92,15 +93,15 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
             blockCount++;
         }
     }
-    vertices.reserve(blockCount * 24);  // worst case: 6 faces × 4 verts
-    indices.reserve(blockCount * 36);   // worst case: 6 faces × 6 indices
+    vertices.reserve(blockCount * 24);
+    indices.reserve(blockCount * 36);
 
-    const auto& blocks = BlockRegister::instance().blocks;
-    std::vector<bool> isTransparentCache(blocks.size(), false);
-    for (size_t i = 0; i < blocks.size(); ++i) {
-        isTransparentCache[i] = blocks[i].isTransparent;
+    if (isTransparentCache.size() != blockListPtr->size()) {
+        isTransparentCache.resize(blockListPtr->size());
+        for (size_t i = 0; i < blockListPtr->size(); ++i)
+            isTransparentCache[i] = (*blockListPtr)[i].isTransparent;
     }
-
+    
     GLuint indexOffset = 0;
     glm::vec3 chunkOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
 
@@ -108,9 +109,9 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
         for (int y = 0; y < CHUNK_SIZE; ++y) {
             for (int z = 0; z < CHUNK_SIZE; ++z) {
                 int blockID = getBlockID(x, y, z);
-                if (blockID < 0 || blockID >= (int)blocks.size()) continue;
+                if (blockID < 0 || blockID >= (int)blockListPtr->size()) continue;
 
-                const Block& block = blocks[blockID];
+                const Block& block = (*blockListPtr)[blockID];
                 if (block.isAir) continue;
 
                 for (int face = 0; face < 6; ++face) {
@@ -147,9 +148,4 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
             }
         }
     }
-
-    auto endTime = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(endTime - startTime).count();
-    std::cout << "Mesh generation (culled) took " << duration << " ms with "
-              << vertices.size() << " vertices and " << indices.size() << " indices\n";
 }

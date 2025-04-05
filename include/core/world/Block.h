@@ -29,6 +29,7 @@ enum Face {
     TOP = 5
 };
 
+// Struct for holding block data in a chunk
 struct BlockData {
     uint16_t id;
     uint8_t state;
@@ -56,7 +57,6 @@ struct Block {
     bool isAir;
 
     std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
 
     std::vector<std::string> textures;
     std::string model;

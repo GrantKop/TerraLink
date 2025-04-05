@@ -59,7 +59,7 @@ public:
     void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
 
     const Block& getBlock(int x, int y, int z) const;
-    inline int Chunk::getBlockID(int x, int y, int z) const {
+    inline int getBlockID(int x, int y, int z) const {
         int idx = index(x, y, z);
         if (idx == -1) {
             std::cerr << "Chunk::getBlockID: index out of chunk bounds at " << x << ", " << y << ", " << z << std::endl;
@@ -79,13 +79,13 @@ public:
 private:
     std::array<uint16_t, CHUNK_VOLUME> blocks = {0};
 
-    inline int Chunk::index(int x, int y, int z) const {
+    inline int index(int x, int y, int z) const {
         if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE)
             return -1;
         return x + (y * CHUNK_SIZE * CHUNK_SIZE) + (z * CHUNK_SIZE);
     }
     
-    inline void Chunk::getFaceVertices(int face, const Block& block, std::vector<Vertex>& vertices) const {
+    inline void getFaceVertices(int face, const Block& block, std::vector<Vertex>& vertices) const {
         int base = face * 4;
         for (int i = 0; i < 4; ++i)
             vertices.push_back(block.vertices[base + i]);
