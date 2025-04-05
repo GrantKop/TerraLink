@@ -41,56 +41,11 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
                     setBlockID(x, y, z, BlockRegister::instance().blocks[3].ID);
                 } else if (worldY == maxY) {
                     setBlockID(x, y, z, BlockRegister::instance().blocks[2].ID);
-                } else {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[0].ID);
                 }
             }
         }
     }
     mesh.isEmpty = false;
-}
-
-// Converts 3D coordinates to a 1D index for the blocks array
-int Chunk::index(int x, int y, int z) const {
-    if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
-        return -1;
-    }
-    return x + (y * CHUNK_SIZE * CHUNK_SIZE) + (z * CHUNK_SIZE);
-}
-
-// Retrieves the vertices for a specific face of the block
-void Chunk::getFaceVertices(int face, const Block& block, std::vector<Vertex>& faceVertices) const {
-    if (face == BACK) {
-        faceVertices.push_back(block.vertices[0]);
-        faceVertices.push_back(block.vertices[1]);
-        faceVertices.push_back(block.vertices[2]);
-        faceVertices.push_back(block.vertices[3]);
-    } else if (face == BOTTOM) {
-        faceVertices.push_back(block.vertices[4]);
-        faceVertices.push_back(block.vertices[5]);
-        faceVertices.push_back(block.vertices[6]);
-        faceVertices.push_back(block.vertices[7]);
-    } else if (face == FRONT) {
-        faceVertices.push_back(block.vertices[8]);
-        faceVertices.push_back(block.vertices[9]);
-        faceVertices.push_back(block.vertices[10]);
-        faceVertices.push_back(block.vertices[11]);
-    } else if (face == LEFT) {
-        faceVertices.push_back(block.vertices[12]);
-        faceVertices.push_back(block.vertices[13]);
-        faceVertices.push_back(block.vertices[14]);
-        faceVertices.push_back(block.vertices[15]);
-    } else if (face == RIGHT) {
-        faceVertices.push_back(block.vertices[16]);
-        faceVertices.push_back(block.vertices[17]);
-        faceVertices.push_back(block.vertices[18]);
-        faceVertices.push_back(block.vertices[19]);
-    } else if (face == TOP) {
-        faceVertices.push_back(block.vertices[20]);
-        faceVertices.push_back(block.vertices[21]);
-        faceVertices.push_back(block.vertices[22]);
-        faceVertices.push_back(block.vertices[23]);
-    }
 }
 
 // Retrieves a block from the blocks array using 3D coordinates
@@ -101,16 +56,6 @@ const Block& Chunk::getBlock(int x, int y, int z) const {
         return BlockRegister::instance().blocks[0]; // Return air block if out of bounds
     }
     return BlockRegister::instance().blocks[blocks[idx]];
-}
-
-// Retrieves the block ID from the blocks array using 3D coordinates
-int Chunk::getBlockID(int x, int y, int z) const {
-    int idx = index(x, y, z);
-    if (idx == -1) {
-        std::cerr << "Chunk::getBlockID: index out of chunk bounds at " << x << ", " << y << ", " << z << std::endl;
-        return -1;
-    }
-    return blocks[idx];
 }
 
 // Sets the block ID in the blocks array using 3D coordinates
@@ -141,23 +86,31 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
 
     vertices.clear();
     indices.clear();
-    vertices.reserve(16384);
-    indices.reserve(24576);
+    int blockCount = 0;
+    for (int i = 0; i < CHUNK_VOLUME; ++i) {
+        if (blocks[i] != 0) {
+            blockCount++;
+        }
+    }
+    vertices.reserve(blockCount * 24);  // worst case: 6 faces × 4 verts
+    indices.reserve(blockCount * 36);   // worst case: 6 faces × 6 indices
 
-    std::vector<bool> isTransparentCache(256, false);
-    for (int i = 0; i < BlockRegister::instance().blocks.size(); ++i) {
-        isTransparentCache[i] = BlockRegister::instance().blocks[i].isTransparent;
+    const auto& blocks = BlockRegister::instance().blocks;
+    std::vector<bool> isTransparentCache(blocks.size(), false);
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        isTransparentCache[i] = blocks[i].isTransparent;
     }
 
-    std::vector<Vertex> faceVertices;
-    faceVertices.reserve(4);
-
     GLuint indexOffset = 0;
+    glm::vec3 chunkOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int y = 0; y < CHUNK_SIZE; ++y) {
             for (int z = 0; z < CHUNK_SIZE; ++z) {
-                const Block& block = getBlock(x, y, z);
+                int blockID = getBlockID(x, y, z);
+                if (blockID < 0 || blockID >= (int)blocks.size()) continue;
+
+                const Block& block = blocks[blockID];
                 if (block.isAir) continue;
 
                 for (int face = 0; face < 6; ++face) {
@@ -166,24 +119,23 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                     int ny = y + offset.y;
                     int nz = z + offset.z;
 
-                    int neighborBlockID = -1;
-
+                    int neighborID = -1;
                     if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_SIZE || nz < 0 || nz >= CHUNK_SIZE) {
-                        neighborBlockID = getBlockIDFromNeighbor(offset, x, y, z);
+                        neighborID = getBlockIDFromNeighbor(offset, x, y, z);
                     } else {
-                        neighborBlockID = getBlockID(nx, ny, nz);
+                        neighborID = getBlockID(nx, ny, nz);
                     }
 
-                    if (neighborBlockID < 0 || !isTransparentCache[neighborBlockID]) continue;
+                    if (neighborID < 0 || neighborID >= (int)isTransparentCache.size()) continue;
+                    if (!isTransparentCache[neighborID]) continue;
 
-                    faceVertices.clear();
-                    getFaceVertices(face, block, faceVertices);
+                    std::vector<Vertex> faceVerts;
+                    getFaceVertices(face, block, faceVerts);
 
-                    for (const auto& faceVertex : faceVertices) {
-                        Vertex modifiedVertex = faceVertex;
-                        glm::vec3 worldOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
-                        modifiedVertex.position = worldOffset + glm::vec3(x, y, z) + faceVertex.position;
-                        vertices.push_back(modifiedVertex);
+                    for (auto& vtx : faceVerts) {
+                        Vertex v = vtx;
+                        v.position += chunkOffset + glm::vec3(x, y, z);
+                        vertices.push_back(v);
                     }
 
                     indices.insert(indices.end(), {
@@ -195,9 +147,9 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
             }
         }
     }
-    // print out the time taken for mesh generation
+
     auto endTime = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(endTime - startTime).count();
-    std::cout << "Mesh generation with " << vertices.size() << " vertices and " << indices.size() << " indices took "
-              << duration << " ms" << std::endl;
+    std::cout << "Mesh generation (culled) took " << duration << " ms with "
+              << vertices.size() << " vertices and " << indices.size() << " indices\n";
 }

@@ -34,10 +34,10 @@ void World::init() {
 
     int threads = std::max(1u, std::thread::hardware_concurrency());
     
-    for (int i = 0; i < threads / 2; ++i)
+    for (int i = 0; i < (threads / 2) - 1; ++i)
         chunkGenThreads.emplace_back(&World::chunkWorkerThread, this);
 
-    for (int i = 0; i < threads / 2; ++i)
+    for (int i = 0; i < (threads / 2) - 1; ++i)
         meshGenThreads.emplace_back(&World::meshWorkerThread, this);
 
     chunkManagerThread = std::thread(&World::managerThread, this);
@@ -103,41 +103,58 @@ void World::meshWorkerThread() {
 // Generates the mesh for a chunk based on the task provided
 void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     
-
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
 
     auto chunkMapSnapshot = chunks;
 
-    chunk->generateMesh(vertices, indices,
-    [this, chunkMapSnapshot, chunk](glm::ivec3 offset, int x, int y, int z) -> int {
-        glm::ivec3 localCoord = glm::ivec3(x, y, z) + offset;
-        ChunkPosition pos = {
-            (localCoord.x < 0) ? -1 : (localCoord.x >= CHUNK_SIZE) ? 1 : 0,
-            (localCoord.y < 0) ? -1 : (localCoord.y >= CHUNK_SIZE) ? 1 : 0,
-            (localCoord.z < 0) ? -1 : (localCoord.z >= CHUNK_SIZE) ? 1 : 0
-        };
+    std::array<std::shared_ptr<Chunk>, 27> neighborChunks;
 
-        ChunkPosition targetPos = chunk->getPosition();
-            targetPos.x += pos.x;
-            targetPos.y += pos.y;
-            targetPos.z += pos.z;
-
-            localCoord.x = (localCoord.x + CHUNK_SIZE) % CHUNK_SIZE;
-            localCoord.y = (localCoord.y + CHUNK_SIZE) % CHUNK_SIZE;
-            localCoord.z = (localCoord.z + CHUNK_SIZE) % CHUNK_SIZE;
-
-        auto it = chunkMapSnapshot.find(targetPos);
-        if (it != chunkMapSnapshot.end() && it->second) {
-            return it->second->getBlockID(localCoord.x, localCoord.y, localCoord.z);
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dz = -1; dz <= 1; ++dz) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                ChunkPosition neighborPos = {
+                    chunk->getPosition().x + dx,
+                    chunk->getPosition().y + dy,
+                    chunk->getPosition().z + dz
+                };
+                int idx = (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1);
+                auto it = chunkMapSnapshot.find(neighborPos);
+                neighborChunks[idx] = (it != chunkMapSnapshot.end()) ? it->second : nullptr;
+            }
         }
+    }
 
-        int worldX = localCoord.x + targetPos.x * CHUNK_SIZE;
-        int worldY = localCoord.y + targetPos.y * CHUNK_SIZE;
-        int worldZ = localCoord.z + targetPos.z * CHUNK_SIZE;
-
-        return sampleBlockID(worldX, worldY, worldZ);
-    });
+    chunk->generateMesh(vertices, indices,
+        [neighborChunks, chunk](glm::ivec3 offset, int x, int y, int z) -> int {
+            int nx = x + offset.x;
+            int ny = y + offset.y;
+            int nz = z + offset.z;
+        
+            ChunkPosition relChunkOffset = {
+                (nx < 0) ? -1 : (nx >= CHUNK_SIZE) ? 1 : 0,
+                (ny < 0) ? -1 : (ny >= CHUNK_SIZE) ? 1 : 0,
+                (nz < 0) ? -1 : (nz >= CHUNK_SIZE) ? 1 : 0
+            };
+        
+            int localX = (nx + CHUNK_SIZE) % CHUNK_SIZE;
+            int localY = (ny + CHUNK_SIZE) % CHUNK_SIZE;
+            int localZ = (nz + CHUNK_SIZE) % CHUNK_SIZE;
+        
+            int neighborIdx = (relChunkOffset.y + 1) * 9 + (relChunkOffset.z + 1) * 3 + (relChunkOffset.x + 1);
+            auto& neighbor = neighborChunks[neighborIdx];
+        
+            if (!neighbor) {
+                int worldX = chunk->getPosition().x * CHUNK_SIZE + nx;
+                int worldY = chunk->getPosition().y * CHUNK_SIZE + ny;
+                int worldZ = chunk->getPosition().z * CHUNK_SIZE + nz;
+        
+                return Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f) > worldY ? 1 : 0;
+            }
+        
+            return neighbor->getBlockID(localX, localY, localZ);
+        });
+         
 
     chunk->mesh.vertices = std::move(vertices);
     chunk->mesh.indices = std::move(indices);

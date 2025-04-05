@@ -29,6 +29,11 @@ enum Face {
     TOP = 5
 };
 
+struct BlockData {
+    uint16_t id;
+    uint8_t state;
+};
+
 // Offsets for each face in 3D space
 const glm::ivec3 FACE_OFFSETS[6] = {
     {0, 0, -1}, // BACK
