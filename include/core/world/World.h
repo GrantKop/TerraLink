@@ -26,7 +26,7 @@ public:
 
     void queueChunksForMeshing(const glm::vec3& playerPos);
     void updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE);
-    std::vector<glm::ivec2> generateSpiralOffsets(int radius);
+    std::vector<glm::ivec2> generateSortedOffsets(int radius);
 
     void uploadChunkMeshes(int maxPerFrame = 2);
     void uploadMeshToGPU(Chunk& chunk);
@@ -52,6 +52,7 @@ private:
     ThreadSafeQueue<ChunkPosition> chunkRemovalQueue;
 
     std::unordered_set<ChunkPosition> chunkPositionSet;
+
 
     int minY = -2;
     int maxY = 10;
