@@ -91,17 +91,19 @@ void World::meshWorkerThread() {
 
         if (!meshGenerationQueue.waitPop(chunk)) return;
         if (!chunk) continue;
+        if (chunk->mesh.isEmpty) continue;
         if (std::abs(chunk->getPosition().x - Player::instance().getChunkPosition().x) > Player::instance().VIEW_DISTANCE ||
             std::abs(chunk->getPosition().z - Player::instance().getChunkPosition().z) > Player::instance().VIEW_DISTANCE) {
             continue;
         }
-
         generateMesh(chunk);
     }
 }
 
 // Generates the mesh for a chunk based on the task provided
 void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
+    
+
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
 
@@ -218,7 +220,7 @@ void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VI
 
 std::vector<glm::ivec2> World::generateSortedOffsets(int radius) {
     std::vector<glm::ivec2> result;
-    
+
     for (int dz = -radius; dz <= radius; ++dz) {
         for (int dx = -radius; dx <= radius; ++dx) {
             result.emplace_back(dx, dz);

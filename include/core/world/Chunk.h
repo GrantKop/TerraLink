@@ -68,6 +68,9 @@ public:
     void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, 
                       std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
 
+    void greedyMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                      std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
+
 private:
     std::array<int, CHUNK_VOLUME> blocks = {0};
 
@@ -76,6 +79,7 @@ private:
     void getFaceVertices(int face, const Block& block, std::vector<Vertex>& vertices) const;
 
     ChunkPosition position;
+    
 };
 
 #endif

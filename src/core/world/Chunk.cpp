@@ -34,7 +34,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
 
                 float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
                 int maxY = static_cast<int>(height); 
-
+                
                 if (worldY < maxY - 3) {
                     setBlockID(x, y, z, BlockRegister::instance().blocks[1].ID);
                 } else if (worldY < maxY && worldY >= maxY - 3) {
@@ -47,6 +47,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
             }
         }
     }
+    mesh.isEmpty = false;
 }
 
 // Converts 3D coordinates to a 1D index for the blocks array
@@ -194,4 +195,9 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
             }
         }
     }
+    // print out the time taken for mesh generation
+    auto endTime = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(endTime - startTime).count();
+    std::cout << "Mesh generation with " << vertices.size() << " vertices and " << indices.size() << " indices took "
+              << duration << " ms" << std::endl;
 }
