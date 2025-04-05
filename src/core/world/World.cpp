@@ -200,12 +200,9 @@ void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
 // Updates the chunks around the player based on their position
 void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
     auto sorted = generateSortedOffsets(VIEW_DISTANCE);
-    int queuedThisFrame = 0;
-    int maxQueuePerFrame = 128;
 
     for (const auto& offset : sorted) {
         for (int y = minY; y <= maxY; ++y) {
-            //if (queuedThisFrame >= maxQueuePerFrame) return;
             ChunkPosition pos = {
                 playerChunk.x + offset.x,
                 y,
@@ -215,14 +212,13 @@ void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VI
             if (chunkPositionSet.find(pos) != chunkPositionSet.end()) continue;
             chunkPositionSet.insert(pos);
             chunkCreationQueue.push(pos);
-           //++queuedThisFrame;
         }
     }
 }
 
 std::vector<glm::ivec2> World::generateSortedOffsets(int radius) {
     std::vector<glm::ivec2> result;
-
+    
     for (int dz = -radius; dz <= radius; ++dz) {
         for (int dx = -radius; dx <= radius; ++dx) {
             result.emplace_back(dx, dz);
