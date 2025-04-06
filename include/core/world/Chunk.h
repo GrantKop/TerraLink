@@ -3,6 +3,7 @@
 
 #include <array>
 #include <stdexcept>
+#include <chrono>
 
 #include "core/registers/BlockRegister.h"
 #include "graphics/VertexArrayObject.h"
@@ -18,6 +19,7 @@ struct ChunkPosition {
     bool operator==(const ChunkPosition& other) const {
         return x == other.x && y == other.y && z == other.z;
     }
+
 };
 
 // Hash function for ChunkPosition to be used in unordered_map
@@ -54,29 +56,44 @@ public:
     ~Chunk();
 
     ChunkMesh mesh;
-    mutable std::mutex meshMutex;
 
     void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
 
     const Block& getBlock(int x, int y, int z) const;
-    int getBlockID(int x, int y, int z) const;
+    inline int getBlockID(int x, int y, int z) const {
+        int idx = index(x, y, z);
+        if (idx == -1) {
+            std::cerr << "Chunk::getBlockID: index out of chunk bounds at " << x << ", " << y << ", " << z << std::endl;
+            return -1;
+        }
+        return blocks[idx];
+    }
+    
     void setBlockID(int x, int y, int z, int blockID);
 
     ChunkPosition getPosition() const;
     void setPosition(const ChunkPosition& pos);
 
-    // Generates mesh for a single chunk, considering neighboring chunks when selecting faces
     void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, 
                       std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
 
 private:
-    std::array<int, CHUNK_VOLUME> blocks = {0};
+    std::array<uint16_t, CHUNK_VOLUME> blocks = {0};
 
-    int index(int x, int y, int z) const;
-
-    std::vector<Vertex> getFaceVertices(int face, const Block& block) const;
-
+    inline int index(int x, int y, int z) const {
+        if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE)
+            return -1;
+        return x + (y * CHUNK_SIZE * CHUNK_SIZE) + (z * CHUNK_SIZE);
+    }
+    
+    inline void getFaceVertices(int face, const Block& block, std::vector<Vertex>& vertices) const {
+        int base = face * 4;
+        for (int i = 0; i < 4; ++i)
+            vertices.push_back(block.vertices[base + i]);
+    }
+    
     ChunkPosition position;
+    
 };
 
 #endif

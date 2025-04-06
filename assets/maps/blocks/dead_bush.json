@@ -1,0 +1,9 @@
+{
+    "model": "bush",
+    "block_type": "leaves",
+    "solid": false,
+    "transparent": true,
+    "textures": {
+        "all": "dead_bush"
+    }
+}

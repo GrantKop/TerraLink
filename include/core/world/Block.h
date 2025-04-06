@@ -29,6 +29,12 @@ enum Face {
     TOP = 5
 };
 
+// Struct for holding block data in a chunk
+struct BlockData {
+    uint16_t id;
+    uint8_t state;
+};
+
 // Offsets for each face in 3D space
 const glm::ivec3 FACE_OFFSETS[6] = {
     {0, 0, -1}, // BACK
@@ -51,7 +57,6 @@ struct Block {
     bool isAir;
 
     std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
 
     std::vector<std::string> textures;
     std::string model;

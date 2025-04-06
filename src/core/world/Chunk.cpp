@@ -8,7 +8,6 @@ Chunk::~Chunk() {}
 
 // Generates terrain for the chunk using Perlin noise
 void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude) {
-    std::lock_guard<std::mutex> lock(meshMutex);
     int worldMinY = position.y * CHUNK_SIZE;
     int worldMaxY = (position.y + 1) * CHUNK_SIZE;
 
@@ -17,7 +16,7 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
         for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
             int worldX = position.x * CHUNK_SIZE + x;
             int worldZ = position.z * CHUNK_SIZE + z;
-            float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f,  0.1f, 16.0f);
+            float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f,  0.01f, 12.0f);
             if (height >= worldMinY) {
                 hasTerrain = true;
             }
@@ -33,73 +32,20 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
                 int worldY = position.y * CHUNK_SIZE + y;
                 int worldZ = position.z * CHUNK_SIZE + z; 
 
-                float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.1f, 16.0f);
+                float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 12.0f);
                 int maxY = static_cast<int>(height); 
-
+                
                 if (worldY < maxY - 3) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[7].ID);
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[1].ID);
                 } else if (worldY < maxY && worldY >= maxY - 3) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[12].ID);
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[3].ID);
                 } else if (worldY == maxY) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[12].ID);
-                } else {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[0].ID);
+                    setBlockID(x, y, z, BlockRegister::instance().blocks[2].ID);
                 }
             }
         }
     }
-    
     mesh.isEmpty = false;
-}
-
-// Converts 3D coordinates to a 1D index for the blocks array
-int Chunk::index(int x, int y, int z) const {
-    if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
-        return -1;
-    }
-    return x + (y * CHUNK_SIZE * CHUNK_SIZE) + (z * CHUNK_SIZE);
-}
-
-// Retrieves the vertices for a specific face of the block
-std::vector<Vertex> Chunk::getFaceVertices(int face, const Block& block) const {
-    std::vector<Vertex> faceVertices;
-    
-    if (face == BACK) {
-        faceVertices.push_back(block.vertices[0]);
-        faceVertices.push_back(block.vertices[1]);
-        faceVertices.push_back(block.vertices[2]);
-        faceVertices.push_back(block.vertices[3]);
-    } else if (face == BOTTOM) {
-        faceVertices.push_back(block.vertices[4]);
-        faceVertices.push_back(block.vertices[5]);
-        faceVertices.push_back(block.vertices[6]);
-        faceVertices.push_back(block.vertices[7]);
-    } else if (face == FRONT) {
-        faceVertices.push_back(block.vertices[8]);
-        faceVertices.push_back(block.vertices[9]);
-        faceVertices.push_back(block.vertices[10]);
-        faceVertices.push_back(block.vertices[11]);
-    } else if (face == LEFT) {
-        faceVertices.push_back(block.vertices[12]);
-        faceVertices.push_back(block.vertices[13]);
-        faceVertices.push_back(block.vertices[14]);
-        faceVertices.push_back(block.vertices[15]);
-    } else if (face == RIGHT) {
-        faceVertices.push_back(block.vertices[16]);
-        faceVertices.push_back(block.vertices[17]);
-        faceVertices.push_back(block.vertices[18]);
-        faceVertices.push_back(block.vertices[19]);
-    } else if (face == TOP) {
-        faceVertices.push_back(block.vertices[20]);
-        faceVertices.push_back(block.vertices[21]);
-        faceVertices.push_back(block.vertices[22]);
-        faceVertices.push_back(block.vertices[23]);
-    }
-    else {
-        std::cerr << "Invalid face index: " << face << std::endl;
-        return faceVertices; // Return empty vector if invalid face
-    }
-    return faceVertices;
 }
 
 // Retrieves a block from the blocks array using 3D coordinates
@@ -110,16 +56,6 @@ const Block& Chunk::getBlock(int x, int y, int z) const {
         return BlockRegister::instance().blocks[0]; // Return air block if out of bounds
     }
     return BlockRegister::instance().blocks[blocks[idx]];
-}
-
-// Retrieves the block ID from the blocks array using 3D coordinates
-int Chunk::getBlockID(int x, int y, int z) const {
-    int idx = index(x, y, z);
-    if (idx == -1) {
-        std::cerr << "Chunk::getBlockID: index out of chunk bounds at " << x << ", " << y << ", " << z << std::endl;
-        return -1;
-    }
-    return blocks[idx];
 }
 
 // Sets the block ID in the blocks array using 3D coordinates
@@ -145,16 +81,37 @@ void Chunk::setPosition(const ChunkPosition& pos) {
 // Generates the mesh for the chunk, considering neighboring chunks
 void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
                          std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const {
+
+    thread_local std::vector<bool> isTransparentCache;
+    thread_local const std::vector<Block>* blockListPtr = &BlockRegister::instance().blocks;
+
     vertices.clear();
     indices.clear();
+    int blockCount = 0;
+    for (int i = 0; i < CHUNK_VOLUME; ++i) {
+        if (blocks[i] != 0) {
+            blockCount++;
+        }
+    }
+    vertices.reserve(blockCount * 24);
+    indices.reserve(blockCount * 36);
 
+    if (isTransparentCache.size() != blockListPtr->size()) {
+        isTransparentCache.resize(blockListPtr->size());
+        for (size_t i = 0; i < blockListPtr->size(); ++i)
+            isTransparentCache[i] = (*blockListPtr)[i].isTransparent;
+    }
+    
     GLuint indexOffset = 0;
+    glm::vec3 chunkOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int y = 0; y < CHUNK_SIZE; ++y) {
             for (int z = 0; z < CHUNK_SIZE; ++z) {
-                const Block block = getBlock(x, y, z);
+                int blockID = getBlockID(x, y, z);
+                if (blockID < 0 || blockID >= (int)blockListPtr->size()) continue;
 
+                const Block& block = (*blockListPtr)[blockID];
                 if (block.isAir) continue;
 
                 for (int face = 0; face < 6; ++face) {
@@ -163,50 +120,29 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                     int ny = y + offset.y;
                     int nz = z + offset.z;
 
-                    int neighborBlockID;
-
-                    // if neighbor block is out of bounds, check the neighboring chunk
-                    // and add the face to the mesh if the neighbor is transparent
-                    if (nx < 0 || nx >= CHUNK_SIZE
-                     || ny < 0 || ny >= CHUNK_SIZE
-                     || nz < 0 || nz >= CHUNK_SIZE) {
-                        neighborBlockID = getBlockIDFromNeighbor(offset, x, y, z);
-                        if (neighborBlockID == 0) {
-                            const auto& faceVertices = getFaceVertices(face, block);
-                            for (const auto& faceVertex : faceVertices) {
-                                Vertex modifiedVertex = faceVertex;
-                                glm::vec3 worldOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
-                                modifiedVertex.position = worldOffset + glm::vec3(x, y, z) + faceVertex.position;
-                                
-                                vertices.push_back(modifiedVertex);
-                            }
-
-                            indices.insert(indices.end(), {
-                                indexOffset, indexOffset + 2, indexOffset + 1,
-                                indexOffset, indexOffset + 3, indexOffset + 2
-                            });
-                            indexOffset += 4;
-                            continue;
-                        }
+                    int neighborID = -1;
+                    if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_SIZE || nz < 0 || nz >= CHUNK_SIZE) {
+                        neighborID = getBlockIDFromNeighbor(offset, x, y, z);
                     } else {
-                        neighborBlockID = getBlockID(nx, ny, nz);
+                        neighborID = getBlockID(nx, ny, nz);
                     }
 
-                    if (!BlockRegister::instance().getBlockByIndex(neighborBlockID).isTransparent) continue;
+                    if (neighborID < 0 || neighborID >= (int)isTransparentCache.size()) continue;
+                    if (!isTransparentCache[neighborID]) continue;
 
-                    const auto& faceVertices = getFaceVertices(face, block);
-                    for (const auto& faceVertex : faceVertices) {
-                        Vertex modifiedVertex = faceVertex;
-                        glm::vec3 worldOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
-                        modifiedVertex.position = worldOffset + glm::vec3(x, y, z) + faceVertex.position;
+                    std::vector<Vertex> faceVerts;
+                    getFaceVertices(face, block, faceVerts);
 
-                        vertices.push_back(modifiedVertex);
+                    for (auto& vtx : faceVerts) {
+                        Vertex v = vtx;
+                        v.position += chunkOffset + glm::vec3(x, y, z);
+                        vertices.push_back(v);
                     }
 
                     indices.insert(indices.end(), {
                         indexOffset, indexOffset + 2, indexOffset + 1,
                         indexOffset, indexOffset + 3, indexOffset + 2
-                    });                    
+                    });
                     indexOffset += 4;
                 }
             }

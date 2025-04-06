@@ -9,10 +9,11 @@ World::~World() {
     meshGenerationQueue.stop();
     meshUploadQueue.stop();
     chunkRemovalQueue.stop();
+    chunkUploadQueue.stop();
 
-    if (chunkThread.joinable()) chunkThread.join();
-    if (meshThread.joinable()) meshThread.join();
-    if (HchunkThread.joinable()) HchunkThread.join();
+    for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
+    for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
+    if (chunkManagerThread.joinable()) chunkManagerThread.join();
     
     for (auto& [pos, chunk] : chunks) {
         if (chunk && chunk->mesh.isUploaded) {
@@ -21,7 +22,7 @@ World::~World() {
             chunk->mesh.vertices.clear();
             chunk->mesh.indices.clear();
         }
-    }    
+    }
 
     chunks.clear();
 }
@@ -29,119 +30,140 @@ World::~World() {
 // Initializes the world by starting the chunk generation and meshing threads
 void World::init() {
     if (running) return;
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     running = true;
-    chunkThread = std::thread(&World::chunkWorkerThread, this);
-    meshThread = std::thread(&World::meshWorkerThread, this);
-    HchunkThread = std::thread(&World::chunkHelperThread, this);
+
+    int threads = std::max(1u, std::thread::hardware_concurrency());
+    
+    for (int i = 0; i < (threads / 2) - 1; ++i)
+        chunkGenThreads.emplace_back(&World::chunkWorkerThread, this);
+
+    for (int i = 0; i < (threads / 2) - 1; ++i)
+        meshGenThreads.emplace_back(&World::meshWorkerThread, this);
+
+    chunkManagerThread = std::thread(&World::managerThread, this);
 }
 
 // Thread function for loading chunks around the player
-void World::chunkHelperThread() {
-    glm::ivec3 lastChunkPos = {INT_MAX, INT_MAX, INT_MAX};
+void World::managerThread() {
+    glm::ivec3 lastChunkPos = {INT_MAX, 0, INT_MAX};
     while (running) {
-        if (Player::instance().getChunkPosition() != lastChunkPos) {
-            lastChunkPos = Player::instance().getChunkPosition();
-            updateChunksAroundPlayer(lastChunkPos, Player::instance().VIEW_DISTANCE);
-            queueChunksForRemoval(lastChunkPos, Player::instance().VIEW_DISTANCE + 1);
+        auto current = Player::instance().getChunkPosition();
+        if (current.x != lastChunkPos.x || current.z != lastChunkPos.z) {
+            lastChunkPos = current;
+
+            std::vector<ChunkPosition> drainedCreation;
+            std::vector<std::shared_ptr<Chunk>> drainedMesh;
+
+            chunkCreationQueue.drain(drainedCreation);
+            meshGenerationQueue.drain(drainedMesh);
+
+            for (const auto& pos : drainedCreation) chunkPositionSet.erase(pos);
+            for (const auto& chunk : drainedMesh) chunkPositionSet.erase(chunk->getPosition());
+
+            updateChunksAroundPlayer(current, Player::instance().VIEW_DISTANCE);
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        queueChunksForRemoval(current, Player::instance().VIEW_DISTANCE + 1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
 // Thread function for generating chunks around the player
-void World::chunkWorkerThread() { 
-    constexpr int MIN_GENERATE_Y = -32;
+void World::chunkWorkerThread() {
+    constexpr int MIN_GENERATE_Y = 48;
     while (running) {
         ChunkPosition pos;
         if (!chunkCreationQueue.waitPop(pos)) return;
 
-        {
-            std::lock_guard<std::mutex> lock(chunkMutex);
-            if (chunks.find(pos) != chunks.end()) continue;
-        }
-
-        int chunkTopY = pos.y * CHUNK_SIZE + CHUNK_SIZE;
-        if (chunkTopY < MIN_GENERATE_Y) continue;
+        if ((pos.y * CHUNK_SIZE + CHUNK_SIZE) < MIN_GENERATE_Y) continue;
 
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
         chunk->setPosition(pos);
         chunk->generateTerrain(0, 1, 0.5f, 2.0f, 0.008f, 3.5f);
 
-        {
-            std::lock_guard<std::mutex> lock(chunkMutex);
-            chunks[pos] = std::move(chunk);
-            queuedChunks.erase(pos);
-            meshGenerationQueue.push(pos);
-        }
-
+        meshGenerationQueue.push(chunk);
     }
 }
 
 // Thread function for meshing chunks that have been marked for generation
 void World::meshWorkerThread() {
+    thread_local const auto& blockList = BlockRegister::instance().blocks;
     while (running) {
-        ChunkPosition pos;
-        if (!meshGenerationQueue.waitPop(pos)) return;
-        generateMesh(pos);
+        std::shared_ptr<Chunk> chunk;
+
+        if (!meshGenerationQueue.waitPop(chunk)) return;
+        if (!chunk) continue;
+        if (chunk->mesh.isEmpty) continue;
+        if (std::abs(chunk->getPosition().x - Player::instance().getChunkPosition().x) > Player::instance().VIEW_DISTANCE ||
+            std::abs(chunk->getPosition().z - Player::instance().getChunkPosition().z) > Player::instance().VIEW_DISTANCE) {
+            continue;
+        }
+        generateMesh(chunk);
     }
 }
 
 // Generates the mesh for a chunk based on the task provided
-void World::generateMesh(const ChunkPosition& pos) {
-    std::shared_ptr<Chunk> chunk;
-    {
-        std::lock_guard<std::mutex> lock(chunkMutex);
-        auto it = chunks.find(pos);
-        if (it == chunks.end()) return;
-        chunk = it->second;
-        if (!chunk || chunk->mesh.isEmpty) return;
-    }
+void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
+    
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
-    {
-        std::lock_guard<std::mutex> lock(chunk->meshMutex);
-        chunk->generateMesh(vertices, indices,
-        [xOffset = pos, this](glm::ivec3 offset, int x, int y, int z) -> int {
-            glm::ivec3 localCoord = glm::ivec3(x, y, z) + offset;
-            ChunkPosition targetChunkPos = xOffset;
 
-            if (localCoord.x < 0) { localCoord.x += CHUNK_SIZE; targetChunkPos.x -= 1; }
-            else if (localCoord.x >= CHUNK_SIZE) { localCoord.x -= CHUNK_SIZE; targetChunkPos.x += 1; }
+    // auto chunkMapSnapshot = chunks;
 
-            if (localCoord.y < 0) { localCoord.y += CHUNK_SIZE; targetChunkPos.y -= 1; }
-            else if (localCoord.y >= CHUNK_SIZE) { localCoord.y -= CHUNK_SIZE; targetChunkPos.y += 1; }
+    // std::array<std::shared_ptr<Chunk>, 27> neighborChunks;
 
-            if (localCoord.z < 0) { localCoord.z += CHUNK_SIZE; targetChunkPos.z -= 1; }
-            else if (localCoord.z >= CHUNK_SIZE) { localCoord.z -= CHUNK_SIZE; targetChunkPos.z += 1; }
+    // for (int dy = -1; dy <= 1; ++dy) {
+    //     for (int dz = -1; dz <= 1; ++dz) {
+    //         for (int dx = -1; dx <= 1; ++dx) {
+    //             ChunkPosition neighborPos = {
+    //                 chunk->getPosition().x + dx,
+    //                 chunk->getPosition().y + dy,
+    //                 chunk->getPosition().z + dz
+    //             };
+    //             int idx = (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1);
+    //             auto it = chunkMapSnapshot.find(neighborPos);
+    //             neighborChunks[idx] = (it != chunkMapSnapshot.end()) ? it->second : nullptr;
+    //         }
+    //     }
+    // }
 
-            {
-                std::lock_guard<std::mutex> chunkLock(chunkMutex);
-                auto it = chunks.find(targetChunkPos);
-                if (it != chunks.end() && it->second) {
-                    return it->second->getBlockID(localCoord.x, localCoord.y, localCoord.z);
-                }
-            }
-
-            int worldX = localCoord.x + targetChunkPos.x * CHUNK_SIZE;
-            int worldY = localCoord.y + targetChunkPos.y * CHUNK_SIZE;
-            int worldZ = localCoord.z + targetChunkPos.z * CHUNK_SIZE;
-
-            return sampleBlockID(worldX, worldY, worldZ);
+    chunk->generateMesh(vertices, indices,
+        [this, chunk](glm::ivec3 offset, int x, int y, int z) -> int {
+            int nx = x + offset.x;
+            int ny = y + offset.y;
+            int nz = z + offset.z;
+        
+            ChunkPosition relChunkOffset = {
+                (nx < 0) ? -1 : (nx >= CHUNK_SIZE) ? 1 : 0,
+                (ny < 0) ? -1 : (ny >= CHUNK_SIZE) ? 1 : 0,
+                (nz < 0) ? -1 : (nz >= CHUNK_SIZE) ? 1 : 0
+            };
+        
+            // int localX = (nx + CHUNK_SIZE) % CHUNK_SIZE;
+            // int localY = (ny + CHUNK_SIZE) % CHUNK_SIZE;
+            // int localZ = (nz + CHUNK_SIZE) % CHUNK_SIZE;
+        
+            // int neighborIdx = (relChunkOffset.y + 1) * 9 + (relChunkOffset.z + 1) * 3 + (relChunkOffset.x + 1);
+            // auto& neighbor = neighborChunks[neighborIdx];
+        
+            // if (!neighbor) {
+                int worldX = chunk->getPosition().x * CHUNK_SIZE + nx;
+                int worldY = chunk->getPosition().y * CHUNK_SIZE + ny;
+                int worldZ = chunk->getPosition().z * CHUNK_SIZE + nz;
+        
+                return Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 12.0f) > worldY ? 1 : 0;
+            // }
+        
+            // return neighbor->getBlockID(localX, localY, localZ);
         });
-    }
-    {
-        std::lock_guard<std::mutex> lock(chunkMutex);
-        chunk->mesh.vertices = std::move(vertices);
-        chunk->mesh.indices = std::move(indices);
-        chunk->mesh.needsUpdate = false;
-        chunk->mesh.isUploaded = false;
-        chunk->mesh.isEmpty = chunk->mesh.vertices.empty() || chunk->mesh.indices.empty();
+         
 
-        if (chunk->mesh.isEmpty) return;
+    chunk->mesh.vertices = std::move(vertices);
+    chunk->mesh.indices = std::move(indices);
+    chunk->mesh.needsUpdate = false;
+    chunk->mesh.isUploaded = false;
+    chunk->mesh.isEmpty = chunk->mesh.vertices.empty() || chunk->mesh.indices.empty();
 
-        meshUploadQueue.push(chunk);
-    }
+    if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
 }
 
 // Sets a block at the specified world position
@@ -177,121 +199,71 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
     if (localZ == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 0, 0, 1 });
 }
 
-// Samples a block ID at the specified world position
-int World::sampleBlockID(int wx, int wy, int wz) const {
-    
-    float height = Noise::getHeight(wx, wz, 0, 1, 0.5f, 2.0f, 0.1f, 16.0f);
-    return wy < height ? BlockRegister::instance().getBlockByIndex(1).ID
-                      : BlockRegister::instance().getBlockByIndex(0).ID;
-}
-
 // Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
+// WIP
 void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
     ChunkPosition neighborPos = {
         pos.x + offset.x,
         pos.y + offset.y,
         pos.z + offset.z
     };
-
-    std::lock_guard<std::mutex> lock(chunkMutex);
-    auto it = chunks.find(neighborPos);
-    if (it != chunks.end()) {
-        it->second->mesh.needsUpdate = true;
-    }
 }
 
 // Updates the chunks around the player based on their position
 void World::updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE) {
-    auto spiral = generateSpiralOffsets(VIEW_DISTANCE);
-    for (const auto& offset : spiral) {
+    auto sorted = generateSortedOffsets(VIEW_DISTANCE);
+
+    for (const auto& offset : sorted) {
         for (int y = minY; y <= maxY; ++y) {
             ChunkPosition pos = {
                 playerChunk.x + offset.x,
                 y,
                 playerChunk.z + offset.y
             };
-            {
-                std::lock_guard<std::mutex> lock(chunkMutex);
-                if (chunks.find(pos) != chunks.end() || queuedChunks.count(pos)) continue;
-                queuedChunks.insert(pos);
-                chunkCreationQueue.push(pos);
-            }
+
+            if (chunkPositionSet.find(pos) != chunkPositionSet.end()) continue;
+            chunkPositionSet.insert(pos);
+            chunkCreationQueue.push(pos);
         }
     }
 }
 
-// Generates a spiral pattern of offsets for chunk generation
-std::vector<glm::ivec2> World::generateSpiralOffsets(int radius) {
+std::vector<glm::ivec2> World::generateSortedOffsets(int radius) {
     std::vector<glm::ivec2> result;
 
-    int x = 0, z = 0;
-    int dx = 0, dz = -1;
-
-    int sideLength = radius * 2;
-    int maxSteps = sideLength * sideLength;
-
-    for (int i = 0; i < maxSteps; ++i) {
-        if (std::abs(x) <= radius && std::abs(z) <= radius) {
-            result.push_back({x, z});
+    for (int dz = -radius; dz <= radius; ++dz) {
+        for (int dx = -radius; dx <= radius; ++dx) {
+            result.emplace_back(dx, dz);
         }
-
-        if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
-            int temp = dx;
-            dx = -dz;
-            dz = temp;
-        }
-
-        x += dx;
-        z += dz;
     }
+
+    std::sort(result.begin(), result.end(), [](const glm::ivec2& a, const glm::ivec2& b) {
+        return glm::length(glm::vec2(a)) < glm::length(glm::vec2(b));
+    });
 
     return result;
 }
 
 // Uploads the chunk meshes to the GPU
 void World::uploadChunkMeshes(int maxPerFrame) {
-    int uploadedChunks = 0;
+    for (int i = 0; i < maxPerFrame; ++i) {
+        std::shared_ptr<Chunk> chunk;
+        if (!meshUploadQueue.tryPop(chunk) || !chunk || chunk->mesh.isUploaded) continue;
 
-    while (uploadedChunks < maxPerFrame) {
-        std::shared_ptr<Chunk> chunkPtr = nullptr;
-        if (!meshUploadQueue.tryPop(chunkPtr)) break;
-        if (!chunkPtr) continue;
-
-        {
-            std::unique_lock<std::mutex> lock(chunkPtr->meshMutex, std::try_to_lock);
-            if (!lock.owns_lock()) continue;
-            if (chunkPtr->mesh.vertices.empty() || chunkPtr->mesh.indices.empty()) {
-                chunkPtr->mesh.needsUpdate = false;
-                continue;
-            }
-
-            if (chunkPtr->mesh.isUploaded) continue;
-
-            try {
-                if (!lock.owns_lock()) {
-                    meshUploadQueue.push(chunkPtr);
-                    continue;
-                }
-                uploadMeshToGPU(*chunkPtr);
-                chunkPtr->mesh.needsUpdate = false;
-                chunkPtr->mesh.isUploaded = true;
-            } catch (const std::exception& e) {
-                std::cerr << "Caught exception during mesh upload: " << e.what() << std::endl;
-                continue;
-            } catch (...) {
-                std::cerr << "Caught unknown exception during mesh upload." << std::endl;
-                continue;
-            }
+        try {
+            uploadMeshToGPU(*chunk);
+            chunk->mesh.needsUpdate = false;
+            chunk->mesh.isUploaded = true;
+            chunkUploadQueue.push(chunk);
+        } catch (...) {
+            std::cerr << "Mesh upload error\n";
         }
-        uploadedChunks++;
     }
 }
 
 // Uploads the mesh data to the GPU
 void World::uploadMeshToGPU(Chunk& chunk) {
-    if (chunk.mesh.isUploaded) return;
-    assert(!chunk.mesh.vertices.empty());
-    assert(!chunk.mesh.indices.empty());
+    if (chunk.mesh.isUploaded || chunk.mesh.isEmpty) return;
 
     if (!chunk.mesh.vaoInitialized) {
         chunk.mesh.VAO.init();
@@ -306,58 +278,54 @@ void World::uploadMeshToGPU(Chunk& chunk) {
     chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
 }
 
+// Uploads the chunk meshes to the map
+void World::uploadChunksToMap() {
+    int uploadedChunks = 0;
+
+    while (uploadedChunks < 2) {
+        std::shared_ptr<Chunk> chunk;
+        if (chunkUploadQueue.tryPop(chunk)) {
+            if (!chunk) continue;
+
+            auto it = chunks.find(chunk->getPosition());
+            if (it != chunks.end()) continue;
+            chunks[chunk->getPosition()] = chunk;
+            uploadedChunks++;
+        } else {
+            return;
+        }
+    }
+}
+
 // Unloads distant chunks based on the player's position and view distance
 void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_DISTANCE) {
-    std::unordered_set<ChunkPosition> shouldExist;
 
-    for (int x = -VIEW_DISTANCE; x <= VIEW_DISTANCE; ++x) {
-        for (int z = -VIEW_DISTANCE; z <= VIEW_DISTANCE; ++z) {
-            for (int y = minY; y <= maxY; ++y) {
-                shouldExist.insert({centerChunk.x + x, y, centerChunk.z + z});
-            }            
+    int maxX = centerChunk.x + VIEW_DISTANCE;
+    int maxZ = centerChunk.z + VIEW_DISTANCE;
+    int minX = centerChunk.x - VIEW_DISTANCE;
+    int minZ = centerChunk.z - VIEW_DISTANCE;
+
+    for (auto it = chunkPositionSet.begin(); it != chunkPositionSet.end(); ) {
+        const ChunkPosition& pos = *it;
+        if (pos.x > maxX || pos.x < minX || pos.z > maxZ || pos.z < minZ) {
+            chunkRemovalQueue.push(pos);
+            it = chunkPositionSet.erase(it);
+        } else {
+            ++it;
         }
-    }
-
-    std::vector<ChunkPosition> toRemove;
-    {
-        std::lock_guard<std::mutex> lock(chunkMutex);
-        for (const auto& [pos, chunk] : chunks) {
-            if (shouldExist.count(pos) == 0) {
-                toRemove.push_back(pos);
-            }
-        }
-    }
-
-    for (const auto& pos : toRemove) {
-        std::lock_guard<std::mutex> lock(chunkMutex);
-        auto it = chunks.find(pos);
-        if (it != chunks.end()) {
-        
-            std::shared_ptr<Chunk> chunkPtr = it->second;
-            chunkRemovalQueue.push(chunkPtr);
-            chunks.erase(pos);
-        } 
     }
 }
 
 // Unloads distant chunks that are no longer needed
 void World::unloadDistantChunks() {
-    std::shared_ptr<Chunk> chunkPtr = nullptr;
-    if (!chunkRemovalQueue.tryPop(chunkPtr) || !chunkPtr) return;
-
-    ChunkPosition pos = chunkPtr->getPosition();
-
-    std::unique_lock<std::mutex> lock(chunkMutex, std::try_to_lock);
-    if (!lock.owns_lock()) {
-        chunkRemovalQueue.push(chunkPtr);
-        return;
-    }
+    ChunkPosition pos;
+    if (!chunkRemovalQueue.tryPop(pos)) return;
 
     auto it = chunks.find(pos);
-    if (it == chunks.end() || it->second != chunkPtr) {
-        return;
-    }
+    if (it == chunks.end()) return;
 
+    std::shared_ptr<Chunk> chunkPtr = it->second;
+    if (!chunkPtr) return;
     if (chunkPtr->mesh.isUploaded && chunkPtr->mesh.vaoInitialized) {
         try {
             chunkPtr->mesh.VAO.deleteBuffers();

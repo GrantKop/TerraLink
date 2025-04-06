@@ -5,7 +5,7 @@
     "transparent": true,
     "textures": {
         "top": "cactus_top",
-        "bottom": "cactus_top",
+        "bottom": "cactus_bottom",
         "front": "cactus_side",
         "back": "cactus_side",
         "left": "cactus_side",
