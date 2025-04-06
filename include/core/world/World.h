@@ -21,7 +21,6 @@ public:
 
     void setBlockAtWorldPosition(int wx, int wy, int wz, int blockID);
 
-    int sampleBlockID(int x, int y, int z) const;
     void markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset);
 
     void queueChunksForMeshing(const glm::vec3& playerPos);

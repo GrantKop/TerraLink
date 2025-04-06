@@ -22,7 +22,7 @@ World::~World() {
             chunk->mesh.vertices.clear();
             chunk->mesh.indices.clear();
         }
-    }    
+    }
 
     chunks.clear();
 }
@@ -107,27 +107,27 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
 
-    auto chunkMapSnapshot = chunks;
+    // auto chunkMapSnapshot = chunks;
 
-    std::array<std::shared_ptr<Chunk>, 27> neighborChunks;
+    // std::array<std::shared_ptr<Chunk>, 27> neighborChunks;
 
-    for (int dy = -1; dy <= 1; ++dy) {
-        for (int dz = -1; dz <= 1; ++dz) {
-            for (int dx = -1; dx <= 1; ++dx) {
-                ChunkPosition neighborPos = {
-                    chunk->getPosition().x + dx,
-                    chunk->getPosition().y + dy,
-                    chunk->getPosition().z + dz
-                };
-                int idx = (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1);
-                auto it = chunkMapSnapshot.find(neighborPos);
-                neighborChunks[idx] = (it != chunkMapSnapshot.end()) ? it->second : nullptr;
-            }
-        }
-    }
+    // for (int dy = -1; dy <= 1; ++dy) {
+    //     for (int dz = -1; dz <= 1; ++dz) {
+    //         for (int dx = -1; dx <= 1; ++dx) {
+    //             ChunkPosition neighborPos = {
+    //                 chunk->getPosition().x + dx,
+    //                 chunk->getPosition().y + dy,
+    //                 chunk->getPosition().z + dz
+    //             };
+    //             int idx = (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1);
+    //             auto it = chunkMapSnapshot.find(neighborPos);
+    //             neighborChunks[idx] = (it != chunkMapSnapshot.end()) ? it->second : nullptr;
+    //         }
+    //     }
+    // }
 
     chunk->generateMesh(vertices, indices,
-        [neighborChunks, chunk](glm::ivec3 offset, int x, int y, int z) -> int {
+        [this, chunk](glm::ivec3 offset, int x, int y, int z) -> int {
             int nx = x + offset.x;
             int ny = y + offset.y;
             int nz = z + offset.z;
@@ -138,22 +138,22 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
                 (nz < 0) ? -1 : (nz >= CHUNK_SIZE) ? 1 : 0
             };
         
-            int localX = (nx + CHUNK_SIZE) % CHUNK_SIZE;
-            int localY = (ny + CHUNK_SIZE) % CHUNK_SIZE;
-            int localZ = (nz + CHUNK_SIZE) % CHUNK_SIZE;
+            // int localX = (nx + CHUNK_SIZE) % CHUNK_SIZE;
+            // int localY = (ny + CHUNK_SIZE) % CHUNK_SIZE;
+            // int localZ = (nz + CHUNK_SIZE) % CHUNK_SIZE;
         
-            int neighborIdx = (relChunkOffset.y + 1) * 9 + (relChunkOffset.z + 1) * 3 + (relChunkOffset.x + 1);
-            auto& neighbor = neighborChunks[neighborIdx];
+            // int neighborIdx = (relChunkOffset.y + 1) * 9 + (relChunkOffset.z + 1) * 3 + (relChunkOffset.x + 1);
+            // auto& neighbor = neighborChunks[neighborIdx];
         
-            if (!neighbor) {
+            // if (!neighbor) {
                 int worldX = chunk->getPosition().x * CHUNK_SIZE + nx;
                 int worldY = chunk->getPosition().y * CHUNK_SIZE + ny;
                 int worldZ = chunk->getPosition().z * CHUNK_SIZE + nz;
         
-                return Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f) > worldY ? 1 : 0;
-            }
+                return Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 12.0f) > worldY ? 1 : 0;
+            // }
         
-            return neighbor->getBlockID(localX, localY, localZ);
+            // return neighbor->getBlockID(localX, localY, localZ);
         });
          
 
@@ -198,15 +198,6 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
     if (localZ == 0) markNeighborDirty(chunkPos, { 0, 0, -1 });
     if (localZ == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 0, 0, 1 });
 }
-
-// Samples a block ID at the specified world position
-int World::sampleBlockID(int wx, int wy, int wz) const {
-    thread_local const auto& blockList = BlockRegister::instance().blocks;
-
-    float height = Noise::getHeight(wx, wz, 0, 1, 0.5f, 2.0f, 0.01f, 16.0f);
-    return wy < height ? blockList[1].ID : blockList[0].ID;
-}
-
 
 // Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
 // WIP

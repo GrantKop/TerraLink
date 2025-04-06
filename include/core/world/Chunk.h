@@ -19,6 +19,7 @@ struct ChunkPosition {
     bool operator==(const ChunkPosition& other) const {
         return x == other.x && y == other.y && z == other.z;
     }
+
 };
 
 // Hash function for ChunkPosition to be used in unordered_map
