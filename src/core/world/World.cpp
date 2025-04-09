@@ -16,12 +16,12 @@ World::~World() {
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
     
     for (auto& [pos, chunk] : chunks) {
-        if (chunk && chunk->mesh.isUploaded) {
+        if (chunk->mesh.isUploaded) {
             chunk->mesh.VAO.deleteBuffers();
-            chunk->mesh.vaoInitialized = false;
-            chunk->mesh.vertices.clear();
-            chunk->mesh.indices.clear();
+            chunk->mesh.isUploaded = false;
         }
+        chunk->mesh.vertices.clear();
+        chunk->mesh.indices.clear();
     }
 
     chunks.clear();
@@ -106,63 +106,28 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
-
-    // auto chunkMapSnapshot = chunks;
-
-    // std::array<std::shared_ptr<Chunk>, 27> neighborChunks;
-
-    // for (int dy = -1; dy <= 1; ++dy) {
-    //     for (int dz = -1; dz <= 1; ++dz) {
-    //         for (int dx = -1; dx <= 1; ++dx) {
-    //             ChunkPosition neighborPos = {
-    //                 chunk->getPosition().x + dx,
-    //                 chunk->getPosition().y + dy,
-    //                 chunk->getPosition().z + dz
-    //             };
-    //             int idx = (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1);
-    //             auto it = chunkMapSnapshot.find(neighborPos);
-    //             neighborChunks[idx] = (it != chunkMapSnapshot.end()) ? it->second : nullptr;
-    //         }
-    //     }
-    // }
-
+    
     chunk->generateMesh(vertices, indices,
         [this, chunk](glm::ivec3 offset, int x, int y, int z) -> int {
             int nx = x + offset.x;
             int ny = y + offset.y;
             int nz = z + offset.z;
-        
-            ChunkPosition relChunkOffset = {
-                (nx < 0) ? -1 : (nx >= CHUNK_SIZE) ? 1 : 0,
-                (ny < 0) ? -1 : (ny >= CHUNK_SIZE) ? 1 : 0,
-                (nz < 0) ? -1 : (nz >= CHUNK_SIZE) ? 1 : 0
-            };
-        
-            // int localX = (nx + CHUNK_SIZE) % CHUNK_SIZE;
-            // int localY = (ny + CHUNK_SIZE) % CHUNK_SIZE;
-            // int localZ = (nz + CHUNK_SIZE) % CHUNK_SIZE;
-        
-            // int neighborIdx = (relChunkOffset.y + 1) * 9 + (relChunkOffset.z + 1) * 3 + (relChunkOffset.x + 1);
-            // auto& neighbor = neighborChunks[neighborIdx];
-        
-            // if (!neighbor) {
-                int worldX = chunk->getPosition().x * CHUNK_SIZE + nx;
-                int worldY = chunk->getPosition().y * CHUNK_SIZE + ny;
-                int worldZ = chunk->getPosition().z * CHUNK_SIZE + nz;
-        
-                return Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 12.0f) > worldY ? 1 : 0;
-            // }
-        
-            // return neighbor->getBlockID(localX, localY, localZ);
+    
+            int worldX = chunk->getPosition().x * CHUNK_SIZE + nx;
+            int worldY = chunk->getPosition().y * CHUNK_SIZE + ny;
+            int worldZ = chunk->getPosition().z * CHUNK_SIZE + nz;
+    
+            return 0; // Placeholder; you can restore noise-based fallback later
         });
-         
-
+    
     chunk->mesh.vertices = std::move(vertices);
     chunk->mesh.indices = std::move(indices);
+    
     chunk->mesh.needsUpdate = false;
     chunk->mesh.isUploaded = false;
-    chunk->mesh.isEmpty = chunk->mesh.vertices.empty() || chunk->mesh.indices.empty();
+    chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
 
+    
     if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
 }
 
@@ -265,17 +230,15 @@ void World::uploadChunkMeshes(int maxPerFrame) {
 void World::uploadMeshToGPU(Chunk& chunk) {
     if (chunk.mesh.isUploaded || chunk.mesh.isEmpty) return;
 
-    if (!chunk.mesh.vaoInitialized) {
+    if (!chunk.mesh.vertices.empty()) {
         chunk.mesh.VAO.init();
-        chunk.mesh.vaoInitialized = true;
+        chunk.mesh.VAO.bind();
+        chunk.mesh.VAO.addVertexBuffer(chunk.mesh.vertices);
+        chunk.mesh.VAO.addElementBuffer(chunk.mesh.indices);
+        chunk.mesh.VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+        chunk.mesh.VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+        chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
     }
-
-    chunk.mesh.VAO.bind();
-    chunk.mesh.VAO.addVertexBuffer(chunk.mesh.vertices);
-    chunk.mesh.VAO.addElementBuffer(chunk.mesh.indices);
-    chunk.mesh.VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-    chunk.mesh.VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-    chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
 }
 
 // Uploads the chunk meshes to the map
@@ -326,16 +289,19 @@ void World::unloadDistantChunks() {
 
     std::shared_ptr<Chunk> chunkPtr = it->second;
     if (!chunkPtr) return;
-    if (chunkPtr->mesh.isUploaded && chunkPtr->mesh.vaoInitialized) {
+    if (chunkPtr->mesh.isUploaded) {
         try {
             chunkPtr->mesh.VAO.deleteBuffers();
         } catch (...) {
             std::cerr << "Exception in deleteBuffers!" << std::endl;
         }
-        chunkPtr->mesh.vaoInitialized = false;
         chunkPtr->mesh.vertices.clear();
         chunkPtr->mesh.indices.clear();
     }
 
     chunks.erase(it);
+}
+
+float World::distanceToCamera(const glm::vec3& chunkPos, const glm::vec3& camPos) {
+    return glm::length2(chunkPos - camPos);
 }

@@ -46,7 +46,6 @@ struct ChunkMesh {
     // Chunk mesh thread flags
     bool isUploaded = false;
     bool needsUpdate = true;
-    bool vaoInitialized = false;
     bool isEmpty = true;
 };
 
@@ -74,8 +73,16 @@ public:
     ChunkPosition getPosition() const;
     void setPosition(const ChunkPosition& pos);
 
-    void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, 
-                      std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
+    void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+        std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
+
+    void addBlockFaceMesh(const Block& block, int x, int y, int z, int face,
+                          std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                          GLuint& indexOffset, glm::vec3 chunkOffset) const;
+
+    void addCoveredCrossMesh(const Block& block, int x, int y, int z,
+                             std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                             GLuint& indexOffset, glm::vec3 chunkOffset) const;
 
 private:
     std::array<uint16_t, CHUNK_VOLUME> blocks = {0};
@@ -93,7 +100,6 @@ private:
     }
     
     ChunkPosition position;
-    
 };
 
 #endif
