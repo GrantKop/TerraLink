@@ -39,15 +39,18 @@ namespace std {
 }
 
 struct ChunkMesh {
-    VertexArrayObject VAO;
-    std::vector<Vertex> vertices;
-    std::vector<GLuint> indices;
+    VertexArrayObject opaqueVAO;
+    std::vector<Vertex> opaqueVertices;
+    std::vector<GLuint> opaqueIndices;
+    VertexArrayObject transparentVAO;
+    std::vector<Vertex> transparentVertices;
+    std::vector<GLuint> transparentIndices;
 
     // Chunk mesh thread flags
     bool isUploaded = false;
     bool needsUpdate = true;
-    bool vaoInitialized = false;
     bool isEmpty = true;
+    bool hasTransparentBlocks = false;
 };
 
 class Chunk {
@@ -74,8 +77,17 @@ public:
     ChunkPosition getPosition() const;
     void setPosition(const ChunkPosition& pos);
 
-    void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices, 
-                      std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
+    void generateMesh(std::vector<Vertex>& opaqueVerts, std::vector<GLuint>& opaqueIndices,
+        std::vector<Vertex>& transparentVerts, std::vector<GLuint>& transparentIndices,
+        std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
+
+    void addBlockFaceMesh(const Block& block, int x, int y, int z, int face,
+                          std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                          GLuint& indexOffset, glm::vec3 chunkOffset) const;
+
+    void addCoveredCrossMesh(const Block& block, int x, int y, int z,
+                             std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                             GLuint& indexOffset, glm::vec3 chunkOffset) const;
 
 private:
     std::array<uint16_t, CHUNK_VOLUME> blocks = {0};
@@ -93,7 +105,6 @@ private:
     }
     
     ChunkPosition position;
-    
 };
 
 #endif

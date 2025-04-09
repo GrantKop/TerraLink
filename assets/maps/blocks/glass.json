@@ -1,0 +1,9 @@
+{
+    "model": "block_full",
+    "block_type": "dirt",
+    "solid": true,
+    "transparent": true,
+    "textures": {
+        "all": "glass"
+    }
+}

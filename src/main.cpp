@@ -90,10 +90,6 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    // Enable alpha values for textures
-    //glEnable(GL_BLEND);
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
@@ -107,7 +103,6 @@ int main() {
         glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
         player.update(deltaTime, &lightPos);
 
         world.uploadChunkMeshes(15);
@@ -119,13 +114,48 @@ int main() {
         shaderProgram.setUniform3("lightPos", lightPos);
         atlas.bind();
 
+        // First: draw all opaque geometry
         for (auto& [pos, chunk] : world.chunks) {
-            if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) continue;
+            if (!chunk->mesh.isUploaded || chunk->mesh.opaqueIndices.empty()) continue;
+            chunk->mesh.opaqueVAO.bind();
+            glDrawElements(GL_TRIANGLES, chunk->mesh.opaqueIndices.size(), GL_UNSIGNED_INT, 0);
+        }
 
-            chunk->mesh.VAO.bind();
-            glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
+        // Then sort & draw transparent geometry
+        static glm::vec3 lastCamPos = player.getCamera().position;
+        static std::vector<std::pair<float, Chunk*>> sortedTransparentChunks;
+        static float lastSortTime = 0;
+
+        float distMoved = glm::length(player.getCamera().position - lastCamPos);
+        if (distMoved > 1.0f || glfwGetTime() - lastSortTime > 0.25f) {
+            lastSortTime = glfwGetTime();
+            lastCamPos = player.getCamera().position;
+
+            sortedTransparentChunks.clear();
+            for (auto& [pos, chunk] : world.chunks) {
+                if (!chunk->mesh.transparentVertices.empty()) {
+                    glm::vec3 worldPos = glm::vec3(pos.x, pos.y, pos.z) * static_cast<float>(CHUNK_SIZE);
+                    float dist = world.distanceToCamera(worldPos, player.getCamera().position);
+                    sortedTransparentChunks.emplace_back(dist, chunk.get());
+                }
+            }
+
+            std::sort(sortedTransparentChunks.begin(), sortedTransparentChunks.end(),
+                                [](auto& a, auto& b) { return a.first > b.first; });
         }
         
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDepthMask(GL_FALSE);
+
+        for (auto& [dist, chunk] : sortedTransparentChunks) {
+            chunk->mesh.transparentVAO.bind();
+            glDrawElements(GL_TRIANGLES, chunk->mesh.transparentIndices.size(), GL_UNSIGNED_INT, 0);
+        }
+
+        glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
+
         glUseProgram(lightShader.ID);
         lightShader.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         

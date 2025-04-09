@@ -243,6 +243,9 @@ void BlockRegister::linkModelToBlock(Block& block) {
     if (block.model == "block_full") {
         link_block_full(block);
     }
+    if (block.model == "covered_cross") {
+        link_covered_cross(block);
+    }
 
 }
 
@@ -317,9 +320,54 @@ void BlockRegister::link_block_full(Block& block) {
     // Reorder faces to match BaBoFLRT
     for (int i = 0; i < 6; ++i) {
         const std::vector<Vertex>& face = tempFaces[reorder[i]];
-
         for (const auto& vertex : face) {
             block.vertices.push_back(vertex);
+        }
+    }
+}
+
+// Model specific linking for the covered cross model
+void BlockRegister::link_covered_cross(Block& block) {
+    std::ifstream file("../../assets/models/covered_cross.obj");
+    if (!file.is_open()) {
+        std::cerr << "Failed to open plane model file: ../../assets/models/covered_cross.obj" << std::endl;
+        return;
+    }
+
+    std::vector<glm::vec3> OBJvertices;
+    std::vector<glm::vec3> OBJnormals;
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.substr(0, 2) == "v ") {
+            std::istringstream s(line.substr(2));
+            glm::vec3 vertex;
+            s >> vertex.x >> vertex.y >> vertex.z;
+            if (vertex.z == -0.5f) vertex.z = 0.5f;
+            if (vertex.z == -1.0f) vertex.z = 1.0f;
+            if (vertex.y == -0.5210f) vertex.y = 0.5f;
+            if (vertex.y == 0.5210f) vertex.y = 0.5f;
+            if (vertex.z == -0.8536f) vertex.z = 0.8536f;
+
+            OBJvertices.push_back(vertex);
+        } else if (line.substr(0, 3) == "vn ") {
+            std::istringstream s(line.substr(3));
+            glm::vec3 normal;
+            s >> normal.x >> normal.y >> normal.z;
+            OBJnormals.push_back(normal);
+        } else if (line.substr(0, 2) == "f ") {
+            std::istringstream s(line.substr(2));
+            std::string faceData;
+            while (s >> faceData) {
+                size_t vPos = faceData.find("//");
+                int vIndex = std::stoi(faceData.substr(0, vPos)) - 1;
+                int nIndex = std::stoi(faceData.substr(vPos + 2)) - 1;
+
+                Vertex vertex;
+                vertex.position = OBJvertices[vIndex];
+                vertex.normal = OBJnormals[nIndex];
+                block.vertices.push_back(vertex);
+            }
         }
     }
 }

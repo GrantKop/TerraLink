@@ -35,6 +35,8 @@ public:
     void queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_DISTANCE);
     void unloadDistantChunks();
 
+    float distanceToCamera(const glm::vec3& chunkPos, const glm::vec3& camPos);
+
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
 
 private:
