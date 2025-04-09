@@ -39,18 +39,14 @@ namespace std {
 }
 
 struct ChunkMesh {
-    VertexArrayObject opaqueVAO;
-    std::vector<Vertex> opaqueVertices;
-    std::vector<GLuint> opaqueIndices;
-    VertexArrayObject transparentVAO;
-    std::vector<Vertex> transparentVertices;
-    std::vector<GLuint> transparentIndices;
+    VertexArrayObject VAO;
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
 
     // Chunk mesh thread flags
     bool isUploaded = false;
     bool needsUpdate = true;
     bool isEmpty = true;
-    bool hasTransparentBlocks = false;
 };
 
 class Chunk {
@@ -77,8 +73,7 @@ public:
     ChunkPosition getPosition() const;
     void setPosition(const ChunkPosition& pos);
 
-    void generateMesh(std::vector<Vertex>& opaqueVerts, std::vector<GLuint>& opaqueIndices,
-        std::vector<Vertex>& transparentVerts, std::vector<GLuint>& transparentIndices,
+    void generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
         std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const;
 
     void addBlockFaceMesh(const Block& block, int x, int y, int z, int face,

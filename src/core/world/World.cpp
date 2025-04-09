@@ -16,15 +16,12 @@ World::~World() {
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
     
     for (auto& [pos, chunk] : chunks) {
-        if (chunk && chunk->mesh.isUploaded) {
-            chunk->mesh.opaqueVAO.deleteBuffers();
-            chunk->mesh.opaqueVertices.clear();
-            chunk->mesh.opaqueIndices.clear();
-
-            chunk->mesh.transparentVAO.deleteBuffers();
-            chunk->mesh.transparentVertices.clear();
-            chunk->mesh.transparentIndices.clear();
+        if (chunk->mesh.isUploaded) {
+            chunk->mesh.VAO.deleteBuffers();
+            chunk->mesh.isUploaded = false;
         }
+        chunk->mesh.vertices.clear();
+        chunk->mesh.indices.clear();
     }
 
     chunks.clear();
@@ -107,12 +104,10 @@ void World::meshWorkerThread() {
 // Generates the mesh for a chunk based on the task provided
 void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     
-    std::vector<Vertex> opaqueVerts;
-    std::vector<GLuint> opaqueIndices;
-    std::vector<Vertex> transparentVerts;
-    std::vector<GLuint> transparentIndices;
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
     
-    chunk->generateMesh(opaqueVerts, opaqueIndices, transparentVerts, transparentIndices,
+    chunk->generateMesh(vertices, indices,
         [this, chunk](glm::ivec3 offset, int x, int y, int z) -> int {
             int nx = x + offset.x;
             int ny = y + offset.y;
@@ -125,20 +120,13 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
             return 0; // Placeholder; you can restore noise-based fallback later
         });
     
-    chunk->mesh.opaqueVertices = std::move(opaqueVerts);
-    chunk->mesh.opaqueIndices = std::move(opaqueIndices);
-    chunk->mesh.transparentVertices = std::move(transparentVerts);
-    chunk->mesh.transparentIndices = std::move(transparentIndices);
+    chunk->mesh.vertices = std::move(vertices);
+    chunk->mesh.indices = std::move(indices);
     
     chunk->mesh.needsUpdate = false;
     chunk->mesh.isUploaded = false;
-    chunk->mesh.isEmpty =
-        chunk->mesh.opaqueVertices.empty() &&
-        chunk->mesh.opaqueIndices.empty() &&
-        chunk->mesh.transparentVertices.empty() &&
-        chunk->mesh.transparentIndices.empty();
-    
-    chunk->mesh.hasTransparentBlocks = !chunk->mesh.transparentVertices.empty();
+    chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
+
     
     if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
 }
@@ -242,24 +230,14 @@ void World::uploadChunkMeshes(int maxPerFrame) {
 void World::uploadMeshToGPU(Chunk& chunk) {
     if (chunk.mesh.isUploaded || chunk.mesh.isEmpty) return;
 
-    if (!chunk.mesh.opaqueVertices.empty()) {
-        chunk.mesh.opaqueVAO.init();
-        chunk.mesh.opaqueVAO.bind();
-        chunk.mesh.opaqueVAO.addVertexBuffer(chunk.mesh.opaqueVertices);
-        chunk.mesh.opaqueVAO.addElementBuffer(chunk.mesh.opaqueIndices);
-        chunk.mesh.opaqueVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-        chunk.mesh.opaqueVAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-        chunk.mesh.opaqueVAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
-    }
-
-    if (!chunk.mesh.transparentVertices.empty()) {
-        chunk.mesh.transparentVAO.init();
-        chunk.mesh.transparentVAO.bind();
-        chunk.mesh.transparentVAO.addVertexBuffer(chunk.mesh.transparentVertices);
-        chunk.mesh.transparentVAO.addElementBuffer(chunk.mesh.transparentIndices);
-        chunk.mesh.transparentVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-        chunk.mesh.transparentVAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-        chunk.mesh.transparentVAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
+    if (!chunk.mesh.vertices.empty()) {
+        chunk.mesh.VAO.init();
+        chunk.mesh.VAO.bind();
+        chunk.mesh.VAO.addVertexBuffer(chunk.mesh.vertices);
+        chunk.mesh.VAO.addElementBuffer(chunk.mesh.indices);
+        chunk.mesh.VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+        chunk.mesh.VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+        chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
     }
 }
 
@@ -313,16 +291,12 @@ void World::unloadDistantChunks() {
     if (!chunkPtr) return;
     if (chunkPtr->mesh.isUploaded) {
         try {
-            chunkPtr->mesh.opaqueVAO.deleteBuffers();
-            chunkPtr->mesh.transparentVAO.deleteBuffers();
+            chunkPtr->mesh.VAO.deleteBuffers();
         } catch (...) {
             std::cerr << "Exception in deleteBuffers!" << std::endl;
         }
-        chunkPtr->mesh.opaqueVertices.clear();
-        chunkPtr->mesh.opaqueIndices.clear();
-
-        chunkPtr->mesh.transparentVertices.clear();
-        chunkPtr->mesh.transparentIndices.clear();
+        chunkPtr->mesh.vertices.clear();
+        chunkPtr->mesh.indices.clear();
     }
 
     chunks.erase(it);

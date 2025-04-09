@@ -14,6 +14,11 @@ out vec4 FragColor;
 
 void main()
 {
+
+    vec4 texColor = texture(tex0, texCoord);
+    if (texColor.a < 0.05)
+        discard;
+
     float ambient = 0.6;
 
     vec3 Normal = normalize(normal);
@@ -28,6 +33,6 @@ void main()
     float specAmount = pow(max(dot(Normal, halfwayVec), 0.0), 8);
     float specular = specAmount * specularLight;
 
-    //FragColor = texture(tex0, texCoord) * lightColor * (diffuse + ambient + specular);
-    FragColor = texture(tex0, texCoord);
+    //FragColor = texColor * lightColor * (diffuse + ambient + specular);
+    FragColor = texColor;
 } 

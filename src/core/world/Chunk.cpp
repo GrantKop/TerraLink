@@ -51,7 +51,6 @@ void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacu
         }
     }
     mesh.isEmpty = false;
-    mesh.hasTransparentBlocks = true;
 }
 
 // Retrieves a block from the blocks array using 3D coordinates
@@ -85,8 +84,7 @@ void Chunk::setPosition(const ChunkPosition& pos) {
 }
 
 // Generates the mesh for the chunk, considering neighboring chunks
-void Chunk::generateMesh(std::vector<Vertex>& opaqueVerts, std::vector<GLuint>& opaqueIndices,
-                         std::vector<Vertex>& transparentVerts, std::vector<GLuint>& transparentIndices,
+void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
                          std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const
 {
     thread_local std::vector<bool> isTransparentCache;
@@ -99,8 +97,7 @@ void Chunk::generateMesh(std::vector<Vertex>& opaqueVerts, std::vector<GLuint>& 
             isTransparentCache[i] = (*blockListPtr)[i].isTransparent;
     }
 
-    GLuint opaqueOffset = 0;
-    GLuint transparentOffset = 0;
+    GLuint indexOffset = 0;
     glm::vec3 chunkOffset = glm::vec3(position.x, position.y, position.z) * (float)CHUNK_SIZE;
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
@@ -118,9 +115,8 @@ void Chunk::generateMesh(std::vector<Vertex>& opaqueVerts, std::vector<GLuint>& 
                 if (block.model == "covered_cross") {
                     addCoveredCrossMesh(
                         block, x, y, z,
-                        transparent ? transparentVerts : opaqueVerts,
-                        transparent ? transparentIndices : opaqueIndices,
-                        transparent ? transparentOffset : opaqueOffset,
+                        vertices, indices,
+                        indexOffset,
                         chunkOffset
                     );
                     continue;
@@ -147,9 +143,8 @@ void Chunk::generateMesh(std::vector<Vertex>& opaqueVerts, std::vector<GLuint>& 
 
                     addBlockFaceMesh(
                         block, x, y, z, face,
-                        transparent ? transparentVerts : opaqueVerts,
-                        transparent ? transparentIndices : opaqueIndices,
-                        transparent ? transparentOffset : opaqueOffset,
+                        vertices, indices,
+                        indexOffset,
                         chunkOffset
                     );
                 }
