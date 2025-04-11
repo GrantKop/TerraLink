@@ -29,6 +29,10 @@ World::~World() {
 
 // Initializes the world by starting the chunk generation and meshing threads
 void World::init() {
+    Noise::initialize(42069);
+    Noise::generateBiomeMap(3072);
+    Noise::exportBiomeMapToPNG("../../saves/biomes.png");
+
     if (running) return;
     running = true;
 
@@ -63,7 +67,7 @@ void World::managerThread() {
             updateChunksAroundPlayer(current, Player::instance().VIEW_DISTANCE);
         }
         queueChunksForRemoval(current, Player::instance().VIEW_DISTANCE + 1);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
 
@@ -78,7 +82,7 @@ void World::chunkWorkerThread() {
 
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
         chunk->setPosition(pos);
-        chunk->generateTerrain(0, 1, 0.5f, 2.0f, 0.008f, 3.5f);
+        chunk->generateTerrain();
 
         meshGenerationQueue.push(chunk);
     }
@@ -127,7 +131,6 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     chunk->mesh.isUploaded = false;
     chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
 
-    
     if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
 }
 
@@ -283,6 +286,11 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
 void World::unloadDistantChunks() {
     ChunkPosition pos;
     if (!chunkRemovalQueue.tryPop(pos)) return;
+
+    if (std::abs(pos.x - Player::instance().getChunkPosition().x) <= Player::instance().VIEW_DISTANCE &&
+        std::abs(pos.z - Player::instance().getChunkPosition().z) <= Player::instance().VIEW_DISTANCE) {
+        return;
+    }
 
     auto it = chunks.find(pos);
     if (it == chunks.end()) return;

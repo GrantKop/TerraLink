@@ -6,50 +6,80 @@ Chunk::Chunk() {
 
 Chunk::~Chunk() {}
 
-// Generates terrain for the chunk using Perlin noise
-void Chunk::generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude) {
+// Generates terrain for the chunk by checking the biome map and using perlin noise
+void Chunk::generateTerrain() {
     int worldMinY = position.y * CHUNK_SIZE;
-    int worldMaxY = (position.y + 1) * CHUNK_SIZE;
-
     bool hasTerrain = false;
-    for (int x = 0; x < CHUNK_SIZE && !hasTerrain; ++x) {
-        for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
-            int worldX = position.x * CHUNK_SIZE + x;
-            int worldZ = position.z * CHUNK_SIZE + z;
-            float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f,  0.01f, 6.0f);
-            if (height >= worldMinY) {
-                hasTerrain = true;
+
+    int chunkWorldX = position.x * CHUNK_SIZE;
+    int chunkWorldZ = position.z * CHUNK_SIZE;
+
+    int heightMap[CHUNK_SIZE][CHUNK_SIZE];
+
+    for (int x = 0; x < CHUNK_SIZE; ++x) {
+        for (int z = 0; z < CHUNK_SIZE; ++z) {
+            int worldX = chunkWorldX + x;
+            int worldZ = chunkWorldZ + z;
+
+            Biome blendedBiome = Noise::getBlendedBiome(worldX, worldZ);
+            const BiomeTerrain& t = blendedBiome.terrain;
+
+            float h = 0.0f;
+            float freq = t.frequency;
+            float amp = t.amplitude;
+
+            for (int o = 0; o < t.octaves; ++o) {
+                float sampleX = (worldX + t.noiseOffsetX) * freq;
+                float sampleZ = (worldZ + t.noiseOffsetZ) * freq;
+                h += snoise2(sampleX, sampleZ) * amp;
+
+                freq *= t.lacunarity;
+                amp *= t.persistence;
             }
+
+            int height = static_cast<int>(t.baseHeight + h);
+            heightMap[x][z] = height;
+
+            if (height >= worldMinY) hasTerrain = true;
         }
     }
 
     if (!hasTerrain) return;
-    int flip = 0;
-    for (int x = 0; x < CHUNK_SIZE; ++x) {
-        for (int y = 0; y < CHUNK_SIZE; ++y) {
-            for (int z = 0; z < CHUNK_SIZE; ++z) {
-                int worldX = position.x * CHUNK_SIZE + x;
-                int worldY = position.y * CHUNK_SIZE + y;
-                int worldZ = position.z * CHUNK_SIZE + z; 
 
-                float height = Noise::getHeight(worldX, worldZ, 0, 1, 0.5f, 2.0f, 0.01f, 6.0f);
-                int maxY = static_cast<int>(height); 
-                
-                if (worldY < maxY - 3) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[1].ID);
-                } else if (worldY < maxY && worldY >= maxY - 3) {
-                    setBlockID(x, y, z, BlockRegister::instance().blocks[7].ID);
-                } else if (worldY == maxY) {
-                    if (flip % 10 == 0) {
-                        setBlockID(x, y, z, BlockRegister::instance().blocks[13].ID);
-                        flip++;
-                    } else {
-                        flip++;
-                    }
+    for (int x = 0; x < CHUNK_SIZE; ++x) {
+        for (int z = 0; z < CHUNK_SIZE; ++z) {
+            int worldX = chunkWorldX + x;
+            int worldZ = chunkWorldZ + z;
+
+            Biome biome = Noise::getBlendedBiome(worldX, worldZ);
+            int height = heightMap[x][z];
+
+            for (int y = 0; y < CHUNK_SIZE; ++y) {
+                int worldY = position.y * CHUNK_SIZE + y;
+                if (worldY > height) continue;
+
+                switch (biome.id) {
+                    case BiomeID::_PLAINS:
+                    case BiomeID::_FOREST:
+                    case BiomeID::_HILLS:
+                    case BiomeID::_TAIGA:
+                    case BiomeID::_SAVANNA:
+                        setBlockID(x, y, z, (worldY < height - 3) ? 1 : (worldY < height ? 3 : 2)); break;
+                    case BiomeID::_DESERT:
+                        setBlockID(x, y, z, (worldY < height - 3) ? 1 : 7); break;
+                    case BiomeID::_MOUNTAINS:
+                        if (worldY < height - 2) setBlockID(x, y, z, 1);
+                        else if (worldY > 76) setBlockID(x, y, z, 6);
+                        else setBlockID(x, y, z, 1); break;
+                    case BiomeID::_RIVER:
+                        if (worldY < height) setBlockID(x, y, z, 9); break;
+                    default:
+                        setBlockID(x, y, z, (worldY < height - 3) ? 1 : (worldY < height ? 3 : 2)); break;
                 }
             }
         }
     }
+
     mesh.isEmpty = false;
 }
 
