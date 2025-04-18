@@ -3,8 +3,8 @@
 namespace Noise {
     uint32_t globalSeed;
     static int biomeMapSize;
-    static float biomeNoiseScale = 0.0008f;  // lower = larger blobs
-    static float warpStrength = 250.0f;      // tweak this for smoother vs. twistier regions
+    static float biomeNoiseScale = 0.0008f;
+    static float warpStrength = 250.0f; 
 
     static std::vector<std::vector<const Biome*>> biomeMap;
     static std::vector<std::vector<std::array<float, 6>>> climateMap;
