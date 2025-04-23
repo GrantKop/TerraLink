@@ -75,10 +75,10 @@ void Player::handleInput(float deltaTime, glm::vec3 *lightpos) {
         camera.updatePosition(CAM_DOWN, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        camera.movementSpeed = 22.0f;
+        camera.movementSpeed = 38.0f;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
-        camera.movementSpeed = 6.5f;
+        camera.movementSpeed = 15.0f;
     }
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);

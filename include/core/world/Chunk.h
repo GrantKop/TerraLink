@@ -11,7 +11,8 @@
 #include "noise/Noise.h"
 
 constexpr int CHUNK_SIZE = 16;
-constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
+constexpr int CHUNK_SIZE_P = CHUNK_SIZE + 2;
+constexpr int CHUNK_VOLUME = CHUNK_SIZE_P * CHUNK_SIZE_P * CHUNK_SIZE_P;
 
 struct ChunkPosition {
     int x, y, z;
@@ -56,7 +57,9 @@ public:
 
     ChunkMesh mesh;
 
-    void generateTerrain(int seed, int octaves, float persistence, float lacunarity, float frequency, float amplitude);
+    glm::vec3 foliageColor = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    void generateTerrain();
 
     const Block& getBlock(int x, int y, int z) const;
     inline int getBlockID(int x, int y, int z) const {
