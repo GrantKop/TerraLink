@@ -8,7 +8,7 @@ namespace BiomeNoise {
     extern FastNoiseLite noiseGenerator;
 
     inline void initializeNoiseGenerator() {
-        noiseGenerator.SetSeed(13375656);
+        noiseGenerator.SetSeed(133756);
         noiseGenerator.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
         noiseGenerator.SetFrequency(0.01f);
         noiseGenerator.SetFractalType(FastNoiseLite::FractalType_FBm);

@@ -9,8 +9,8 @@ namespace BiomeNoise {
         noiseVal = (noiseVal + 1.0f) * 0.5f;
     
         const float baseHeight = 32.0f;
-        const float heightScale = 132.0f;
-        const float threshold = 0.5f;
+        const float heightScale = 55.0f;
+        const float threshold = 0.05f;
     
         float rollingTerrain = std::pow(noiseVal, 1.3f) * 10.0f;
     
