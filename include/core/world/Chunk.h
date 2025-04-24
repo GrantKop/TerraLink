@@ -8,7 +8,7 @@
 #include "core/registers/BlockRegister.h"
 #include "graphics/VertexArrayObject.h"
 #include "core/threads/ThreadSafeQueue.h"
-#include "noise/Noise.h"
+#include "core/world/BiomeNoise.h"
 
 constexpr int CHUNK_SIZE = 16;
 constexpr int CHUNK_SIZE_P = CHUNK_SIZE + 2;

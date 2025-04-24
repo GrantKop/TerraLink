@@ -29,9 +29,7 @@ World::~World() {
 
 // Initializes the world by starting the chunk generation and meshing threads
 void World::init() {
-    Noise::initialize(42069);
-    Noise::generateBiomeMap(3072);
-    Noise::exportBiomeMapToPNG("../../saves/biomes.png");
+    BiomeNoise::initializeNoiseGenerator();
 
     if (running) return;
     running = true;
@@ -308,8 +306,4 @@ void World::unloadDistantChunks() {
     }
 
     chunks.erase(it);
-}
-
-float World::distanceToCamera(const glm::vec3& chunkPos, const glm::vec3& camPos) {
-    return glm::length2(chunkPos - camPos);
 }

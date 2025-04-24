@@ -6,41 +6,17 @@ Chunk::Chunk() {
 
 Chunk::~Chunk() {}
 
-// Generates terrain for the chunk by checking the biome map and using perlin noise
 void Chunk::generateTerrain() {
     int worldMinY = position.y * CHUNK_SIZE;
+    int worldMaxY = worldMinY + CHUNK_SIZE;
     bool hasTerrain = false;
 
-    int chunkWorldX = position.x * CHUNK_SIZE;
-    int chunkWorldZ = position.z * CHUNK_SIZE;
-
-    int heightMap[CHUNK_SIZE][CHUNK_SIZE];
-
-    for (int x = 0; x < CHUNK_SIZE; ++x) {
-        for (int z = 0; z < CHUNK_SIZE; ++z) {
-            int worldX = chunkWorldX + x;
-            int worldZ = chunkWorldZ + z;
-
-            Biome blendedBiome = Noise::getBlendedBiome(worldX, worldZ);
-            const BiomeTerrain& t = blendedBiome.terrain;
-
-            float h = 0.0f;
-            float freq = t.frequency;
-            float amp = t.amplitude;
-
-            for (int o = 0; o < t.octaves; ++o) {
-                float sampleX = (worldX + t.noiseOffsetX) * freq;
-                float sampleZ = (worldZ + t.noiseOffsetZ) * freq;
-                h += snoise2(sampleX, sampleZ) * amp;
-
-                freq *= t.lacunarity;
-                amp *= t.persistence;
-            }
-
-            int height = static_cast<int>(t.baseHeight + h);
-            heightMap[x][z] = height;
-
-            if (height >= worldMinY) hasTerrain = true;
+    for (int x = 0; x < CHUNK_SIZE && !hasTerrain; ++x) {
+        for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
+            int wx = position.x * CHUNK_SIZE + x;
+            int wz = position.z * CHUNK_SIZE + z;
+            int height = static_cast<int>(BiomeNoise::generateHills(wx, wz));
+            if (height >= worldMinY && height < worldMaxY) hasTerrain = true;
         }
     }
 
@@ -48,34 +24,22 @@ void Chunk::generateTerrain() {
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int z = 0; z < CHUNK_SIZE; ++z) {
-            int worldX = chunkWorldX + x;
-            int worldZ = chunkWorldZ + z;
+            int wx = position.x * CHUNK_SIZE + x;
+            int wz = position.z * CHUNK_SIZE + z;
 
-            Biome biome = Noise::getBlendedBiome(worldX, worldZ);
-            int height = heightMap[x][z];
+            int height = static_cast<int>(BiomeNoise::generateHills(wx, wz));
 
             for (int y = 0; y < CHUNK_SIZE; ++y) {
                 int worldY = position.y * CHUNK_SIZE + y;
+
                 if (worldY > height) continue;
 
-                switch (biome.id) {
-                    case BiomeID::_PLAINS:
-                    case BiomeID::_FOREST:
-                    case BiomeID::_HILLS:
-                    case BiomeID::_TAIGA:
-                    case BiomeID::_SAVANNA:
-                        setBlockID(x, y, z, (worldY < height - 3) ? 1 : (worldY < height ? 3 : 2)); break;
-                    case BiomeID::_DESERT:
-                        setBlockID(x, y, z, (worldY < height - 3) ? 1 : 7); break;
-                    case BiomeID::_MOUNTAINS:
-                        if (worldY < height - 2) setBlockID(x, y, z, 1);
-                        else if (worldY > 76) setBlockID(x, y, z, 6);
-                        else setBlockID(x, y, z, 1); break;
-                    case BiomeID::_RIVER:
-                        if (worldY < height) setBlockID(x, y, z, 9); break;
-                    default:
-                        setBlockID(x, y, z, (worldY < height - 3) ? 1 : (worldY < height ? 3 : 2)); break;
-                }
+                if (worldY < height - 4)
+                    setBlockID(x, y, z, 1); // Stone
+                else if (worldY < height)
+                    setBlockID(x, y, z, 3); // Dirt
+                else
+                    setBlockID(x, y, z, 2); // Grass
             }
         }
     }

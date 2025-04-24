@@ -13,7 +13,11 @@ enum BiomeID {
     _TAIGA = 4,
     _HILLS = 5,
     _SAVANNA = 6,
-    _RIVER = 7
+    _RIVER = 7,
+    _OCEAN = 8,
+    _SWAMP = 9,
+    _BEACH = 10,
+    _MESA = 11
 };
 
 struct BiomeTerrain {
@@ -25,14 +29,11 @@ struct BiomeTerrain {
     float frequency;
     float amplitude;
 
-    float noiseOffsetX;
-    float noiseOffsetZ;
-
     constexpr BiomeTerrain(
         float baseHeight, int octaves, float persistence, float lacunarity,
         float frequency, float amplitude, float noiseOffsetX, float noiseOffsetZ
     ) : baseHeight(baseHeight), octaves(octaves), persistence(persistence), lacunarity(lacunarity), 
-        frequency(frequency), amplitude(amplitude), noiseOffsetX(noiseOffsetX), noiseOffsetZ(noiseOffsetZ) {}
+        frequency(frequency), amplitude(amplitude) {}
 };
 
 struct Biome {
@@ -40,8 +41,8 @@ struct Biome {
     const char* name;
     BiomeTerrain terrain;
 
-    float temperature;
-    float humidity;
+    float minTemp, maxTemp;
+    float minHumidity, maxHumidity;
 
     float continentalness;
     float erosion;
