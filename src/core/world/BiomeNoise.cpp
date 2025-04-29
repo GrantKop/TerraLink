@@ -78,5 +78,25 @@ namespace BiomeNoise {
     
         return baseHeight + rollingTerrain + curved * heightScale;
     }
+
+    float generatePlains(int x, int z) {
+        float noiseVal = noiseGenerator.GetNoise((float)x, (float)z);
+        noiseVal = (noiseVal + 1.0f) * 0.5f;
+    
+        const float baseHeight = 32.0f;
+        const float heightScale = 10.0f;
+        const float threshold = 0.00002f;
+    
+        float rollingTerrain = std::pow(noiseVal, 1.9f) * 10.0f;
+    
+        if (noiseVal < threshold) {
+            return baseHeight + rollingTerrain;
+        }
+    
+        float remapped = (noiseVal - threshold) / (1.0f - threshold);
+        float curved = std::pow(remapped, 2.25f);
+    
+        return baseHeight + rollingTerrain + curved * heightScale;
+    }
        
 }
