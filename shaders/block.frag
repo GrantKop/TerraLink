@@ -5,6 +5,7 @@ uniform sampler2D tex0;
 uniform vec4 lightColor;
 uniform vec3 lightPos;
 uniform vec3 camPos;
+uniform vec3 foliageColor;
 
 in vec3 normal;
 in vec2 texCoord;
@@ -33,6 +34,6 @@ void main()
     float specAmount = pow(max(dot(Normal, halfwayVec), 0.0), 8);
     float specular = specAmount * specularLight;
 
-    //FragColor = texColor * lightColor * (diffuse + ambient + specular);
-    FragColor = texColor;
+    FragColor = texColor * lightColor * ( ambient + specular) + vec4(foliageColor, 0.0);
+    //FragColor = texColor;
 } 

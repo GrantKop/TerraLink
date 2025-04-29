@@ -93,8 +93,6 @@ int main() {
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
-    try {
-    // Main program loop
     while (!glfwWindowShouldClose(window)) {
 
         deltaTime = glfwGetTime() - lastFrame;
@@ -102,7 +100,6 @@ int main() {
 
         glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 
         player.update(deltaTime, &lightPos);
 
@@ -137,12 +134,6 @@ int main() {
         glfwSetWindowTitle(window, fpsCount().c_str());
 
         // CHECK_GL_ERROR();
-    }
-    } catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-    }
-    catch (...) {
-        std::cerr << "Unknown exception occurred." << std::endl;
     }
 
     lightVAO.deleteBuffers();
