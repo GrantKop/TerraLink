@@ -27,7 +27,7 @@ std::vector<GLuint> lightIndices = {
 };
 
 std::string programName = "TerraLink";
-std::string programVersion = "v0.1.8";
+std::string programVersion = "v0.2.0";
 std::string windowTitle = programName + " " + programVersion;
 
 int _fpsCount = 0, fps = 0;
@@ -66,6 +66,7 @@ int main() {
 
     World world;
     world.init();
+    World::setInstance(&world);
 
     Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
     Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
@@ -117,7 +118,7 @@ int main() {
 
             chunk->mesh.VAO.bind();
             glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
-        }
+        }       
         
         glUseProgram(lightShader.ID);
         lightShader.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);

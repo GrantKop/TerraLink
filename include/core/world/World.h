@@ -13,6 +13,9 @@ public:
 
     void init();
 
+    static void setInstance(World* instance);
+    static World& instance();
+
     void managerThread();
     void chunkWorkerThread();
     void meshWorkerThread();
@@ -35,6 +38,8 @@ public:
     void queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_DISTANCE);
     void unloadDistantChunks();
 
+    int getBlockIDAtWorldPosition(int wx, int wy, int wz) const;
+
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
 
 private:
@@ -50,10 +55,14 @@ private:
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
     ThreadSafeQueue<ChunkPosition> chunkRemovalQueue;
 
+    ThreadSafeQueue<std::shared_ptr<Chunk>> meshUpdateQueue;
+
     std::unordered_set<ChunkPosition> chunkPositionSet;
 
     int minY = -32;
     int maxY = 100;
+
+    static World* s_instance;
 
 };
 

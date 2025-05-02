@@ -1,5 +1,7 @@
 #include "core/player/Camera.h"
 
+#include "core/world/World.h"
+
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) 
     : position(position), front(glm::vec3(0.0f, 0.0f, -1.0f)), 
     worldUp(up), yaw(yaw), pitch(pitch), 
@@ -101,4 +103,34 @@ void Camera::processMouseScroll(float yoffset) {
     if (fov >= 45.0f) {
         fov = 45.0f;
     }
+}
+
+// Casts a ray from the camera to find the first block it intersects with
+std::optional<RaycastHit> Camera::raycastToBlock(const World& world, float maxDistance) const {
+    glm::vec3 rayOrigin = position;
+    glm::vec3 rayDir = glm::normalize(front);
+
+    const float step = 0.05f;
+    float traveled = 0.0f;
+
+    glm::ivec3 lastBlockPos = glm::floor(rayOrigin);
+
+    while (traveled < maxDistance) {
+        glm::vec3 sample = rayOrigin + rayDir * traveled;
+        glm::ivec3 blockPos = glm::floor(sample);
+
+        if (blockPos != lastBlockPos) {
+            int blockID = world.getBlockIDAtWorldPosition(blockPos.x, blockPos.y, blockPos.z);
+            if (blockID != 0) {
+                glm::ivec3 faceNormal = lastBlockPos - blockPos;
+                return RaycastHit{ blockPos, faceNormal };
+            }
+
+            lastBlockPos = blockPos;
+        }
+
+        traveled += step;
+    }
+
+    return std::nullopt;
 }
