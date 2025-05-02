@@ -40,6 +40,9 @@ public:
 
     int getBlockIDAtWorldPosition(int wx, int wy, int wz) const;
 
+    bool collidesWithBlockAABB(glm::vec3 position, glm::vec3 size) const;
+    bool wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const;   
+
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
 
 private:

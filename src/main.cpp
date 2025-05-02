@@ -102,11 +102,11 @@ int main() {
         glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        player.update(deltaTime, &lightPos);
-
         world.uploadChunkMeshes(15);
         world.unloadDistantChunks();
         world.uploadChunksToMap();
+
+        player.update(deltaTime, &lightPos);
 
         shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         shaderProgram.setUniform3("camPos", player.getCamera().position);
