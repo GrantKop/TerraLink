@@ -1,5 +1,20 @@
 #include "core/world/World.h"
 
+World* World::s_instance = nullptr;
+
+// Sets the instance of the world
+void World::setInstance(World* instance) {
+    s_instance = instance;
+}
+
+// Returns the instance of the world
+World& World::instance() {
+    if (!s_instance) {
+        s_instance = new World();
+    }
+    return *s_instance;
+}
+
 World::World() {}
 
 World::~World() {
@@ -92,9 +107,18 @@ void World::meshWorkerThread() {
     while (running) {
         std::shared_ptr<Chunk> chunk;
 
-        if (!meshGenerationQueue.waitPop(chunk)) return;
+        if (!meshUpdateQueue.tryPop(chunk)) {
+            if (!meshGenerationQueue.tryPop(chunk)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
+        }
         if (!chunk) continue;
-        if (chunk->mesh.isEmpty) continue;
+        if (chunk->mesh.isEmpty) {
+            chunkUploadQueue.push(chunk);
+            continue;
+        }
+        if (!chunk->mesh.needsUpdate && chunk->mesh.isUploaded) continue;
         if (std::abs(chunk->getPosition().x - Player::instance().getChunkPosition().x) > Player::instance().VIEW_DISTANCE ||
             std::abs(chunk->getPosition().z - Player::instance().getChunkPosition().z) > Player::instance().VIEW_DISTANCE) {
             continue;
@@ -135,10 +159,10 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
 // Sets a block at the specified world position
 void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
     ChunkPosition chunkPos = {
-        wx / CHUNK_SIZE,
-        wy / CHUNK_SIZE,
-        wz / CHUNK_SIZE
-    };
+        (wx < 0 && wx % CHUNK_SIZE != 0) ? (wx / CHUNK_SIZE - 1) : (wx / CHUNK_SIZE),
+        (wy < 0 && wy % CHUNK_SIZE != 0) ? (wy / CHUNK_SIZE - 1) : (wy / CHUNK_SIZE),
+        (wz < 0 && wz % CHUNK_SIZE != 0) ? (wz / CHUNK_SIZE - 1) : (wz / CHUNK_SIZE)
+    };    
 
     int localX = wx % CHUNK_SIZE;
     int localY = wy % CHUNK_SIZE;
@@ -148,12 +172,22 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
     if (localY < 0) localY += CHUNK_SIZE;
     if (localZ < 0) localZ += CHUNK_SIZE;
 
-    auto it = chunks.find(chunkPos);
-    if (it == chunks.end()) return;
+    std::shared_ptr<Chunk> chunk;
 
-    std::shared_ptr<Chunk> chunk = it->second;
+    auto it = chunks.find(chunkPos);
+    if (it == chunks.end()) {
+        std::shared_ptr<Chunk> newChunk = std::make_shared<Chunk>();
+        newChunk->setPosition(chunkPos);
+        chunk = newChunk;
+    } else {
+        chunk = it->second;
+    }
+
     chunk->setBlockID(localX, localY, localZ, blockID);
+    chunk->mesh.isEmpty = false;
+
     chunk->mesh.needsUpdate = true;
+    meshUpdateQueue.push(chunk); 
 
     if (localX == 0) markNeighborDirty(chunkPos, { -1, 0, 0 });
     if (localX == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 1, 0, 0 });
@@ -245,14 +279,12 @@ void World::uploadMeshToGPU(Chunk& chunk) {
 // Uploads the chunk meshes to the map
 void World::uploadChunksToMap() {
     int uploadedChunks = 0;
+    std::shared_ptr<Chunk> chunk;
 
-    while (uploadedChunks < 2) {
-        std::shared_ptr<Chunk> chunk;
+    while (uploadedChunks < 5) {
         if (chunkUploadQueue.tryPop(chunk)) {
             if (!chunk) continue;
 
-            auto it = chunks.find(chunk->getPosition());
-            if (it != chunks.end()) continue;
             chunks[chunk->getPosition()] = chunk;
             uploadedChunks++;
         } else {
@@ -306,4 +338,25 @@ void World::unloadDistantChunks() {
     }
 
     chunks.erase(it);
+}
+
+int World::getBlockIDAtWorldPosition(int wx, int wy, int wz) const {
+    ChunkPosition chunkPos = {
+        (wx < 0 && wx % CHUNK_SIZE != 0) ? (wx / CHUNK_SIZE - 1) : (wx / CHUNK_SIZE),
+        (wy < 0 && wy % CHUNK_SIZE != 0) ? (wy / CHUNK_SIZE - 1) : (wy / CHUNK_SIZE),
+        (wz < 0 && wz % CHUNK_SIZE != 0) ? (wz / CHUNK_SIZE - 1) : (wz / CHUNK_SIZE)
+    };    
+
+    int localX = wx % CHUNK_SIZE;
+    int localY = wy % CHUNK_SIZE;
+    int localZ = wz % CHUNK_SIZE;
+
+    if (localX < 0) localX += CHUNK_SIZE;
+    if (localY < 0) localY += CHUNK_SIZE;
+    if (localZ < 0) localZ += CHUNK_SIZE;
+
+    auto it = chunks.find(chunkPos);
+    if (it == chunks.end() || !it->second) return 0;
+
+    return it->second->getBlockID(localX, localY, localZ);
 }

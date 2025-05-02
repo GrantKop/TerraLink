@@ -6,6 +6,8 @@
 #include "core/player/Camera.h"
 #include "core/world/World.h"
 
+class Camera;
+
 class Player {
 public:
     static void setInstance(Player* instance);
@@ -13,7 +15,11 @@ public:
 
     Player(GLFWwindow* window);
 
+    std::optional<glm::ivec3> getHighlightedBlock() const;
+
     void update(float deltaTime, glm::vec3 *lightpos);
+
+    int selectedBlockID = 1;
 
     void setPosition(float x, float y, float z);
     void setPosition(const glm::vec3& pos);
@@ -32,6 +38,7 @@ private:
     GLFWwindow* window = nullptr;
 
     void handleInput(float deltaTime, glm::vec3 *lightpos);
+    std::optional<glm::ivec3> highlightedBlock;
 
     static Player* s_instance;
 };

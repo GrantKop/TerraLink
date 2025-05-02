@@ -2,13 +2,15 @@
 
 Player* Player::s_instance = nullptr;
 
+static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+
 void Player::setInstance(Player* instance) {
     s_instance = instance;
 }
 
 Player& Player::instance() {
     if (!s_instance) {
-        s_instance = new Player(nullptr); // Pass nullptr for window, will be set later
+        s_instance = new Player(nullptr);
     }
     return *s_instance;
 }
@@ -16,6 +18,11 @@ Player& Player::instance() {
 Player::Player(GLFWwindow* window) : camera(glm::vec3(5.0f, 130.0f, 3.0f)) {
     camera.updateCameraMatrix(0.1f, 500.0f, window);
     this->window = window;
+    glfwSetScrollCallback(window, scrollCallback);
+}
+
+std::optional<glm::ivec3> Player::getHighlightedBlock() const {
+    return highlightedBlock;
 }
 
 // Updates the player's position and camera based on input
@@ -136,4 +143,44 @@ void Player::handleInput(float deltaTime, glm::vec3 *lightpos) {
     if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
         lightpos->y -= 0.12f;
     }
+
+    static bool lastLeftClick = false;
+    bool leftNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+    if (leftNow && !lastLeftClick) {
+        if (auto hit = camera.raycastToBlock(World::instance())) {
+            World::instance().setBlockAtWorldPosition(hit->block.x, hit->block.y, hit->block.z, 0);
+        }
+    }    
+    lastLeftClick = leftNow;
+
+    static bool lastRightClick = false;
+    bool rightNow = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && !lastRightClick) {
+        if (auto hit = camera.raycastToBlock(World::instance())) {
+            glm::ivec3 placePos = hit->block + hit->normal;
+            World::instance().setBlockAtWorldPosition(placePos.x, placePos.y, placePos.z, selectedBlockID);
+        }
+    }
+    lastRightClick = rightNow;
+
+    // if (auto hit = camera.raycastToBlock(World::instance())) {
+    //     highlightedBlock = hit->block;
+    // } else {
+    //     highlightedBlock.reset();
+    // }    
 }
+
+static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    Player& player = Player::instance();
+
+    player.selectedBlockID += (yoffset > 0) ? 1 : -1;
+    // skip block 11
+    if (player.selectedBlockID == 11) player.selectedBlockID += (yoffset > 0) ? 1 : -1;
+
+    // Clamp or wrap around if needed
+    if (player.selectedBlockID < 1) player.selectedBlockID = 13;
+    if (player.selectedBlockID > 13) player.selectedBlockID = 1;
+
+    std::cout << "Selected Block ID: " << player.selectedBlockID << std::endl;
+}
+

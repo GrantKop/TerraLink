@@ -7,7 +7,14 @@
 #include<glm/gtx/rotate_vector.hpp>
 #include<glm/gtx/vector_angle.hpp>
 #include <GLFW/glfw3.h>
+#include <optional>
 
+class World;
+
+struct RaycastHit {
+    glm::ivec3 block;
+    glm::ivec3 normal;
+};
 
 enum CameraMovement {
     CAM_FORWARD,
@@ -51,6 +58,8 @@ public:
     void updatePosition(CameraMovement direction, float deltaTime);
     void processMouseMovement(GLFWwindow* window, bool constrainPitch = true);
     void processMouseScroll(float yoffset);
+
+    std::optional<RaycastHit> raycastToBlock(const World& world, float maxDistance = 8.0f) const;
 
 private:
     void updateCameraVectors();
