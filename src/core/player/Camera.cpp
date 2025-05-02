@@ -5,7 +5,7 @@
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) 
     : position(position), front(glm::vec3(0.0f, 0.0f, -1.0f)), 
     worldUp(up), yaw(yaw), pitch(pitch), 
-    movementSpeed(1.25f), sensitivity(120.0f), fov(45.0f) {
+    movementSpeed(5.0f), sensitivity(120.0f), fov(60.0f) {
     updateCameraVectors();
 }
 
@@ -20,6 +20,7 @@ void Camera::matrix(Shader& shaderProgram, const char* uniformName) {
 void Camera::updateCameraMatrix(float nearPlane, float farPlane, GLFWwindow* window) {
     int width, height;
     glfwGetWindowSize(window, &width, &height);
+    if (width == 0 || height == 0) return;
     perspectiveProjection = glm::perspective(glm::radians(fov), (float)width / (float)height, nearPlane, farPlane);
     orthoProjection = glm::ortho(0.0f, (float)width, 0.0f, (float)height, nearPlane, farPlane);
     cameraMatrix = perspectiveProjection * glm::lookAt(position, position + front, up);
@@ -51,44 +52,42 @@ void Camera::updatePosition(CameraMovement direction, float deltaTime) {
 
 // Updates the camera vectors based on the current yaw and pitch angles
 void Camera::updateCameraVectors() {
-    glm::vec3 newFront;
-    newFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    newFront.y = sin(glm::radians(pitch));
-    newFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front = glm::normalize(newFront);
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(pitch));
+    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front = glm::normalize(direction);
 
-    right = glm::normalize(glm::cross(front, up));
+    right = glm::normalize(glm::cross(front, worldUp));
     up = glm::normalize(glm::cross(right, front));
 }
 
 // Processes mouse movement to update the camera orientation
 void Camera::processMouseMovement(GLFWwindow* window, bool constrainPitch) {
-
     int width, height;
     glfwGetWindowSize(window, &width, &height);
 
     if (firstClick) {
-        glfwSetCursorPos(window, (width / 2), (height / 2));
+        glfwSetCursorPos(window, width / 2, height / 2);
         firstClick = false;
     }
 
-    double mouseX;
-    double mouseY;
-
+    double mouseX, mouseY;
     glfwGetCursorPos(window, &mouseX, &mouseY);
-    float rotX = sensitivity * (float)(mouseY - (height / 2)) / height;
-    float rotY = sensitivity * (float)(mouseX - (width / 2)) / width;
 
-    glm::vec3 newFront = glm::rotate(front, glm::radians(-rotX), glm::normalize(glm::cross(front, up)));
+    float rotX = sensitivity * static_cast<float>(mouseY - height / 2) / height;
+    float rotY = sensitivity * static_cast<float>(mouseX - width / 2) / width;
 
-    if (!(glm::angle(newFront, up) <= glm::radians(5.0f)) || (glm::angle(newFront, -up) <= glm::radians(5.0f))) {
-        front = newFront;
-    }
+    pitch -= rotX;
+    yaw   += rotY;
 
-    front = glm::rotate(front, glm::radians(-rotY), up);
-    right = glm::normalize(glm::cross(front, up));
+    // Clamp pitch to avoid flipping
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
 
-    glfwSetCursorPos(window, (width / 2), (height / 2));
+    updateCameraVectors();  // Recalculate front, right, up
+
+    glfwSetCursorPos(window, width / 2, height / 2);
 }
 
 // Processes mouse scroll input to adjust the field of view (FOV)

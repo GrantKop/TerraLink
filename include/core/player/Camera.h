@@ -59,6 +59,13 @@ public:
     void processMouseMovement(GLFWwindow* window, bool constrainPitch = true);
     void processMouseScroll(float yoffset);
 
+    // Helper for player movement
+    glm::vec3 getDirectionXZ() const {
+        glm::vec3 dir = front;
+        dir.y = 0;
+        return glm::normalize(dir);
+    }
+
     std::optional<RaycastHit> raycastToBlock(const World& world, float maxDistance = 8.0f) const;
 
 private:
