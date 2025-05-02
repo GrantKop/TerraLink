@@ -30,7 +30,6 @@ void Player::moveWithCollision(glm::vec3 velocity, float deltaTime) {
     if (!World::instance().collidesWithBlockAABB(proposedPos, playerSize)) {
         playerPosition = proposedPos;
     } else {
-        // Slide along axis
         glm::vec3 step = glm::vec3(velocity.x, 0.0f, 0.0f) * deltaTime;
         if (!World::instance().collidesWithBlockAABB(playerPosition + step, playerSize)) playerPosition += step;
 
@@ -45,7 +44,6 @@ void Player::moveWithCollision(glm::vec3 velocity, float deltaTime) {
 
 // Updates the player's position and camera based on input
 void Player::update(float deltaTime, glm::vec3 *lightpos) {
-    // Update jump timers
     jumpBufferTime -= deltaTime;
     jumpCooldown -= deltaTime;
     jumpBufferTime = std::max(0.0f, jumpBufferTime);
