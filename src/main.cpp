@@ -82,7 +82,7 @@ int main() {
     glUniform3fv(glGetUniformLocation(shaderProgram.ID, "lightDir"), 1, glm::value_ptr(lightDir));
     glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
 
-    glUniform3f(glGetUniformLocation(shaderProgram.ID, "fogColor"), 0.38f, 0.66f, 0.77f); // Light sky blue
+    glUniform3f(glGetUniformLocation(shaderProgram.ID, "fogColor"), 0.38f, 0.66f, 0.77f);
     glUniform1f(glGetUniformLocation(shaderProgram.ID, "fogDensity"), 0.015f);
 
     glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.3f, 0.7f, 0.2f);
