@@ -426,7 +426,7 @@ bool World::wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const {
 void World::saveChunkToFile(const std::shared_ptr<Chunk>& chunk) {
     const ChunkPosition& pos = chunk->getPosition();
     std::ostringstream oss;
-    oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".bin.zst";
+    oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".zst";
     std::string filename = oss.str();
 
     std::vector<char> buffer;
@@ -471,7 +471,7 @@ void World::saveChunkToFile(const std::shared_ptr<Chunk>& chunk) {
 // Loads the chunk from a file
 bool World::loadChunkFromFile(const ChunkPosition& pos, std::shared_ptr<Chunk>& chunkOut) {
     std::ostringstream oss;
-    oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".bin.zst";
+    oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".zst";
     std::string filename = oss.str();
 
     if (!std::filesystem::exists(filename)) return false;
