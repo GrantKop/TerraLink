@@ -79,11 +79,12 @@ int main() {
 
     glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -0.3f));
     glUniform3fv(glGetUniformLocation(shaderProgram.ID, "lightDir"), 1, glm::value_ptr(lightDir));
+    glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
 
-    glUniform3f(glGetUniformLocation(shaderProgram.ID, "fogColor"), 0.6f, 0.7f, 0.9f); // Light sky blue
+    glUniform3f(glGetUniformLocation(shaderProgram.ID, "fogColor"), 0.38f, 0.66f, 0.77f); // Light sky blue
     glUniform1f(glGetUniformLocation(shaderProgram.ID, "fogDensity"), 0.015f);
 
-    glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.4f, 0.8f, 0.3f);
+    glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.3f, 0.7f, 0.2f);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -112,10 +113,10 @@ int main() {
             if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) continue;
 
             chunk->mesh.VAO.bind();
+            glm::mat4 model = glm::mat4(1.0f);
+            glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
             glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
-        }       
-        
-        glDrawElements(GL_TRIANGLES, lightIndices.size(), GL_UNSIGNED_INT, 0);
+        }
 
         // game.getWorld().chunkReset();
         glfwSwapBuffers(window);
@@ -126,11 +127,11 @@ int main() {
         // CHECK_GL_ERROR();
     }
 
-    game.getWorld().shutdown();
-
     atlas.deleteTexture();
     shaderProgram.deleteShader();
     glfwTerminate();
+
+    game.getWorld().shutdown();
 
     return 0;
 }

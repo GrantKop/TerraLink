@@ -22,9 +22,12 @@ void main() {
         discard;
 
     // Fog
-    float distance = length(fragWorldPos - camPos);
-    float fogFactor = exp(-pow(distance * fogDensity, 2.0));
-    fogFactor = clamp(fogFactor, 0.0, 1.0);
+    vec2 delta = fragWorldPos.xz - camPos.xz;
+    float distance = length(delta);
+    float fogStart = 225.0;
+    float fogEnd = 265.0;
+
+    float fogFactor = clamp((fogEnd - distance) / (fogEnd - fogStart), 0.0, 1.0);
 
     // Lighting
     vec3 N = normalize(normal);
@@ -40,8 +43,9 @@ void main() {
 
     // Optional foliage tint
     vec3 surfaceColor = texColor.rgb;
+    float gray = dot(surfaceColor, vec3(0.299, 0.587, 0.114));
     if (texColor.g > texColor.r && texColor.g > texColor.b)
-        surfaceColor = mix(surfaceColor, foliageColor, 0.35);
+        surfaceColor = mix(vec3(gray), surfaceColor, 0.93);
 
     vec3 litColor = surfaceColor * lighting;
 

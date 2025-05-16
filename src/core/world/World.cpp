@@ -433,6 +433,9 @@ bool World::wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const {
 // Saves the chunk to a file
 void World::saveChunkToFile(const std::shared_ptr<Chunk>& chunk) {
     const ChunkPosition& pos = chunk->getPosition();
+
+    if (chunk->mesh.isEmpty) return;
+
     std::ostringstream oss;
     oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".zst";
     std::string filename = oss.str();

@@ -34,8 +34,9 @@ private:
     std::unique_ptr<World> world;
 
     bool DEV_MODE = true;
-    float gameVersionMajor = 2.f;
-    float gameVersionMinor = 1.2f;
+    float gameVersionMajor = 0.f;
+    float gameVersionMinor = 2.f;
+    float gameVersionPatch = 12.f;
 
     std::filesystem::path basePath = DEV_MODE
         ? std::filesystem::current_path().parent_path().parent_path()

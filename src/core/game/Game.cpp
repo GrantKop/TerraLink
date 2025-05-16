@@ -61,5 +61,6 @@ World& Game::getWorld() {
 
 std::string Game::getGameVersion() const {
     return "v" + std::to_string(static_cast<int>(gameVersionMajor)) + "." +
-                 std::to_string(static_cast<int>(gameVersionMinor * 10));
+                 std::to_string(static_cast<int>(gameVersionMinor)) + "." +
+                 std::to_string(static_cast<int>(gameVersionPatch));
 }
