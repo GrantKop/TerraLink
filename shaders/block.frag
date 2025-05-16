@@ -45,7 +45,7 @@ void main() {
     vec3 surfaceColor = texColor.rgb;
     float gray = dot(surfaceColor, vec3(0.299, 0.587, 0.114));
     if (texColor.g > texColor.r && texColor.g > texColor.b)
-        surfaceColor = mix(vec3(gray), surfaceColor, 0.93);
+        surfaceColor = mix(vec3(gray), surfaceColor, 0.98);
 
     vec3 litColor = surfaceColor * lighting;
 

@@ -71,6 +71,7 @@ int main() {
     World::instance().loadPlayerData(Player::instance(), "placeholder");
 
     Shader shaderProgram((Game::instance().getBasePath() + "/shaders/block.vert").c_str(), (Game::instance().getBasePath() + "/shaders/block.frag").c_str());
+    Shader cloudShader((Game::instance().getBasePath() + "/shaders/cloud.vert").c_str(), (Game::instance().getBasePath() + "/shaders/cloud.frag").c_str());
 
     shaderProgram.use();
 
@@ -88,7 +89,7 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-
+    
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
 
@@ -117,6 +118,8 @@ int main() {
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
             glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
         }
+
+        World::instance().drawClouds(cloudShader);
 
         // game.getWorld().chunkReset();
         glfwSwapBuffers(window);
