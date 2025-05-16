@@ -119,8 +119,6 @@ int main() {
             glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
         }
 
-        World::instance().drawClouds(cloudShader);
-
         // game.getWorld().chunkReset();
         glfwSwapBuffers(window);
         glfwPollEvents();

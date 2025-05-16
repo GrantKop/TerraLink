@@ -31,7 +31,7 @@ void World::shutdown() {
     chunkUploadQueue.stop();
     meshUpdateQueue.stop();
 
-    std::cout << "Joining world generation threads..." << std::endl;
+    std::cout << "\nJoining world generation threads..." << std::endl;
     for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
