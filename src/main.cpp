@@ -6,26 +6,7 @@
 #include "core/world/World.h"
 #include "core/player/Player.h"
 #include "core/game/Game.h"
-
-std::vector<Vertex> lightVertices = {
-    {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
-    {Vertex{glm::vec3( 0.1f, -0.1f,  0.1f)}},
-    {Vertex{glm::vec3( 0.1f,  0.1f,  0.1f)}},
-    {Vertex{glm::vec3(-0.1f,  0.1f,  0.1f)}},
-    {Vertex{glm::vec3(-0.1f, -0.1f, -0.1f)}},
-    {Vertex{glm::vec3( 0.1f, -0.1f, -0.1f)}},
-    {Vertex{glm::vec3( 0.1f,  0.1f, -0.1f)}},
-    {Vertex{glm::vec3(-0.1f,  0.1f, -0.1f)}}
-};
-
-std::vector<GLuint> lightIndices = {
-    0, 1, 2, 2, 3, 0,
-    6, 5, 4, 4, 7, 6,
-    7, 4, 0, 0, 3, 7,
-    1, 5, 6, 6, 2, 1,
-    5, 1, 0, 0, 4, 5,
-    3, 2, 6, 6, 7, 3
-};
+#include "network/Network.h"
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
@@ -43,7 +24,30 @@ std::string fpsCount() {
     return std::string(("TerraLink " + Game::instance().getGameVersion()).c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
-int main() {
+int main(int argc, char** argv) {
+
+    if (argc >= 2) {
+            std::string mode = argv[1];
+        if (mode == "server") {
+            NetworkManager::setRole(NetworkRole::SERVER);
+        } else if (mode == "client") {
+            NetworkManager::setRole(NetworkRole::CLIENT);
+        } else if (mode == "host") {
+            NetworkManager::setRole(NetworkRole::HOST);
+        } else {
+            std::cerr << "Invalid network role: " << mode << std::endl;
+            return 1;
+        }
+
+        std::cout << "\nStarting TerraLink in " << mode << " mode...\n" << std::endl;
+    } else {
+        std::cout << "No network role specified. Defaulting to CLIENT." << std::endl;
+        std::cout << "Usage: " << argv[0] << " [server|client|host]" << std::endl;
+        NetworkManager::setRole(NetworkRole::CLIENT);
+    }
+
+    Game game;
+    Game::setInstance(&game);
 
     initGLFW(3, 3);
 
@@ -52,9 +56,6 @@ int main() {
         glfwTerminate();
         return -1;
     }
-
-    Game game;
-    Game::setInstance(&game);
 
     Player player(window);
     Player::setInstance(&player);
