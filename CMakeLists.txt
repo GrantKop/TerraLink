@@ -47,3 +47,13 @@ include_directories(${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/include)
 set(zstd_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/zstd")
 find_package(zstd CONFIG REQUIRED)
 target_link_libraries(TerraLink PRIVATE zstd::libzstd_shared)
+
+# Install the binary
+install(TARGETS TerraLink DESTINATION bin)
+
+# Install assets, shaders, and other resource folders
+install(DIRECTORY assets/ DESTINATION share/TerraLink/assets)
+install(DIRECTORY shaders/ DESTINATION share/TerraLink/shaders)
+
+# Optional: install configs or saves
+install(DIRECTORY config/ DESTINATION share/TerraLink/config)
