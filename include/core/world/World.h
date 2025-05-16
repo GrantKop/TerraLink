@@ -2,13 +2,18 @@
 #define WORLD_H
 
 #include <unordered_set>
+#include <chrono>
+#include <ctime>
+#include <zstd.h>
+#include <zstd_errors.h>
 
 #include "core/world/Chunk.h"
-#include "core/player/Player.h"
+
+class Player;
 
 class World {
 public:
-    World();
+    explicit World(const std:: string& saveDir = "saves/");
     ~World();
 
     void init();
@@ -41,9 +46,27 @@ public:
     int getBlockIDAtWorldPosition(int wx, int wy, int wz) const;
 
     bool collidesWithBlockAABB(glm::vec3 position, glm::vec3 size) const;
-    bool wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const;   
+    bool wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const;
+
+    void saveChunkToFile(const std::shared_ptr<Chunk>& chunk);
+    bool loadChunkFromFile(const ChunkPosition& pos, std::shared_ptr<Chunk>& chunkOut);
+
+    void setSaveDirectory(const std::string& saveDir);
+    void createSaveDirectory();
+    void createWorldConfigFile();
+
+    void savePlayerData(Player& player, const std::string& playerID);
+    bool loadPlayerData(Player& player, const std::string& playerID);
+    std::string getPlayerID() const;
+
+    void chunkReset();
+
+    uint32_t getSeed() const { return seed; }
 
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
+    std::unordered_set<ChunkPosition> chunkPositionSet;
+
+    std::atomic<bool> needsFullReset = false;
 
 private:
     std::vector<std::thread> chunkGenThreads;
@@ -60,10 +83,12 @@ private:
 
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUpdateQueue;
 
-    std::unordered_set<ChunkPosition> chunkPositionSet;
+    uint32_t seed = 13372323;
 
     int minY = -32;
     int maxY = 100;
+
+    std::string saveDirectory;
 
     static World* s_instance;
 

@@ -1,4 +1,5 @@
 #include "core/registers/BlockRegister.h"
+#include "core/game/Game.h"
 
 // Function to create a mapping from string names to block type enums
 std::unordered_map<std::string, BLOCKTYPE> createBlockTypeMap()  {
@@ -152,11 +153,11 @@ void BlockRegister::loadBlocks() {
     }
 
     #if defined(_WIN32)
-    if (!std::filesystem::exists("../../assets/maps/blocks/")) {
-        std::cerr << "Error locating folder: ../../assets/maps/blocks/" << std::endl;
+    if (!std::filesystem::exists(Game::instance().getBasePath() + "/assets/maps/blocks/")) {
+        std::cerr << "Error locating folder: ./assets/maps/blocks/" << std::endl;
         return;
     }
-    for (const auto& entry : std::filesystem::directory_iterator("../../assets/maps/blocks/")) {
+    for (const auto& entry : std::filesystem::directory_iterator(Game::instance().getBasePath() + "/assets/maps/blocks/")) {
         if (entry.is_regular_file() && entry.path().extension() == ".json") {
             std::ifstream blockFile(entry.path().string());
             if (!blockFile.is_open()) {
@@ -174,12 +175,12 @@ void BlockRegister::loadBlocks() {
     #else
     DIR* dir;
     struct dirent* ent;
-    if ((dir = opendir("../../assets/maps/blocks/")) != NULL) {
+    if ((dir = opendir(Game::instance().getBasePath() + "/assets/maps/blocks/")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
             if (ent->d_type == DT_REG) {
                 std::string filename = ent->d_name;
                 if (filename.substr(filename.find_last_of(".") + 1) == "json") {
-                    std::string fullPath = "../../assets/maps/blocks/" + filename;
+                    std::string fullPath = Game::instance().getBasePath() + "/assets/maps/blocks/" + filename;
                     std::ifstream blockFile(fullPath);
                     if (!blockFile.is_open()) {
                         std::cerr << "Failed to open block file: " << fullPath << std::endl;
@@ -205,9 +206,9 @@ void BlockRegister::saveBlockRegistryJson() {
         blockRegistryJson[name] = id;
     }
 
-    std::ofstream file("../../registry/block_registry.json");
+    std::ofstream file(Game::instance().getBasePath() + "/registry/block_registry.json");
     if (!file) {
-        std::cerr << "Error opening file for writing: ../../registry/block_registry.json" << std::endl;
+        std::cerr << "Error opening file for writing: ./registry/block_registry.json" << std::endl;
         return;
     }
 
@@ -217,9 +218,9 @@ void BlockRegister::saveBlockRegistryJson() {
 
 // Parses the block registry JSON file to create a mapping of block names to IDs
 void BlockRegister::parseBlockRegistryJson() {
-    std::ifstream file("../../registry/block_registry.json");
+    std::ifstream file(Game::instance().getBasePath() + "/registry/block_registry.json");
     if (!file) {
-        std::cerr << "Error opening file for reading: ../../registry/block_registry.json" << std::endl;
+        std::cerr << "Error opening file for reading: ./registry/block_registry.json" << std::endl;
         return;
     }
 
@@ -253,9 +254,10 @@ void BlockRegister::linkModelToBlock(Block& block) {
 // Json reading library reads textures on map in alphabetical order, default blocks must be created with BaBoFLRT order in mind
 void BlockRegister::link_block_full(Block& block) {
 
-    std::ifstream file("../../assets/models/block_full.obj");
+    std::string modelPath = Game::instance().getBasePath() + "/assets/models/block_full.obj";
+    std::ifstream file(modelPath);
     if (!file.is_open()) {
-        std::cerr << "Failed to open block model file: ../../assets/models/block_full.obj" << std::endl;
+        std::cerr << "Failed to open block model file: " << modelPath << std::endl;
         return;
     }
 
@@ -328,9 +330,11 @@ void BlockRegister::link_block_full(Block& block) {
 
 // Model specific linking for the covered cross model
 void BlockRegister::link_covered_cross(Block& block) {
-    std::ifstream file("../../assets/models/covered_cross.obj");
+
+    std::string modelPath = Game::instance().getBasePath() + "/assets/models/covered_cross.obj";
+    std::ifstream file(modelPath);
     if (!file.is_open()) {
-        std::cerr << "Failed to open plane model file: ../../assets/models/covered_cross.obj" << std::endl;
+        std::cerr << "Failed to open block model file: " << modelPath << std::endl;
         return;
     }
 

@@ -1,4 +1,5 @@
 #include "utils/GLUtils.h"
+#include "core/game/Game.h"
 
 bool loadGlad() {
     return gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -23,13 +24,13 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
 
 bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, unsigned int height, GLFWframebuffersizefun framebufferSizeCallback) {
 
-    window = glfwCreateWindow(width, height, title, NULL, NULL);
+    window = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         return false;
     }
-    
+
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
@@ -40,10 +41,21 @@ bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, un
 
     glViewport(0, 0, width, height);
 
+    std::string iconPath = Game::instance().getBasePath() + "/assets/icon/icon.png";
+
+    if (!std::filesystem::exists(iconPath)) {
+        std::cerr << "Icon file not found at: " << iconPath << "\n";
+    }
+
     GLFWimage images[1];
-    images[0].pixels = stbi_load("../../assets/icon/icon.png", &images[0].width, &images[0].height, 0, 4);
-    glfwSetWindowIcon(window, 1, images);
-    stbi_image_free(images[0].pixels);
+    images[0].pixels = stbi_load(iconPath.c_str(), &images[0].width, &images[0].height, 0, 4);
+
+    if (images[0].pixels) {
+        glfwSetWindowIcon(window, 1, images);
+        stbi_image_free(images[0].pixels);
+    } else {
+        std::cerr << "Warning: Could not load window icon: " << iconPath << std::endl;
+    }
 
     return true;
 }

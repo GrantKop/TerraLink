@@ -142,7 +142,6 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
 
                 bool transparent = block.isTransparent;
 
-                // Handle model blocks (like covered_cross)
                 if (block.model == "covered_cross") {
                     addCoveredCrossMesh(
                         block, x, y, z,
@@ -153,7 +152,6 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                     continue;
                 }
 
-                // Regular cube faces
                 for (int face = 0; face < 6; ++face) {
                     glm::ivec3 offset = FACE_OFFSETS[face];
                     int nx = x + offset.x;

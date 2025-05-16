@@ -10,7 +10,8 @@ void Player::setInstance(Player* instance) {
 
 Player& Player::instance() {
     if (!s_instance) {
-        s_instance = new Player(nullptr);
+        std::cerr << "Player::instance() called before Player::setInstance()!\n";
+        std::exit(1);
     }
     return *s_instance;
 }
@@ -84,7 +85,8 @@ void Player::setPosition(float x, float y, float z) {
 
 // Sets the player's position using a glm::vec3 object
 void Player::setPosition(const glm::vec3& pos) {
-    camera.position = pos;
+    playerPosition = pos;
+    camera.position = playerPosition + glm::vec3(0.0f, eyeOffset, 0.0f);
 }
 
 // Returns the player's current position as a glm::vec3 object
@@ -258,11 +260,19 @@ void Player::handleInput(float deltaTime, glm::vec3 *lightpos) {
         playerPosition = camera.position - glm::vec3(0.0f, eyeOffset, 0.0f);
     }
 
-    // if (auto hit = camera.raycastToBlock(World::instance())) {
-    //     highlightedBlock = hit->block;
-    // } else {
-    //     highlightedBlock.reset();
-    // }    
+    static bool lastF3 = false;
+    static bool lastR = false;
+    bool f3Down = glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS;
+    bool rDown = glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS;
+
+    
+    if (f3Down && rDown && (!lastF3 || !lastR)) {
+        std::cout << "[DEBUG] F3 + R pressed: Reloading chunks around player\n";
+        // World::instance().needsFullReset = true;
+    }
+    lastF3 = f3Down;
+    lastR = rDown;
+
 }
 
 static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {

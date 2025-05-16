@@ -1,5 +1,5 @@
-#ifndef chunk_h
-#define chunk_h
+#ifndef CHUNK_H
+#define CHUNK_H
 
 #include <array>
 #include <stdexcept>
@@ -69,6 +69,14 @@ public:
             return -1;
         }
         return blocks[idx];
+    }
+
+    std::array<uint16_t, CHUNK_VOLUME> getBlocks() const {
+        return blocks;
+    }
+
+    void setBlocks(const std::array<uint16_t, CHUNK_VOLUME>& newBlocks) {
+        blocks = newBlocks;
     }
     
     void setBlockID(int x, int y, int z, int blockID);
