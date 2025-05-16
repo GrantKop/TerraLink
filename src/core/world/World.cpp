@@ -18,7 +18,10 @@ World& World::instance() {
 
 World::World(const std:: string& saveDir) : saveDirectory(saveDir) {}
 
-World::~World() {
+World::~World() {}
+
+// Shuts down the world and stops all threads
+void World::shutdown() {
     running = false;
 
     chunkCreationQueue.stop();
@@ -26,12 +29,13 @@ World::~World() {
     meshUploadQueue.stop();
     chunkRemovalQueue.stop();
     chunkUploadQueue.stop();
+    meshUpdateQueue.stop();
 
-    std::cout << "Joining chunk generation threads..." << std::endl;
+    std::cout << "Joining world generation threads..." << std::endl;
     for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
-    
+
     std::cout << "Saving chunks to disk..." << std::endl;
     for (auto& [pos, chunk] : chunks) {
         if (!chunk) continue;
@@ -57,7 +61,11 @@ World::~World() {
     chunks.clear();
 
     std::cout << "Saving player data..." << std::endl;
-    World::instance().savePlayerData(Player::instance(), "placeholder");
+    try {
+        savePlayerData(Player::instance(), "placeholder");
+    } catch (...) {
+        std::cerr << "Failed to save player data." << std::endl;
+    }
 }
 
 // Initializes the world by starting the chunk generation and meshing threads

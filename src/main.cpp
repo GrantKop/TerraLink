@@ -139,6 +139,8 @@ int main() {
         // CHECK_GL_ERROR();
     }
 
+    game.getWorld().shutdown();
+
     lightVAO.deleteBuffers();
     atlas.deleteTexture();
     shaderProgram.deleteShader();

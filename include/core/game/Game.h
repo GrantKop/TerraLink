@@ -35,7 +35,7 @@ private:
 
     bool DEV_MODE = true;
     float gameVersionMajor = 2.f;
-    float gameVersionMinor = 1.1f;
+    float gameVersionMinor = 1.2f;
 
     std::filesystem::path basePath = DEV_MODE
         ? std::filesystem::current_path().parent_path().parent_path()

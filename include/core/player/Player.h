@@ -19,7 +19,7 @@ public:
 
     void update(float deltaTime, glm::vec3 *lightpos);
 
-    int gameMode = 0;
+    int gameMode = 1;
     int selectedBlockID = 1;
     float verticalVelocity = 0.0f;
     bool onGround = false;

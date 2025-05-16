@@ -16,6 +16,8 @@ public:
     explicit World(const std:: string& saveDir = "saves/");
     ~World();
 
+    void shutdown();
+
     void init();
 
     static void setInstance(World* instance);
