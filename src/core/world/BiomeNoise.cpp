@@ -1,8 +1,23 @@
 #include "core/world/BiomeNoise.h"
+#include "core/game/Game.h"
+#include "core/world/World.h"
 
 namespace BiomeNoise {
     
     FastNoiseLite noiseGenerator;
+    
+    void initializeNoiseGenerator() {
+        noiseGenerator.SetSeed(Game::instance().getWorld().getSeed());
+        noiseGenerator.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+        noiseGenerator.SetFrequency(0.01f);
+        noiseGenerator.SetFractalType(FastNoiseLite::FractalType_FBm);
+        noiseGenerator.SetFractalOctaves(3);
+        noiseGenerator.SetFractalLacunarity(2.17f);
+        noiseGenerator.SetFractalGain(0.62f);
+
+        // noiseGenerator.SetDomainWarpType(FastNoiseLite::DomainWarpType_BasicGrid);
+        // noiseGenerator.SetDomainWarpAmp(2.5f);
+    }
 
     float generateHills(int x, int z) {
         float noiseVal = noiseGenerator.GetNoise((float)x, (float)z);

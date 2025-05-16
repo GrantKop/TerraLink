@@ -42,3 +42,8 @@ target_include_directories(TerraLink PRIVATE ${nlohmann_json_INCLUDE_DIRS})
 
 # STB (header-only)
 include_directories(${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/include)
+
+# ZSTD
+set(zstd_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/zstd")
+find_package(zstd CONFIG REQUIRED)
+target_link_libraries(TerraLink PRIVATE zstd::libzstd_shared)

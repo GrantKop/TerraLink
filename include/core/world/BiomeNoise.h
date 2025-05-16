@@ -7,18 +7,7 @@
 namespace BiomeNoise {
     extern FastNoiseLite noiseGenerator;
 
-    inline void initializeNoiseGenerator() {
-        noiseGenerator.SetSeed(13372323);
-        noiseGenerator.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-        noiseGenerator.SetFrequency(0.01f);
-        noiseGenerator.SetFractalType(FastNoiseLite::FractalType_FBm);
-        noiseGenerator.SetFractalOctaves(3);
-        noiseGenerator.SetFractalLacunarity(2.17f);
-        noiseGenerator.SetFractalGain(0.62f);
-
-        // noiseGenerator.SetDomainWarpType(FastNoiseLite::DomainWarpType_BasicGrid);
-        // noiseGenerator.SetDomainWarpAmp(2.5f);
-    }
+    void initializeNoiseGenerator();
 
     float generateHills(int x, int z);
 

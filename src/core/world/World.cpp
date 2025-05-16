@@ -1,4 +1,5 @@
 #include "core/world/World.h"
+#include "core/player/Player.h"
 
 World* World::s_instance = nullptr;
 
@@ -15,7 +16,7 @@ World& World::instance() {
     return *s_instance;
 }
 
-World::World() {}
+World::World(const std:: string& saveDir) : saveDirectory(saveDir) {}
 
 World::~World() {
     running = false;
@@ -26,13 +27,27 @@ World::~World() {
     chunkRemovalQueue.stop();
     chunkUploadQueue.stop();
 
+    std::cout << "Joining chunk generation threads..." << std::endl;
     for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
     
+    std::cout << "Saving chunks to disk..." << std::endl;
     for (auto& [pos, chunk] : chunks) {
+        if (!chunk) continue;
+
+        try {
+            saveChunkToFile(chunk);
+        } catch (...) {
+            std::cerr << "Exception while saving chunk at " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+        }
+
         if (chunk->mesh.isUploaded) {
-            chunk->mesh.VAO.deleteBuffers();
+            try {
+                chunk->mesh.VAO.deleteBuffers();
+            } catch (...) {
+                std::cerr << "Exception in deleteBuffers for chunk at " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+            }
             chunk->mesh.isUploaded = false;
         }
         chunk->mesh.vertices.clear();
@@ -40,6 +55,9 @@ World::~World() {
     }
 
     chunks.clear();
+
+    std::cout << "Saving player data..." << std::endl;
+    World::instance().savePlayerData(Player::instance(), "placeholder");
 }
 
 // Initializes the world by starting the chunk generation and meshing threads
@@ -94,10 +112,14 @@ void World::chunkWorkerThread() {
         if ((pos.y * CHUNK_SIZE + CHUNK_SIZE) < MIN_GENERATE_Y) continue;
 
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
-        chunk->setPosition(pos);
-        chunk->generateTerrain();
-
-        meshGenerationQueue.push(chunk);
+        if (loadChunkFromFile(pos, chunk)) {
+            meshUploadQueue.push(chunk);
+        } else {
+            chunk = std::make_shared<Chunk>();
+            chunk->setPosition(pos);
+            chunk->generateTerrain();
+            meshGenerationQueue.push(chunk);
+        }
     }
 }
 
@@ -129,7 +151,6 @@ void World::meshWorkerThread() {
 
 // Generates the mesh for a chunk based on the task provided
 void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
-    
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
     
@@ -143,7 +164,7 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
             int worldY = chunk->getPosition().y * CHUNK_SIZE + ny;
             int worldZ = chunk->getPosition().z * CHUNK_SIZE + nz;
     
-            return 0; // Placeholder; you can restore noise-based fallback later
+            return 0;
         });
     
     chunk->mesh.vertices = std::move(vertices);
@@ -264,7 +285,7 @@ void World::uploadChunkMeshes(int maxPerFrame) {
 // Uploads the mesh data to the GPU
 void World::uploadMeshToGPU(Chunk& chunk) {
     if (chunk.mesh.isUploaded || chunk.mesh.isEmpty) return;
-
+    
     if (!chunk.mesh.vertices.empty()) {
         chunk.mesh.VAO.init();
         chunk.mesh.VAO.bind();
@@ -327,6 +348,9 @@ void World::unloadDistantChunks() {
 
     std::shared_ptr<Chunk> chunkPtr = it->second;
     if (!chunkPtr) return;
+
+    saveChunkToFile(chunkPtr);
+
     if (chunkPtr->mesh.isUploaded) {
         try {
             chunkPtr->mesh.VAO.deleteBuffers();
@@ -396,4 +420,222 @@ bool World::wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const {
         playerCenter.z + playerHalfSize.z < blockCenter.z - blockHalfSize.z ||
         playerCenter.z - playerHalfSize.z > blockCenter.z + blockHalfSize.z
     );
+}
+
+// Saves the chunk to a file
+void World::saveChunkToFile(const std::shared_ptr<Chunk>& chunk) {
+    const ChunkPosition& pos = chunk->getPosition();
+    std::ostringstream oss;
+    oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".bin.zst";
+    std::string filename = oss.str();
+
+    std::vector<char> buffer;
+
+    // Block Data
+    const auto& blocks = chunk->getBlocks();
+    uint32_t blockCount = blocks.size();
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&blockCount), reinterpret_cast<const char*>(&blockCount) + sizeof(uint32_t));
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(blocks.data()), reinterpret_cast<const char*>(blocks.data()) + blockCount * sizeof(uint16_t));
+
+    // Chunk mesh Verts
+    const auto& verts = chunk->mesh.vertices;
+    uint32_t vertCount = verts.size();
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&vertCount), reinterpret_cast<const char*>(&vertCount) + sizeof(uint32_t));
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(verts.data()), reinterpret_cast<const char*>(verts.data()) + vertCount * sizeof(Vertex));
+
+    // Chunk mesh indices
+    const auto& indices = chunk->mesh.indices;
+    uint32_t indexCount = indices.size();
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&indexCount), reinterpret_cast<const char*>(&indexCount) + sizeof(uint32_t));
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(indices.data()), reinterpret_cast<const char*>(indices.data()) + indexCount * sizeof(GLuint));
+
+    size_t maxSize = ZSTD_compressBound(buffer.size());
+    std::vector<char> compressedBuffer(maxSize);
+    size_t compressedSize = ZSTD_compress(compressedBuffer.data(), maxSize, buffer.data(), buffer.size(), 1);
+
+    if (ZSTD_isError(compressedSize)) {
+        std::cerr << "ZSTD compression failed: " << ZSTD_getErrorName(compressedSize) << std::endl;
+        return;
+    }
+
+    std::ofstream out(filename, std::ios::binary);
+    if (!out.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    out.write(compressedBuffer.data(), compressedSize);
+    out.close();
+}
+
+// Loads the chunk from a file
+bool World::loadChunkFromFile(const ChunkPosition& pos, std::shared_ptr<Chunk>& chunkOut) {
+    std::ostringstream oss;
+    oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".bin.zst";
+    std::string filename = oss.str();
+
+    if (!std::filesystem::exists(filename)) return false;
+
+    std::ifstream in(filename, std::ios::binary | std::ios::ate);
+    if (!in.is_open()) {
+        std::cerr << "Failed to open file for reading: " << filename << std::endl;
+        return false;
+    }
+
+    std::streamsize fileSize = in.tellg();
+    in.seekg(0);
+    std::vector<char> compressed(fileSize);
+    in.read(compressed.data(), fileSize);
+    in.close();
+
+    size_t decompressedSize = ZSTD_getFrameContentSize(compressed.data(), fileSize);
+    if (decompressedSize == ZSTD_CONTENTSIZE_ERROR || decompressedSize == ZSTD_CONTENTSIZE_UNKNOWN) {
+        std::cerr << "ZSTD: unknown decompressed size\n";
+        return false;
+    }
+
+    std::vector<char> buffer(decompressedSize);
+    size_t result = ZSTD_decompress(buffer.data(), decompressedSize, compressed.data(), fileSize);
+    if (ZSTD_isError(result)) {
+        std::cerr << "ZSTD decompression failed: " << ZSTD_getErrorName(result) << std::endl;
+        return false;
+    }
+
+    size_t offset = 0;
+    auto read = [&](void* dst, size_t size) {
+        std::memcpy(dst, buffer.data() + offset, size);
+        offset += size;
+    };
+
+    chunkOut = std::make_shared<Chunk>();
+    chunkOut->setPosition(pos);
+
+    uint32_t blockCount;
+    read(&blockCount, sizeof(uint32_t));
+    std::array<uint16_t, CHUNK_VOLUME> blocks;
+    read(blocks.data(), blockCount * sizeof(uint16_t));
+    chunkOut->setBlocks(blocks);
+
+    uint32_t vertCount;
+    read(&vertCount, sizeof(uint32_t));
+    chunkOut->mesh.vertices.resize(vertCount);
+    read(chunkOut->mesh.vertices.data(), vertCount * sizeof(Vertex));
+
+    uint32_t indexCount;
+    read(&indexCount, sizeof(uint32_t));
+    chunkOut->mesh.indices.resize(indexCount);
+    read(chunkOut->mesh.indices.data(), indexCount * sizeof(GLuint));
+
+    chunkOut->mesh.isEmpty = chunkOut->mesh.vertices.empty() && chunkOut->mesh.indices.empty();
+    chunkOut->mesh.needsUpdate = false;
+    chunkOut->mesh.isUploaded = false;
+    
+    return true;
+}
+
+#include "core/game/Game.h"
+
+// Sets the save directory for the world
+void World::setSaveDirectory(const std::string& saveDir) {
+    saveDirectory = Game::instance().getSavePath() + saveDir;
+}
+
+// Creates the save directory if it doesn't exist
+void World::createSaveDirectory() {
+    if (std::filesystem::exists(saveDirectory)) return;
+    std::filesystem::create_directories(saveDirectory);
+    std::filesystem::create_directories(saveDirectory + "/chunks");
+    std::filesystem::create_directories(saveDirectory + "/players");
+    createWorldConfigFile();
+}
+
+// Creates the world config file
+void World::createWorldConfigFile() {
+    if (std::filesystem::exists(saveDirectory + "/WorldConfig.json")) return;
+
+    using json = nlohmann::json;
+
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+
+    json config;
+    config["created_at"] = std::string(std::ctime(&now_c));
+    config["world_seed"] = seed;
+    config["initial_version"] = Game::instance().getGameVersion();
+
+    std::ofstream file(saveDirectory + "/WorldConfig.json");
+    if (file.is_open()) {
+        file << config.dump(4);
+        file.close();
+    }
+}
+
+// Saves the player data to a file
+void World::savePlayerData(Player& player, const std::string& playerID) {
+    std::string filePath = saveDirectory + "/players/" + getPlayerID() + ".json";
+    std::ofstream file(filePath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open player data file for writing: " << filePath << std::endl;
+        return;
+    }
+
+    using json = nlohmann::json;
+    json playerData;
+
+    playerData["position"] = {
+        {"x", player.getPosition().x},
+        {"y", player.getPosition().y},
+        {"z", player.getPosition().z}
+    }; 
+
+    playerData["rotation"] = {
+        {"yaw", player.getCamera().yaw},
+        {"pitch", player.getCamera().pitch}
+    };
+
+    playerData["gameMode"] = player.gameMode;
+
+    file << playerData.dump(4);
+    file.close();
+}
+
+// Loads the player data from a file
+bool World::loadPlayerData(Player& player, const std::string& playerID) {
+    std::string filePath = saveDirectory + "/players/" + getPlayerID() + ".json";
+
+    if (!std::filesystem::exists(filePath)) return false;
+
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open player data file for reading: " << filePath << std::endl;
+        return false;
+    }
+
+    using json = nlohmann::json;
+    json playerData;
+    file >> playerData;
+
+    player.setPosition({
+        playerData["position"]["x"].get<float>(),
+        playerData["position"]["y"].get<float>(),
+        playerData["position"]["z"].get<float>()
+    });
+
+    player.getCamera().yaw = playerData["rotation"]["yaw"].get<float>();
+    player.getCamera().pitch = playerData["rotation"]["pitch"].get<float>();
+
+    player.gameMode = playerData["gameMode"].get<int>();
+
+    return true;
+}
+
+// Returns a players identifier
+std::string World::getPlayerID() const {
+    return "placeholder";
+}
+
+// Unused WIP
+// Reloads all chunks on keypress
+void World::chunkReset() {
+    if (!needsFullReset.exchange(false)) return;
 }

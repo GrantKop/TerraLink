@@ -5,6 +5,7 @@
 #include "core/registers/AtlasRegister.h"
 #include "core/world/World.h"
 #include "core/player/Player.h"
+#include "core/game/Game.h"
 
 std::vector<Vertex> lightVertices = {
     {Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)}},
@@ -26,10 +27,6 @@ std::vector<GLuint> lightIndices = {
     3, 2, 6, 6, 7, 3
 };
 
-std::string programName = "TerraLink";
-std::string programVersion = "v0.2.0";
-std::string windowTitle = programName + " " + programVersion;
-
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
 
@@ -43,7 +40,7 @@ std::string fpsCount() {
         _fpsCount = 0;
     }
 
-    return std::string(windowTitle.c_str()) + "  //  " + std::to_string(fps) + " fps";
+    return std::string(("TerraLink " + Game::instance().getGameVersion()).c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
 int main() {
@@ -51,25 +48,30 @@ int main() {
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, windowTitle.c_str(), 800, 600)) {
+    if (!createWindow(window, "TerraLink", 800, 600)) {
         glfwTerminate();
         return -1;
     }
 
-    BlockRegister blockRegister;
-    Atlas blockAtlas("../../assets/textures/blocks/");
-    blockAtlas.linkBlocksToAtlas(&blockRegister);
-    BlockRegister::setInstance(&blockRegister);
+    Game game;
+    Game::setInstance(&game);
 
     Player player(window);
     Player::setInstance(&player);
 
-    World world;
-    world.init();
-    World::setInstance(&world);
+    BlockRegister blockRegister;
+    Atlas blockAtlas((Game::instance().getBasePath() + "/assets/textures/blocks/").c_str());
+    blockAtlas.linkBlocksToAtlas(&blockRegister);
+    BlockRegister::setInstance(&blockRegister);
 
-    Shader shaderProgram("../../shaders/block.vert", "../../shaders/block.frag");
-    Shader lightShader("../../shaders/light.vert", "../../shaders/light.frag");
+    game.init();
+    game.getWorld().setSaveDirectory("myWorld");
+    game.getWorld().createSaveDirectory();
+
+    World::instance().loadPlayerData(Player::instance(), "placeholder");
+
+    Shader shaderProgram((Game::instance().getBasePath() + "/shaders/block.vert").c_str(), (Game::instance().getBasePath() + "/shaders/block.frag").c_str());
+    Shader lightShader((Game::instance().getBasePath() + "/shaders/light.vert").c_str(), (Game::instance().getBasePath() + "/shaders/light.frag").c_str());
 
     VertexArrayObject lightVAO;
     lightVAO.init();
@@ -85,7 +87,7 @@ int main() {
     lightShader.setUniform4("lightColor", lightColor);
     shaderProgram.setUniform4("lightColor", lightColor);
 
-    Texture atlas("../../assets/textures/blocks/block_atlas.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
+    Texture atlas((Game::instance().getBasePath() + "/assets/textures/blocks/block_atlas.png").c_str(), GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
     atlas.setUniform(shaderProgram, "tex0", 0);
 
     glEnable(GL_DEPTH_TEST);
@@ -95,16 +97,15 @@ int main() {
     float lastFrame = 0.0f; // Time of last frame
 
     while (!glfwWindowShouldClose(window)) {
-
         deltaTime = glfwGetTime() - lastFrame;
         lastFrame += deltaTime;
 
         glClearColor(0.38f, 0.66f, 0.77f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        world.uploadChunkMeshes(15);
-        world.unloadDistantChunks();
-        world.uploadChunksToMap();
+        game.getWorld().uploadChunkMeshes(15);
+        game.getWorld().unloadDistantChunks();
+        game.getWorld().uploadChunksToMap();
 
         player.update(deltaTime, &lightPos);
 
@@ -113,7 +114,7 @@ int main() {
         shaderProgram.setUniform3("lightPos", lightPos);
         atlas.bind();
 
-        for (auto& [pos, chunk] : world.chunks) {
+        for (auto& [pos, chunk] : game.getWorld().chunks) {
             if (!chunk->mesh.isUploaded || chunk->mesh.vertices.empty() || chunk->mesh.indices.empty()) continue;
 
             chunk->mesh.VAO.bind();
@@ -129,6 +130,7 @@ int main() {
         lightVAO.bind();
         glDrawElements(GL_TRIANGLES, lightIndices.size(), GL_UNSIGNED_INT, 0);
 
+        // game.getWorld().chunkReset();
         glfwSwapBuffers(window);
         glfwPollEvents();
 
