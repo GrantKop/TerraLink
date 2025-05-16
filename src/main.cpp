@@ -71,24 +71,19 @@ int main() {
     World::instance().loadPlayerData(Player::instance(), "placeholder");
 
     Shader shaderProgram((Game::instance().getBasePath() + "/shaders/block.vert").c_str(), (Game::instance().getBasePath() + "/shaders/block.frag").c_str());
-    Shader lightShader((Game::instance().getBasePath() + "/shaders/light.vert").c_str(), (Game::instance().getBasePath() + "/shaders/light.frag").c_str());
 
-    VertexArrayObject lightVAO;
-    lightVAO.init();
-    lightVAO.bind();
-    lightVAO.addVertexBuffer(lightVertices);
-    lightVAO.addElementBuffer(lightIndices);
-    lightVAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-
-    glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    glm::vec3 lightPos = glm::vec3(8.f, 200.f, 8.f);
-	glm::mat4 lightModel = glm::mat4(5.0f);
-
-    lightShader.setUniform4("lightColor", lightColor);
-    shaderProgram.setUniform4("lightColor", lightColor);
+    shaderProgram.use();
 
     Texture atlas((Game::instance().getBasePath() + "/assets/textures/blocks/block_atlas.png").c_str(), GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
     atlas.setUniform(shaderProgram, "tex0", 0);
+
+    glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -0.3f));
+    glUniform3fv(glGetUniformLocation(shaderProgram.ID, "lightDir"), 1, glm::value_ptr(lightDir));
+
+    glUniform3f(glGetUniformLocation(shaderProgram.ID, "fogColor"), 0.6f, 0.7f, 0.9f); // Light sky blue
+    glUniform1f(glGetUniformLocation(shaderProgram.ID, "fogDensity"), 0.015f);
+
+    glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.4f, 0.8f, 0.3f);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -107,11 +102,10 @@ int main() {
         game.getWorld().unloadDistantChunks();
         game.getWorld().uploadChunksToMap();
 
-        player.update(deltaTime, &lightPos);
+        player.update(deltaTime);
 
         shaderProgram.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
         shaderProgram.setUniform3("camPos", player.getCamera().position);
-        shaderProgram.setUniform3("lightPos", lightPos);
         atlas.bind();
 
         for (auto& [pos, chunk] : game.getWorld().chunks) {
@@ -121,13 +115,6 @@ int main() {
             glDrawElements(GL_TRIANGLES, chunk->mesh.indices.size(), GL_UNSIGNED_INT, 0);
         }       
         
-        glUseProgram(lightShader.ID);
-        lightShader.setUniform4("cameraMatrix", player.getCamera().cameraMatrix);
-        
-        lightModel = glm::mat4(1.0f);
-        lightModel = glm::translate(lightModel, lightPos);
-        lightShader.setMat4("model", lightModel);
-        lightVAO.bind();
         glDrawElements(GL_TRIANGLES, lightIndices.size(), GL_UNSIGNED_INT, 0);
 
         // game.getWorld().chunkReset();
@@ -139,10 +126,8 @@ int main() {
         // CHECK_GL_ERROR();
     }
 
-    lightVAO.deleteBuffers();
     atlas.deleteTexture();
     shaderProgram.deleteShader();
-    lightShader.deleteShader();
     glfwTerminate();
 
     return 0;
