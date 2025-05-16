@@ -28,7 +28,7 @@ clean:
 
 run: build
 	@if [ -d build ] && [ -d build/Debug ]; then \
-		cd build/Debug && ./TerraLink.exe; \
+		cd build/Debug && ./TerraLink.exe $(ARGS); \
 	fi
 
 vcpkg:
