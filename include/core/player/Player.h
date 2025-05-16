@@ -17,7 +17,7 @@ public:
 
     std::optional<glm::ivec3> getHighlightedBlock() const;
 
-    void update(float deltaTime, glm::vec3 *lightpos);
+    void update(float deltaTime);
 
     int gameMode = 1;
     int selectedBlockID = 1;
@@ -52,7 +52,7 @@ private:
     Camera camera;
     GLFWwindow* window = nullptr;
 
-    void handleInput(float deltaTime, glm::vec3 *lightpos);
+    void handleInput(float deltaTime);
     std::optional<glm::ivec3> highlightedBlock;
 
     static Player* s_instance;
