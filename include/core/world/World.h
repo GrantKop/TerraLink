@@ -8,6 +8,8 @@
 #include <zstd_errors.h>
 
 #include "core/world/Chunk.h"
+#include "core/world/Cloud.h"
+#include "graphics/Shader.h"
 
 class Player;
 
@@ -68,7 +70,19 @@ public:
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
     std::unordered_set<ChunkPosition> chunkPositionSet;
 
+    std::unordered_map<CloudPosition, CloudMesh> clouds;
+    std::unordered_set<CloudPosition> activeClouds;
+
     std::atomic<bool> needsFullReset = false;
+
+    // Clouds
+    std::vector<Vertex> cloudVertices;
+    std::vector<GLuint> cloudIndices;
+    VertexArrayObject cloudVAO;
+    bool cloudsUploaded = false;
+
+    void updateCloudsAroundPlayer();
+    void drawClouds(Shader& cloudShader);
 
 private:
     std::vector<std::thread> chunkGenThreads;

@@ -31,7 +31,7 @@ void World::shutdown() {
     chunkUploadQueue.stop();
     meshUpdateQueue.stop();
 
-    std::cout << "Joining world generation threads..." << std::endl;
+    std::cout << "\nJoining world generation threads..." << std::endl;
     for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
@@ -433,6 +433,9 @@ bool World::wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const {
 // Saves the chunk to a file
 void World::saveChunkToFile(const std::shared_ptr<Chunk>& chunk) {
     const ChunkPosition& pos = chunk->getPosition();
+
+    if (chunk->mesh.isEmpty) return;
+
     std::ostringstream oss;
     oss << saveDirectory << "/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".zst";
     std::string filename = oss.str();

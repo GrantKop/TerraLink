@@ -44,7 +44,7 @@ void Player::moveWithCollision(glm::vec3 velocity, float deltaTime) {
 }
 
 // Updates the player's position and camera based on input
-void Player::update(float deltaTime, glm::vec3 *lightpos) {
+void Player::update(float deltaTime) {
     jumpBufferTime -= deltaTime;
     jumpCooldown -= deltaTime;
     jumpBufferTime = std::max(0.0f, jumpBufferTime);
@@ -74,7 +74,7 @@ void Player::update(float deltaTime, glm::vec3 *lightpos) {
 
         moveWithCollision(glm::vec3(0.0f, verticalVelocity, 0.0f), deltaTime);
     }
-    handleInput(deltaTime, lightpos);
+    handleInput(deltaTime);
 }
 
 // Sets the player's position using x, y, z coordinates
@@ -110,7 +110,7 @@ Camera& Player::getCamera() {
 }
 
 // Handles input for the player, including movement and camera rotation
-void Player::handleInput(float deltaTime, glm::vec3 *lightpos) {
+void Player::handleInput(float deltaTime) {
     if (gameMode == 1) {
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             camera.updatePosition(CAM_FORWARD, deltaTime);
@@ -213,25 +213,6 @@ void Player::handleInput(float deltaTime, glm::vec3 *lightpos) {
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        lightpos->x += 0.12f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        lightpos->x -= 0.12f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-        lightpos->z -= 0.12f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        lightpos->z += 0.12f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
-        lightpos->y += 0.12f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
-        lightpos->y -= 0.12f;
     }
 
     static bool lastLeftClick = false;

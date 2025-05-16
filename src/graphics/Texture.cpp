@@ -15,11 +15,13 @@ Texture::Texture(const char* path, GLenum texType, GLuint texSlot, GLenum format
     glTexParameteri(texType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(texType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexParameteri(texType, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(texType, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(texType, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(texType, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+    float borderColor[] = {0.0f, 0.0f, 0.0f, 0.0f};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
     glTexImage2D(texType, 0, GL_RGBA, width, height, 0, format, pixelType, imageData);
-    glGenerateMipmap(texType);
 
     stbi_image_free(imageData);
     glBindTexture(texType, 0);
