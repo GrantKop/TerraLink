@@ -24,8 +24,8 @@ void main() {
     // Fog
     vec2 delta = fragWorldPos.xz - camPos.xz;
     float distance = length(delta);
-    float fogStart = 225.0;
-    float fogEnd = 265.0;
+    float fogStart = 220.0;
+    float fogEnd = 260.0;
 
     float fogFactor = clamp((fogEnd - distance) / (fogEnd - fogStart), 0.0, 1.0);
 
