@@ -48,12 +48,37 @@ set(zstd_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/zstd")
 find_package(zstd CONFIG REQUIRED)
 target_link_libraries(TerraLink PRIVATE zstd::libzstd_shared)
 
-# Install the binary
-install(TARGETS TerraLink DESTINATION bin)
 
-# Install assets, shaders, and other resource folders
-install(DIRECTORY assets/ DESTINATION share/TerraLink/assets)
-install(DIRECTORY shaders/ DESTINATION share/TerraLink/shaders)
+# --- Install targets ---
+install(TARGETS TerraLink RUNTIME DESTINATION bin)
 
-# Optional: install configs or saves
-install(DIRECTORY config/ DESTINATION share/TerraLink/config)
+# Install folders directly to top-level install dir
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/   DESTINATION assets)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/  DESTINATION shaders)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/registry/ DESTINATION registry)
+
+# Create and install an empty saves folder
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves")
+install(DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves/" DESTINATION saves)
+
+# --- CPack Configuration ---
+include(InstallRequiredSystemLibraries)
+
+set(CPACK_PACKAGE_NAME "TerraLink")
+set(CPACK_PACKAGE_VENDOR "Grant Kopczenski")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Procedural terrain engine")
+set(CPACK_PACKAGE_VERSION_MAJOR "0")
+set(CPACK_PACKAGE_VERSION_MINOR "4")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_PACKAGE_EXECUTABLES "TerraLink" "TerraLink")
+set(CPACK_GENERATOR "NSIS")
+set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/assets/icon/icon.ico")
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/glfw3.dll"
+        DESTINATION bin)
+
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/zstd.dll"
+        DESTINATION bin)
+
+include(CPack)
