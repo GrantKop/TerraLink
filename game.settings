@@ -10,12 +10,12 @@ port = 25565
 # Sensitivity range: 50.0 - 200.0
 playerName = Private Boi
 fov = 60.0
-sensitivity = 1.0
+sensitivity = 120.0
 
 # ===== Graphics Settings =====
 # Recommended render distance: 2 - 32
 renderDistance = 16
-distanceFog = false
+distanceFog = true
 
 # ===== World Settings =====
 saveName = default_world
