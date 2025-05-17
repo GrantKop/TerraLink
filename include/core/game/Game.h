@@ -33,14 +33,14 @@ private:
     std::string curWorldSave;
     std::unique_ptr<World> world;
 
-    bool DEV_MODE = true;
+    bool DEV_MODE = false;
     float gameVersionMajor = 0.f;
     float gameVersionMinor = 4.f;
     float gameVersionPatch = 0.f;
 
     std::filesystem::path basePath = DEV_MODE
         ? std::filesystem::current_path().parent_path().parent_path()
-        : std::filesystem::current_path();
+        : std::filesystem::current_path().parent_path();
     std::filesystem::path savePath = basePath / "saves/";
     static Game* s_instance;
 };
