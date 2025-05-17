@@ -8,6 +8,7 @@ uniform vec3 camPos;
 uniform vec3 foliageColor;  // You can tint grass/leaves here
 uniform float fogDensity;
 uniform vec3 lightDir;      // New: directional light direction (normalized)
+uniform bool useFog;
 
 in vec3 normal;
 in vec2 texCoord;
@@ -49,7 +50,13 @@ void main() {
 
     vec3 litColor = surfaceColor * lighting;
 
+    vec3 finalColor;
+
     // Mix with fog
-    vec3 finalColor = mix(fogColor, litColor, fogFactor);
+    if (useFog) {
+        finalColor = mix(fogColor, litColor, fogFactor);
+    } else {
+        finalColor = mix(fogColor, litColor, 1.0);
+    }
     FragColor = vec4(finalColor, texColor.a);
 }

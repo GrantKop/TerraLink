@@ -26,6 +26,8 @@ clean:
 		/usr/bin/find build -mindepth 1 ! -name .gitkeep -delete; \
 	fi
 
+clear: clean
+
 run: build
 	@if [ -d build ] && [ -d build/Debug ]; then \
 		cd build/Debug && ./TerraLink.exe $(ARGS); \

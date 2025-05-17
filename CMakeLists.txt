@@ -52,14 +52,14 @@ target_link_libraries(TerraLink PRIVATE zstd::libzstd_shared)
 # --- Install targets ---
 install(TARGETS TerraLink RUNTIME DESTINATION bin)
 
-# Install folders directly to top-level install dir
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/   DESTINATION assets)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/  DESTINATION shaders)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/registry/ DESTINATION registry)
 
-# Create and install an empty saves folder
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves")
 install(DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves/" DESTINATION saves)
+
+install(FILES "${CMAKE_SOURCE_DIR}/game.settings" DESTINATION .)
 
 # --- CPack Configuration ---
 include(InstallRequiredSystemLibraries)

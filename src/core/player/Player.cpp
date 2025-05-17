@@ -109,6 +109,16 @@ Camera& Player::getCamera() {
     return camera;
 }
 
+// Sets the player's name
+void Player::setPlayerName(const std::string& name) {
+    playerName = name;
+}
+
+// Returns the player's name
+std::string Player::getPlayerName() {
+    return playerName;
+}
+
 // Handles input for the player, including movement and camera rotation
 void Player::handleInput(float deltaTime) {
     if (gameMode == 1) {
@@ -268,4 +278,3 @@ static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 
     std::cout << "Selected Block ID: " << player.selectedBlockID << std::endl;
 }
-

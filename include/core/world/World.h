@@ -65,6 +65,7 @@ public:
 
     void chunkReset();
 
+    void setSeed(uint32_t newSeed) { seed = newSeed; }
     uint32_t getSeed() const { return seed; }
 
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
@@ -99,7 +100,7 @@ private:
 
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUpdateQueue;
 
-    uint32_t seed = 13372323;
+    uint32_t seed = 1;
 
     int minY = -32;
     int maxY = 100;

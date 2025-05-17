@@ -62,7 +62,7 @@ void World::shutdown() {
 
     std::cout << "Saving player data..." << std::endl;
     try {
-        savePlayerData(Player::instance(), "placeholder");
+        savePlayerData(Player::instance(), Player::instance().getPlayerName());
     } catch (...) {
         std::cerr << "Failed to save player data." << std::endl;
     }

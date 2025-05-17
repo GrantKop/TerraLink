@@ -8,6 +8,53 @@
 #include "core/game/Game.h"
 #include "network/Network.h"
 
+bool enableFog;
+
+void parseGameSettings(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open game settings file: " << filePath << std::endl;
+        exit(1);
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        size_t commentLine = line.find("#");
+        if (commentLine != std::string::npos) {
+            line = line.substr(0, commentLine);
+        }
+
+        line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+        if (line.empty()) continue;
+
+        size_t equalPos = line.find("=");
+        if (equalPos == std::string::npos) {
+            std::cerr << "Invalid line in game settings file: " << line << std::endl;
+            continue;
+        }
+
+        std::string key = line.substr(0, equalPos);
+        std::string value = line.substr(equalPos + 1);
+
+        if (key == "renderDistance") 
+            Player::instance().VIEW_DISTANCE = std::stoi(value);
+        else if (key == "fov")
+            Player::instance().getCamera().setFOV(std::stof(value));
+        else if (key == "sensitivity")
+            Player::instance().getCamera().setSensitivity(std::stof(value));
+        else if (key == "playerName")
+            Player::instance().setPlayerName(value);
+        else if (key == "saveName") {
+            World::instance().setSaveDirectory(value);
+            Game::instance().setWorldSave(value);
+        }
+        else if (key == "seed")
+            World::instance().setSeed(std::stoi(value));
+        else if (key == "distanceFog")
+            enableFog = (value == "true" || value == "1" || value == "True" || value == "TRUE");
+    }
+}
+
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
 
@@ -66,10 +113,12 @@ int main(int argc, char** argv) {
     BlockRegister::setInstance(&blockRegister);
 
     game.init();
-    game.getWorld().setSaveDirectory("myWorld");
+
+    parseGameSettings((Game::instance().getBasePath() + "/game.settings").c_str());
+
     game.getWorld().createSaveDirectory();
 
-    World::instance().loadPlayerData(Player::instance(), "placeholder");
+    World::instance().loadPlayerData(Player::instance(), Player::instance().getPlayerName());
 
     Shader shaderProgram((Game::instance().getBasePath() + "/shaders/block.vert").c_str(), (Game::instance().getBasePath() + "/shaders/block.frag").c_str());
     Shader cloudShader((Game::instance().getBasePath() + "/shaders/cloud.vert").c_str(), (Game::instance().getBasePath() + "/shaders/cloud.frag").c_str());
@@ -87,6 +136,9 @@ int main(int argc, char** argv) {
     glUniform1f(glGetUniformLocation(shaderProgram.ID, "fogDensity"), 0.015f);
 
     glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.3f, 0.7f, 0.2f);
+    GLint location = glGetUniformLocation(shaderProgram.ID, "useFog");
+    glUniform1i(location, enableFog ? 1 : 0);
+    
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
