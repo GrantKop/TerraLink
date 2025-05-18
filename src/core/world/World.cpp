@@ -106,6 +106,19 @@ void World::managerThread() {
             updateChunksAroundPlayer(current, Player::instance().VIEW_DISTANCE);
         }
         queueChunksForRemoval(current, Player::instance().VIEW_DISTANCE + 1);
+
+        SavableChunk savableChunk;
+        while (chunkSaveQueue.tryPop(savableChunk)) {
+            std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
+            chunk->setPosition(savableChunk.position);
+            chunk->setBlocks(savableChunk.blocks);
+            chunk->mesh.vertices = savableChunk.vertices;
+            chunk->mesh.indices = savableChunk.indices;
+
+            chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
+
+            saveChunkToFile(chunk);
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
@@ -338,7 +351,7 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
 
 // Unloads distant chunks that are no longer needed
 void World::unloadDistantChunks() {
-    int maxUnloads = 5;
+    int maxUnloads = Player::instance().VIEW_DISTANCE * 2;
     for (int i = 0; i < maxUnloads; ++i) {
         ChunkPosition pos;
         if (!chunkRemovalQueue.tryPop(pos)) break;
@@ -354,7 +367,7 @@ void World::unloadDistantChunks() {
         std::shared_ptr<Chunk> chunkPtr = it->second;
         if (!chunkPtr) continue;
 
-        saveChunkToFile(chunkPtr);
+        chunkSaveQueue.push(chunkPtr->makeSavableCopy());
 
         if (chunkPtr->mesh.isUploaded) {
             try {

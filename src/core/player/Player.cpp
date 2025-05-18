@@ -33,9 +33,15 @@ void Player::moveWithCollision(glm::vec3 velocity, float deltaTime) {
     } else {
         glm::vec3 step = glm::vec3(velocity.x, 0.0f, 0.0f) * deltaTime;
         if (!World::instance().collidesWithBlockAABB(playerPosition + step, playerSize)) playerPosition += step;
+        else {
+            currentVelocity.x = 0.0f;
+        }
 
         step = glm::vec3(0.0f, 0.0f, velocity.z) * deltaTime;
         if (!World::instance().collidesWithBlockAABB(playerPosition + step, playerSize)) playerPosition += step;
+        else {
+            currentVelocity.z = 0.0f;
+        }
 
         step = glm::vec3(0.0f, velocity.y, 0.0f) * deltaTime;
         glm::vec3 newPosY = playerPosition + step;
@@ -43,7 +49,8 @@ void Player::moveWithCollision(glm::vec3 velocity, float deltaTime) {
             playerPosition = newPosY;
         } else {
             if (velocity.y > 0.0f) {
-                verticalVelocity = -1.0f;
+                verticalVelocity = 0.0f;
+                currentVelocity.y = 0.0f;
                 jumpBufferTime = 0.0f;
             }
         }
@@ -171,15 +178,15 @@ void Player::handleInput(float deltaTime) {
         static float currentFOVOffset = 0.0f;
 
         if (isSneaking) {
-            camera.movementSpeed = 3.0f;
+            camera.movementSpeed = 1.31f;
             verticalVelocity = 0.0f;
         } else if (isSprinting) {
-            camera.movementSpeed = 8.75f;
+            camera.movementSpeed = 6.73f;
         } else {
-            camera.movementSpeed = 5.25f;
+            camera.movementSpeed = 4.31f;
         }
 
-        float targetFOVOffset = isSprinting ? 8.0f : 0.0f;
+        float targetFOVOffset = (isSprinting && (std::abs(currentVelocity.x) >= 0.1 || std::abs(currentVelocity.z) >= 0.1)) ? 8.5f : 0.0f;
         const float fovLerpSpeed = 10.0f;
         currentFOVOffset = glm::mix(currentFOVOffset, targetFOVOffset, fovLerpSpeed * deltaTime);
         if (std::abs(currentFOVOffset - targetFOVOffset) < 0.01f) {
@@ -187,8 +194,20 @@ void Player::handleInput(float deltaTime) {
         }
         camera.setFOV(camera.getBaseFOV() + currentFOVOffset, window);
 
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && (onGround || verticalVelocity <= 0.0f)) {
-            jumpBufferTime = jumpBufferMax;
+        bool jumpPressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+
+        if (jumpPressed) {
+            if (onGround && verticalVelocity == 0.0f) {
+                if (jumpReleased) {
+                    jumpBufferTime = jumpBufferMax;
+                    jumpCooldown = 0.0f;
+                } else if (jumpCooldown <= 0.0f) {
+                    jumpBufferTime = jumpBufferMax;
+                }
+            }
+            jumpReleased = false;
+        } else {
+            jumpReleased = true;
         }
 
         glm::vec3 inputDir(0.0f);
@@ -223,7 +242,7 @@ void Player::handleInput(float deltaTime) {
         } else { 
             currentVelocity -= currentVelocity * friction * deltaTime;
 
-            if (glm::length(currentVelocity) < 0.01f) {
+            if (glm::length(currentVelocity) < 0.015f) {
                 currentVelocity = glm::vec3(0.0f);
             }
         }
