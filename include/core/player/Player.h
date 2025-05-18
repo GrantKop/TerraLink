@@ -46,11 +46,17 @@ public:
 
     Camera& getCamera();
 
-    int VIEW_DISTANCE = 16;
+    void setPlayerName(const std::string& name);
+
+    std::string getPlayerName();
+
+    int VIEW_DISTANCE = 2;
 
 private:
     Camera camera;
     GLFWwindow* window = nullptr;
+
+    std::string playerName = "player";
 
     void handleInput(float deltaTime);
     std::optional<glm::ivec3> highlightedBlock;

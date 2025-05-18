@@ -1,12 +1,11 @@
 #include <iostream>
 
 #include "graphics/VertexArrayObject.h"
-#include "graphics/Texture.h"
 #include "core/registers/AtlasRegister.h"
-#include "core/world/World.h"
-#include "core/player/Player.h"
 #include "core/game/Game.h"
+#include "core/player/Player.h"
 #include "network/Network.h"
+#include "core/game/GameInit.h"
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
@@ -24,27 +23,9 @@ std::string fpsCount() {
     return std::string(("TerraLink " + Game::instance().getGameVersion()).c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
-int main(int argc, char** argv) {
+int main() {
 
-    if (argc >= 2) {
-            std::string mode = argv[1];
-        if (mode == "server") {
-            NetworkManager::setRole(NetworkRole::SERVER);
-        } else if (mode == "client") {
-            NetworkManager::setRole(NetworkRole::CLIENT);
-        } else if (mode == "host") {
-            NetworkManager::setRole(NetworkRole::HOST);
-        } else {
-            std::cerr << "Invalid network role: " << mode << std::endl;
-            return 1;
-        }
-
-        std::cout << "\nStarting TerraLink in " << mode << " mode...\n" << std::endl;
-    } else {
-        std::cout << "No network role specified. Defaulting to CLIENT." << std::endl;
-        std::cout << "Usage: " << argv[0] << " [server|client|host]" << std::endl;
-        NetworkManager::setRole(NetworkRole::CLIENT);
-    }
+    bool onlineMode = GameInit::parseNetworkSettings((Game::instance().getBasePath() + "/network.settings").c_str());
 
     Game game;
     Game::setInstance(&game);
@@ -66,10 +47,13 @@ int main(int argc, char** argv) {
     BlockRegister::setInstance(&blockRegister);
 
     game.init();
-    game.getWorld().setSaveDirectory("myWorld");
+
+    GameInit::parseGameSettings((Game::instance().getBasePath() + "/game.settings").c_str());
+
+    World::instance().init();
     game.getWorld().createSaveDirectory();
 
-    World::instance().loadPlayerData(Player::instance(), "placeholder");
+    World::instance().loadPlayerData(Player::instance(), Player::instance().getPlayerName());
 
     Shader shaderProgram((Game::instance().getBasePath() + "/shaders/block.vert").c_str(), (Game::instance().getBasePath() + "/shaders/block.frag").c_str());
     Shader cloudShader((Game::instance().getBasePath() + "/shaders/cloud.vert").c_str(), (Game::instance().getBasePath() + "/shaders/cloud.frag").c_str());
@@ -87,7 +71,9 @@ int main(int argc, char** argv) {
     glUniform1f(glGetUniformLocation(shaderProgram.ID, "fogDensity"), 0.015f);
 
     glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.3f, 0.7f, 0.2f);
-
+    GLint location = glGetUniformLocation(shaderProgram.ID, "useFog");
+    glUniform1i(location, Game::instance().isFogEnabled() ? 1 : 0);
+    
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     
@@ -134,6 +120,11 @@ int main(int argc, char** argv) {
     glfwTerminate();
 
     game.getWorld().shutdown();
+
+    if (Game::instance().isReleaseMode()) {
+        std::cout << "Press Enter to exit..." << std::endl;
+        std::cin.ignore();
+    }
 
     return 0;
 }

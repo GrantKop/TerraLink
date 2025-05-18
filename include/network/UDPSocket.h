@@ -26,12 +26,20 @@ public:
     UDPSocket();
     ~UDPSocket();
 
+    void setIP(const std::string& ip);
+    void setPort(uint16_t port);
+    std::string getIP() const;
+    uint16_t getPort() const;
+
     bool bind(uint16_t port);
     bool sendTo(const std::vector<uint8_t>& data, const Address& addr);
     bool receiveFrom(std::vector<uint8_t>& data, Address& fromAddr);
 
 private:
     SOCKET socketHandle;
+
+    std::string ip;
+    uint16_t port;
 };
 
 bool initSockets();

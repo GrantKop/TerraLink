@@ -118,7 +118,7 @@ void Chunk::setPosition(const ChunkPosition& pos) {
 void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
                          std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const
 {
-    thread_local std::vector<bool> isTransparentCache;
+    thread_local std::vector<uint8_t> isTransparentCache;
     thread_local const std::vector<Block>* blockListPtr = &BlockRegister::instance().blocks;
 
     // Ensure the transparency cache is up-to-date

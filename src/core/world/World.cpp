@@ -62,7 +62,7 @@ void World::shutdown() {
 
     std::cout << "Saving player data..." << std::endl;
     try {
-        savePlayerData(Player::instance(), "placeholder");
+        savePlayerData(Player::instance(), Player::instance().getPlayerName());
     } catch (...) {
         std::cerr << "Failed to save player data." << std::endl;
     }
@@ -120,6 +120,7 @@ void World::chunkWorkerThread() {
         if ((pos.y * CHUNK_SIZE + CHUNK_SIZE) < MIN_GENERATE_Y) continue;
 
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
+
         if (loadChunkFromFile(pos, chunk)) {
             meshUploadQueue.push(chunk);
         } else {
@@ -174,7 +175,7 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     
             return 0;
         });
-    
+
     chunk->mesh.vertices = std::move(vertices);
     chunk->mesh.indices = std::move(indices);
     
@@ -278,7 +279,6 @@ void World::uploadChunkMeshes(int maxPerFrame) {
     for (int i = 0; i < maxPerFrame; ++i) {
         std::shared_ptr<Chunk> chunk;
         if (!meshUploadQueue.tryPop(chunk) || !chunk || chunk->mesh.isUploaded) continue;
-
         try {
             uploadMeshToGPU(*chunk);
             chunk->mesh.needsUpdate = false;
@@ -642,7 +642,7 @@ bool World::loadPlayerData(Player& player, const std::string& playerID) {
 
 // Returns a players identifier
 std::string World::getPlayerID() const {
-    return "placeholder";
+    return Player::instance().getPlayerName();
 }
 
 // Unused WIP

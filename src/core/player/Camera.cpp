@@ -11,6 +11,20 @@ Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
 
 Camera::~Camera() {}
 
+// Sets the field of view (FOV) for the camera
+void Camera::setFOV(float fov) {
+    if (fov < 50.0f) fov = 50.0f;
+    if (fov > 110.0f) fov = 110.0f;
+    this->fov = fov;
+}
+
+// Sets the sensitivity for mouse movement
+void Camera::setSensitivity(float sensitivity) {
+    if (sensitivity < 50.0f) sensitivity = 50.0f;
+    if (sensitivity > 200.0f) sensitivity = 200.0f;
+    this->sensitivity = sensitivity;
+}
+
 // Sets the camera matrix in the shader program
 void Camera::matrix(Shader& shaderProgram, const char* uniformName) {
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, uniformName), 1, GL_FALSE, glm::value_ptr(cameraMatrix));

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Source files
-file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c")
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c" "src/*.rc")
 add_executable(TerraLink ${SOURCES})
 
 # OpenMP
@@ -52,14 +52,15 @@ target_link_libraries(TerraLink PRIVATE zstd::libzstd_shared)
 # --- Install targets ---
 install(TARGETS TerraLink RUNTIME DESTINATION bin)
 
-# Install folders directly to top-level install dir
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/   DESTINATION assets)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/  DESTINATION shaders)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/registry/ DESTINATION registry)
 
-# Create and install an empty saves folder
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves")
 install(DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves/" DESTINATION saves)
+
+install(FILES "${CMAKE_SOURCE_DIR}/game.settings" DESTINATION .)
+install(FILES "${CMAKE_SOURCE_DIR}/network.settings" DESTINATION .)
 
 # --- CPack Configuration ---
 include(InstallRequiredSystemLibraries)
@@ -69,7 +70,7 @@ set(CPACK_PACKAGE_VENDOR "Grant Kopczenski")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Procedural terrain engine")
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "4")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_PACKAGE_VERSION_PATCH "3")
 set(CPACK_PACKAGE_EXECUTABLES "TerraLink" "TerraLink")
 set(CPACK_GENERATOR "NSIS")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/assets/icon/icon.ico")

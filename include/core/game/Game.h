@@ -27,16 +27,24 @@ public:
 
     World& getWorld();
 
+    void setEnableFog(bool enable) { enableFog = enable; }
+    bool isFogEnabled() const { return enableFog; }
+
     std::string getGameVersion() const;
+
+    void setReleaseMode(bool releaseMode) { DEV_MODE = !releaseMode; }
+    bool isReleaseMode() const { return !DEV_MODE; }
 
 private:
     std::string curWorldSave;
     std::unique_ptr<World> world;
 
+    bool enableFog = false;
+
     bool DEV_MODE = false;
     float gameVersionMajor = 0.f;
     float gameVersionMinor = 4.f;
-    float gameVersionPatch = 0.f;
+    float gameVersionPatch = 3.f;
 
     std::filesystem::path basePath = DEV_MODE
         ? std::filesystem::current_path().parent_path().parent_path()

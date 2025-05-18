@@ -26,6 +26,8 @@ clean:
 		/usr/bin/find build -mindepth 1 ! -name .gitkeep -delete; \
 	fi
 
+clear: clean
+
 run: build
 	@if [ -d build ] && [ -d build/Debug ]; then \
 		cd build/Debug && ./TerraLink.exe $(ARGS); \
@@ -48,3 +50,5 @@ installer:
 	@cmake --install build --config Release
 	@echo "Project installed to build/install"
 	@cd build && "C:/Program Files/CMake/bin/cpack.exe" -G NSIS
+
+install: installer

@@ -17,6 +17,22 @@ UDPSocket::~UDPSocket() {
 #endif
 }
 
+void UDPSocket::setIP(const std::string& ip) {
+    this->ip = ip;
+}
+
+void UDPSocket::setPort(uint16_t port) {
+    this->port = port;
+}
+
+std::string UDPSocket::getIP() const {
+    return ip;
+}
+
+uint16_t UDPSocket::getPort() const {
+    return port;
+}
+
 bool UDPSocket::bind(uint16_t port) {
     sockaddr_in localAddr{};
     localAddr.sin_family = AF_INET;
