@@ -50,7 +50,7 @@ public:
 
     std::string getPlayerName();
 
-    int VIEW_DISTANCE = 16;
+    int VIEW_DISTANCE = 2;
 
 private:
     Camera camera;

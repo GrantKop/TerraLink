@@ -102,8 +102,8 @@ private:
 
     uint32_t seed = 1;
 
-    int minY = -32;
-    int maxY = 100;
+    int minY = -16;
+    int maxY = 40;
 
     std::string saveDirectory;
 

@@ -9,8 +9,8 @@ port = 25565
 # FOV range: 50 - 110
 # Sensitivity range: 50.0 - 200.0
 playerName = Private Boi
-fov = 60.0
-sensitivity = 120.0
+fov = 90.0
+sensitivity = 90.0
 
 # ===== Graphics Settings =====
 # Recommended render distance: 2 - 32

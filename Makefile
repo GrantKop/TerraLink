@@ -50,3 +50,5 @@ installer:
 	@cmake --install build --config Release
 	@echo "Project installed to build/install"
 	@cd build && "C:/Program Files/CMake/bin/cpack.exe" -G NSIS
+
+install: installer
