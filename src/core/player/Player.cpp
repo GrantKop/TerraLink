@@ -191,13 +191,11 @@ void Player::handleInput(float deltaTime) {
     }
     lastNPress = glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS;
     
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    static bool cursorLocked = true;
+
+    if (cursorLocked) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         camera.processMouseMovement(window);
-    } 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        camera.firstClick = true;
     }
     
     static bool fullscreen = false;
@@ -222,7 +220,14 @@ void Player::handleInput(float deltaTime) {
     }
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
+        if (cursorLocked) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            camera.firstClick = true;
+            cursorLocked = false;
+        }
+    }
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !cursorLocked) {
+        cursorLocked = true;
     }
 
     static bool lastLeftClick = false;
@@ -235,8 +240,8 @@ void Player::handleInput(float deltaTime) {
     lastLeftClick = leftNow;
 
     static bool lastRightClick = false;
-    bool rightNow = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && !lastRightClick) {
+    bool rightNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
+    if (rightNow && !lastRightClick) {
         if (auto hit = camera.raycastToBlock(World::instance())) {
             glm::ivec3 placePos = hit->block + hit->normal;
             glm::vec3 blockCenter = glm::vec3(placePos) + 0.5f;
@@ -246,6 +251,20 @@ void Player::handleInput(float deltaTime) {
         }
     }
     lastRightClick = rightNow;
+
+    static bool lastMiddleClick = false;
+    bool middleNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
+
+    if (middleNow && !lastMiddleClick) {
+        if (auto hit = camera.raycastToBlock(World::instance())) {
+            int blockID = World::instance().getBlockIDAtWorldPosition(hit->block.x, hit->block.y, hit->block.z);
+            if (blockID != 0) {
+                selectedBlockID = blockID;
+                std::cout << "Selected Block ID: " << selectedBlockID << std::endl;
+            }
+        }
+    }
+    lastMiddleClick = middleNow;
 
     if (gameMode == 1) {
         playerPosition = camera.position - glm::vec3(0.0f, eyeOffset, 0.0f);

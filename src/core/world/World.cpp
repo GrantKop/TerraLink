@@ -343,33 +343,36 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
 
 // Unloads distant chunks that are no longer needed
 void World::unloadDistantChunks() {
-    ChunkPosition pos;
-    if (!chunkRemovalQueue.tryPop(pos)) return;
+    int maxUnloads = Player::instance().VIEW_DISTANCE / 2;
+    for (int i = 0; i < maxUnloads; ++i) {
+        ChunkPosition pos;
+        if (!chunkRemovalQueue.tryPop(pos)) break;
 
-    if (std::abs(pos.x - Player::instance().getChunkPosition().x) <= Player::instance().VIEW_DISTANCE &&
-        std::abs(pos.z - Player::instance().getChunkPosition().z) <= Player::instance().VIEW_DISTANCE) {
-        return;
-    }
-
-    auto it = chunks.find(pos);
-    if (it == chunks.end()) return;
-
-    std::shared_ptr<Chunk> chunkPtr = it->second;
-    if (!chunkPtr) return;
-
-    saveChunkToFile(chunkPtr);
-
-    if (chunkPtr->mesh.isUploaded) {
-        try {
-            chunkPtr->mesh.VAO.deleteBuffers();
-        } catch (...) {
-            std::cerr << "Exception in deleteBuffers!" << std::endl;
+        if (std::abs(pos.x - Player::instance().getChunkPosition().x) <= Player::instance().VIEW_DISTANCE &&
+            std::abs(pos.z - Player::instance().getChunkPosition().z) <= Player::instance().VIEW_DISTANCE) {
+            continue;
         }
-        chunkPtr->mesh.vertices.clear();
-        chunkPtr->mesh.indices.clear();
-    }
 
-    chunks.erase(it);
+        auto it = chunks.find(pos);
+        if (it == chunks.end()) continue;
+
+        std::shared_ptr<Chunk> chunkPtr = it->second;
+        if (!chunkPtr) continue;
+
+        saveChunkToFile(chunkPtr);
+
+        if (chunkPtr->mesh.isUploaded) {
+            try {
+                chunkPtr->mesh.VAO.deleteBuffers();
+            } catch (...) {
+                std::cerr << "Exception in deleteBuffers!" << std::endl;
+            }
+            chunkPtr->mesh.vertices.clear();
+            chunkPtr->mesh.indices.clear();
+        }
+
+        chunks.erase(it);
+    }
 }
 
 int World::getBlockIDAtWorldPosition(int wx, int wy, int wz) const {

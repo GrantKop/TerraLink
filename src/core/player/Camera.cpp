@@ -13,15 +13,15 @@ Camera::~Camera() {}
 
 // Sets the field of view (FOV) for the camera
 void Camera::setFOV(float fov) {
-    if (fov < 50.0f) fov = 50.0f;
-    if (fov > 110.0f) fov = 110.0f;
+    if (fov < 40.0f) fov = 40.0f;
+    if (fov > 120.0f) fov = 120.0f;
     this->fov = fov;
 }
 
 // Sets the sensitivity for mouse movement
 void Camera::setSensitivity(float sensitivity) {
-    if (sensitivity < 50.0f) sensitivity = 50.0f;
-    if (sensitivity > 200.0f) sensitivity = 200.0f;
+    if (sensitivity < 10.0f) sensitivity = 10.0f;
+    if (sensitivity > 500.0f) sensitivity = 500.0f;
     this->sensitivity = sensitivity;
 }
 

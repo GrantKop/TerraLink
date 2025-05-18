@@ -41,7 +41,7 @@ private:
 
     bool enableFog = false;
 
-    bool DEV_MODE = false;
+    bool DEV_MODE = true;
     float gameVersionMajor = 0.f;
     float gameVersionMinor = 4.f;
     float gameVersionPatch = 3.f;
