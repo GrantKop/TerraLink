@@ -1,59 +1,13 @@
 #include <iostream>
 
 #include "graphics/VertexArrayObject.h"
-#include "graphics/Texture.h"
 #include "core/registers/AtlasRegister.h"
-#include "core/world/World.h"
-#include "core/player/Player.h"
 #include "core/game/Game.h"
+#include "core/player/Player.h"
 #include "network/Network.h"
+#include "core/game/GameInit.h"
 
 bool enableFog;
-
-void parseGameSettings(const std::string& filePath) {
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open game settings file: " << filePath << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-    while (std::getline(file, line)) {
-        size_t commentLine = line.find("#");
-        if (commentLine != std::string::npos) {
-            line = line.substr(0, commentLine);
-        }
-
-        line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
-        if (line.empty()) continue;
-
-        size_t equalPos = line.find("=");
-        if (equalPos == std::string::npos) {
-            std::cerr << "Invalid line in game settings file: " << line << std::endl;
-            continue;
-        }
-
-        std::string key = line.substr(0, equalPos);
-        std::string value = line.substr(equalPos + 1);
-
-        if (key == "renderDistance") 
-            Player::instance().VIEW_DISTANCE = std::stoi(value);
-        else if (key == "fov")
-            Player::instance().getCamera().setFOV(std::stof(value));
-        else if (key == "sensitivity")
-            Player::instance().getCamera().setSensitivity(std::stof(value));
-        else if (key == "playerName")
-            Player::instance().setPlayerName(value);
-        else if (key == "saveName") {
-            World::instance().setSaveDirectory(value);
-            Game::instance().setWorldSave(value);
-        }
-        else if (key == "seed")
-            World::instance().setSeed(std::stoi(value));
-        else if (key == "distanceFog")
-            enableFog = (value == "true" || value == "1" || value == "True" || value == "TRUE");
-    }
-}
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
@@ -71,27 +25,9 @@ std::string fpsCount() {
     return std::string(("TerraLink " + Game::instance().getGameVersion()).c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
-int main(int argc, char** argv) {
+int main() {
 
-    if (argc >= 2) {
-            std::string mode = argv[1];
-        if (mode == "server") {
-            NetworkManager::setRole(NetworkRole::SERVER);
-        } else if (mode == "client") {
-            NetworkManager::setRole(NetworkRole::CLIENT);
-        } else if (mode == "host") {
-            NetworkManager::setRole(NetworkRole::HOST);
-        } else {
-            std::cerr << "Invalid network role: " << mode << std::endl;
-            return 1;
-        }
-
-        std::cout << "\nStarting TerraLink in " << mode << " mode...\n" << std::endl;
-    } else {
-        std::cout << "No network role specified. Defaulting to CLIENT." << std::endl;
-        std::cout << "Usage: " << argv[0] << " [server|client|host]" << std::endl;
-        NetworkManager::setRole(NetworkRole::CLIENT);
-    }
+    bool onlineMode = GameInit::parseNetworkSettings((Game::instance().getBasePath() + "/network.settings").c_str());
 
     Game game;
     Game::setInstance(&game);
@@ -114,8 +50,9 @@ int main(int argc, char** argv) {
 
     game.init();
 
-    parseGameSettings((Game::instance().getBasePath() + "/game.settings").c_str());
+    GameInit::parseGameSettings((Game::instance().getBasePath() + "/game.settings").c_str());
 
+    World::instance().init();
     game.getWorld().createSaveDirectory();
 
     World::instance().loadPlayerData(Player::instance(), Player::instance().getPlayerName());
@@ -139,7 +76,6 @@ int main(int argc, char** argv) {
     GLint location = glGetUniformLocation(shaderProgram.ID, "useFog");
     glUniform1i(location, enableFog ? 1 : 0);
     
-
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     

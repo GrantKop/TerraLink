@@ -60,6 +60,7 @@ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves")
 install(DIRECTORY "${CMAKE_BINARY_DIR}/empty_saves/" DESTINATION saves)
 
 install(FILES "${CMAKE_SOURCE_DIR}/game.settings" DESTINATION .)
+install(FILES "${CMAKE_SOURCE_DIR}/network.settings" DESTINATION .)
 
 # --- CPack Configuration ---
 include(InstallRequiredSystemLibraries)

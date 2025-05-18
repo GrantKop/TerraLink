@@ -34,7 +34,6 @@ std::string Game::getSavePath() const {
 void Game::init() {
     world = std::make_unique<World>();
     World::setInstance(world.get());
-    world->init();
 }
 
 void Game::tick() {

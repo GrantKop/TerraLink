@@ -27,13 +27,19 @@ public:
 
     World& getWorld();
 
+    void setEnableFog(bool enable) { enableFog = enable; }
+    bool isFogEnabled() const { return enableFog; }
+
     std::string getGameVersion() const;
+
     void setReleaseMode(bool releaseMode) { DEV_MODE = !releaseMode; }
     bool isReleaseMode() const { return !DEV_MODE; }
 
 private:
     std::string curWorldSave;
     std::unique_ptr<World> world;
+
+    bool enableFog = false;
 
     bool DEV_MODE = true;
     float gameVersionMajor = 0.f;
