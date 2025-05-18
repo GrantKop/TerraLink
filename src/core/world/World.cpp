@@ -343,7 +343,7 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
 
 // Unloads distant chunks that are no longer needed
 void World::unloadDistantChunks() {
-    int maxUnloads = Player::instance().VIEW_DISTANCE / 2;
+    int maxUnloads = 5;
     for (int i = 0; i < maxUnloads; ++i) {
         ChunkPosition pos;
         if (!chunkRemovalQueue.tryPop(pos)) break;

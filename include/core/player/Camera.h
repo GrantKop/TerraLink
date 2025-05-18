@@ -54,7 +54,9 @@ public:
 
     ~Camera();
 
-    void setFOV(float fov);
+    void setFOV(float fov, GLFWwindow* window);
+    void setBaseFOV(float fov);
+    float getBaseFOV() const;
     void setSensitivity(float sensitivity);
 
     void matrix(Shader& shaderProgram, const char* uniformName);
@@ -74,6 +76,7 @@ public:
 
 private:
     void updateCameraVectors();
+    float baseFOV;
     
 };
 

@@ -8,7 +8,7 @@ sensitivity = 110.0
 # ===== Graphics Settings =====
 # Recommended render distance: 2 - 32
 renderDistance = 16
-distanceFog = false
+distanceFog = true
 
 # ===== World Settings =====
 saveName = default_world

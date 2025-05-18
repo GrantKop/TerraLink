@@ -38,8 +38,17 @@ void Player::moveWithCollision(glm::vec3 velocity, float deltaTime) {
         if (!World::instance().collidesWithBlockAABB(playerPosition + step, playerSize)) playerPosition += step;
 
         step = glm::vec3(0.0f, velocity.y, 0.0f) * deltaTime;
-        if (!World::instance().collidesWithBlockAABB(playerPosition + step, playerSize)) playerPosition += step;
+        glm::vec3 newPosY = playerPosition + step;
+        if (!World::instance().collidesWithBlockAABB(newPosY, playerSize)) {
+            playerPosition = newPosY;
+        } else {
+            if (velocity.y > 0.0f) {
+                verticalVelocity = -1.0f;
+                jumpBufferTime = 0.0f;
+            }
+        }
     }
+
     camera.position = playerPosition + glm::vec3(0.0f, eyeOffset, 0.0f);
 }
 
@@ -55,12 +64,13 @@ void Player::update(float deltaTime) {
         glm::vec3 groundCheck = playerPosition;
         groundCheck.y -= 0.15f;
         onGround = World::instance().collidesWithBlockAABB(groundCheck, playerSize);
+
         if (onGround && jumpBufferTime > 0.0f && jumpCooldown <= 0.0f) {
             verticalVelocity = jumpSpeed;
             onGround = false;
             jumpBufferTime = 0.0f;
             jumpCooldown = jumpDelay;
-        }        
+        }
     
         if (onGround && verticalVelocity < 0.0f) {
             verticalVelocity = 0.0f;
@@ -72,7 +82,13 @@ void Player::update(float deltaTime) {
             verticalVelocity = std::max(verticalVelocity + gravity * deltaTime, terminalVelocity);
         }
 
+        glm::vec3 before = playerPosition;
         moveWithCollision(glm::vec3(0.0f, verticalVelocity, 0.0f), deltaTime);
+        glm::vec3 after = playerPosition;
+
+        if (verticalVelocity > 0.0f && after.y <= before.y + 0.001f) {
+            verticalVelocity = -1.0f;
+        }
     }
     handleInput(deltaTime);
 }
@@ -148,21 +164,11 @@ void Player::handleInput(float deltaTime) {
             camera.movementSpeed = 5.25f;
         }
     } else if (gameMode == 0) {
-        glm::vec3 velocity(0.0f);
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            velocity += camera.getDirectionXZ();
-        }
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-            velocity -= camera.getDirectionXZ();
-        }
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            velocity -= glm::normalize(glm::cross(camera.getDirectionXZ(), glm::vec3(0, 1, 0)));
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            velocity += glm::normalize(glm::cross(camera.getDirectionXZ(), glm::vec3(0, 1, 0)));
-        }
+
         bool isSprinting = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
         bool isSneaking = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
+
+        static float currentFOVOffset = 0.0f;
 
         if (isSneaking) {
             camera.movementSpeed = 3.0f;
@@ -173,14 +179,56 @@ void Player::handleInput(float deltaTime) {
             camera.movementSpeed = 5.25f;
         }
 
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        float targetFOVOffset = isSprinting ? 8.0f : 0.0f;
+        const float fovLerpSpeed = 10.0f;
+        currentFOVOffset = glm::mix(currentFOVOffset, targetFOVOffset, fovLerpSpeed * deltaTime);
+        if (std::abs(currentFOVOffset - targetFOVOffset) < 0.01f) {
+            currentFOVOffset = targetFOVOffset;
+        }
+        camera.setFOV(camera.getBaseFOV() + currentFOVOffset, window);
+
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && (onGround || verticalVelocity <= 0.0f)) {
             jumpBufferTime = jumpBufferMax;
         }
 
-        if (glm::length(velocity) > 0.0f) {
-            velocity = glm::normalize(velocity) * camera.movementSpeed;
-            moveWithCollision(velocity, deltaTime);
+        glm::vec3 inputDir(0.0f);
+
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            inputDir += camera.getDirectionXZ();
         }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            inputDir -= camera.getDirectionXZ();
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            inputDir -= glm::normalize(glm::cross(camera.getDirectionXZ(), glm::vec3(0, 1, 0)));
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            inputDir += glm::normalize(glm::cross(camera.getDirectionXZ(), glm::vec3(0, 1, 0)));
+        }
+
+        const float groundFriction = 10.25f;
+        const float airFriction = 2.0f;
+        float friction = onGround ? groundFriction : airFriction;
+
+        if (glm::length(inputDir) > 0.0f) {
+            inputDir = glm::normalize(inputDir);
+        
+            glm::vec3 targetVelocity = inputDir * camera.movementSpeed;
+        
+            const float groundedAcceleration = 8.0f;
+            const float airAcceleration = 3.5f;
+
+            float accelerationRate = onGround ? groundedAcceleration : airAcceleration;
+            currentVelocity = glm::mix(currentVelocity, targetVelocity, accelerationRate * deltaTime);
+        } else { 
+            currentVelocity -= currentVelocity * friction * deltaTime;
+
+            if (glm::length(currentVelocity) < 0.01f) {
+                currentVelocity = glm::vec3(0.0f);
+            }
+        }
+
+        moveWithCollision(currentVelocity, deltaTime);
     }
 
     static bool lastNPress = false;
@@ -188,6 +236,7 @@ void Player::handleInput(float deltaTime) {
         gameMode = gameMode == 0 ? 1 : 0;
         std::cout << "Switched to " << (gameMode == 0 ? "Walk" : "Fly") << " mode\n";
         verticalVelocity = 0.0f;
+        currentVelocity = glm::vec3(0.0f);
     }
     lastNPress = glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS;
     
@@ -225,14 +274,17 @@ void Player::handleInput(float deltaTime) {
             camera.firstClick = true;
             cursorLocked = false;
         }
+        if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, true);
+        }
     }
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !cursorLocked) {
+    if ((glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS || glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) && !cursorLocked) {
         cursorLocked = true;
     }
 
     static bool lastLeftClick = false;
     bool leftNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-    if (leftNow && !lastLeftClick) {
+    if (leftNow && !lastLeftClick && cursorLocked) {
         if (auto hit = camera.raycastToBlock(World::instance())) {
             World::instance().setBlockAtWorldPosition(hit->block.x, hit->block.y, hit->block.z, 0);
         }
@@ -241,7 +293,7 @@ void Player::handleInput(float deltaTime) {
 
     static bool lastRightClick = false;
     bool rightNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
-    if (rightNow && !lastRightClick) {
+    if (rightNow && !lastRightClick && cursorLocked) {
         if (auto hit = camera.raycastToBlock(World::instance())) {
             glm::ivec3 placePos = hit->block + hit->normal;
             glm::vec3 blockCenter = glm::vec3(placePos) + 0.5f;

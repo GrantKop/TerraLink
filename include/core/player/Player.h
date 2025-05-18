@@ -22,6 +22,8 @@ public:
     int gameMode = 1;
     int selectedBlockID = 1;
     float verticalVelocity = 0.0f;
+    glm::vec3 currentVelocity = glm::vec3(0.0f);
+    const float acceleration = 40.0f;
     bool onGround = false;
 
     const float jumpSpeed = 7.0f;
