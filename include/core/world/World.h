@@ -97,6 +97,7 @@ private:
     ThreadSafeQueue<std::shared_ptr<Chunk>> chunkUploadQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
     ThreadSafeQueue<ChunkPosition> chunkRemovalQueue;
+    ThreadSafeQueue<SavableChunk> chunkSaveQueue;
 
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUpdateQueue;
 

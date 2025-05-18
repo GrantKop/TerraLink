@@ -30,7 +30,8 @@ public:
     float jumpBufferTime = 0.0f;
     float jumpCooldown = 0.0f;
     const float jumpBufferMax = 0.2f;
-    const float jumpDelay = .2f;
+    const float jumpDelay = .5f;
+    bool jumpReleased = true;
 
     glm::vec3 playerSize = glm::vec3(0.6f, 1.8f, 0.6f);
     glm::vec3 playerPosition;
