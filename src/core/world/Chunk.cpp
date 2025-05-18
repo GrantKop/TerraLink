@@ -225,3 +225,14 @@ void Chunk::addCoveredCrossMesh(const Block& block, int x, int y, int z,
 
     indexOffset += modelVertexCount;
 }
+
+SavableChunk Chunk::makeSavableCopy() const {
+    SavableChunk copy;
+
+    copy.position = position;
+    copy.blocks = blocks;
+    copy.vertices = mesh.vertices;
+    copy.indices = mesh.indices;
+
+    return copy;
+}

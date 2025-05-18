@@ -31,22 +31,25 @@ namespace GameInit {
             std::string key = line.substr(0, equalPos);
             std::string value = line.substr(equalPos + 1);
 
-            if (key == "renderDistance") 
+            if (key == "renderDistance") {
                 Player::instance().VIEW_DISTANCE = std::stoi(value);
-            else if (key == "fov")
-                Player::instance().getCamera().setFOV(std::stof(value));
-            else if (key == "sensitivity")
+            } else if (key == "fov") {
+                float fov = std::stof(value);
+                if (fov < 40.0f) fov = 40.0f;
+                if (fov > 120.0f) fov = 120.0f;
+                Player::instance().getCamera().setBaseFOV(fov);
+            } else if (key == "sensitivity") {
                 Player::instance().getCamera().setSensitivity(std::stof(value));
-            else if (key == "playerName")
+            } else if (key == "playerName") {
                 Player::instance().setPlayerName(value);
-            else if (key == "saveName") {
+            } else if (key == "saveName") {
                 World::instance().setSaveDirectory(value);
                 Game::instance().setWorldSave(value);
-            }
-            else if (key == "seed")
+            } else if (key == "seed") {
                 World::instance().setSeed(std::stoi(value));
-            else if (key == "distanceFog")
+            } else if (key == "distanceFog") {
                 Game::instance().setEnableFog(value == "true" || value == "1" || value == "True" || value == "TRUE");
+            }
         }
     }
 

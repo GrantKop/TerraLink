@@ -12,16 +12,29 @@ Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
 Camera::~Camera() {}
 
 // Sets the field of view (FOV) for the camera
-void Camera::setFOV(float fov) {
-    if (fov < 50.0f) fov = 50.0f;
-    if (fov > 110.0f) fov = 110.0f;
+void Camera::setFOV(float fov, GLFWwindow* window) {
     this->fov = fov;
+
+    if (window) {
+        updateCameraMatrix(0.1f, 800.0f, window);
+    }
+}
+
+// Sets the base FOV for the camera
+void Camera::setBaseFOV(float fov) {
+    this->baseFOV = fov;
+    this->fov = fov;
+}
+
+// Returns the base FOV of the camera
+float Camera::getBaseFOV() const {
+    return baseFOV;
 }
 
 // Sets the sensitivity for mouse movement
 void Camera::setSensitivity(float sensitivity) {
-    if (sensitivity < 50.0f) sensitivity = 50.0f;
-    if (sensitivity > 200.0f) sensitivity = 200.0f;
+    if (sensitivity < 10.0f) sensitivity = 10.0f;
+    if (sensitivity > 500.0f) sensitivity = 500.0f;
     this->sensitivity = sensitivity;
 }
 

@@ -46,8 +46,18 @@ struct ChunkMesh {
 
     // Chunk mesh thread flags
     bool isUploaded = false;
-    bool needsUpdate = true;
+    bool needsUpdate = false;
     bool isEmpty = true;
+    std::vector<Vertex> stagingVertices;
+    std::vector<GLuint> stagingIndices;
+    std::atomic<bool> hasNewMesh = false;
+};
+
+struct SavableChunk {
+    ChunkPosition position;
+    std::array<uint16_t, CHUNK_VOLUME> blocks;
+    std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
 };
 
 class Chunk {
@@ -94,6 +104,8 @@ public:
     void addCoveredCrossMesh(const Block& block, int x, int y, int z,
                              std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
                              GLuint& indexOffset, glm::vec3 chunkOffset) const;
+
+    SavableChunk makeSavableCopy() const;
 
 private:
     std::array<uint16_t, CHUNK_VOLUME> blocks = {0};

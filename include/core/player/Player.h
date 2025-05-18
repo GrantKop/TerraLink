@@ -22,13 +22,16 @@ public:
     int gameMode = 1;
     int selectedBlockID = 1;
     float verticalVelocity = 0.0f;
+    glm::vec3 currentVelocity = glm::vec3(0.0f);
+    const float acceleration = 40.0f;
     bool onGround = false;
 
     const float jumpSpeed = 7.0f;
     float jumpBufferTime = 0.0f;
     float jumpCooldown = 0.0f;
     const float jumpBufferMax = 0.2f;
-    const float jumpDelay = .2f;
+    const float jumpDelay = .5f;
+    bool jumpReleased = true;
 
     glm::vec3 playerSize = glm::vec3(0.6f, 1.8f, 0.6f);
     glm::vec3 playerPosition;

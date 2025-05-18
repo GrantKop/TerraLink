@@ -54,7 +54,9 @@ public:
 
     ~Camera();
 
-    void setFOV(float fov);
+    void setFOV(float fov, GLFWwindow* window);
+    void setBaseFOV(float fov);
+    float getBaseFOV() const;
     void setSensitivity(float sensitivity);
 
     void matrix(Shader& shaderProgram, const char* uniformName);
@@ -70,10 +72,11 @@ public:
         return glm::normalize(dir);
     }
 
-    std::optional<RaycastHit> raycastToBlock(const World& world, float maxDistance = 8.0f) const;
+    std::optional<RaycastHit> raycastToBlock(const World& world, float maxDistance = 5.0f) const;
 
 private:
     void updateCameraVectors();
+    float baseFOV;
     
 };
 

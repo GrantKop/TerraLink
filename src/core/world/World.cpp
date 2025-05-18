@@ -30,6 +30,7 @@ void World::shutdown() {
     chunkRemovalQueue.stop();
     chunkUploadQueue.stop();
     meshUpdateQueue.stop();
+    chunkSaveQueue.stop();
 
     std::cout << "\nJoining world generation threads..." << std::endl;
     for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
@@ -106,6 +107,19 @@ void World::managerThread() {
             updateChunksAroundPlayer(current, Player::instance().VIEW_DISTANCE);
         }
         queueChunksForRemoval(current, Player::instance().VIEW_DISTANCE + 1);
+
+        SavableChunk savableChunk;
+        while (chunkSaveQueue.tryPop(savableChunk)) {
+            std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
+            chunk->setPosition(savableChunk.position);
+            chunk->setBlocks(savableChunk.blocks);
+            chunk->mesh.vertices = savableChunk.vertices;
+            chunk->mesh.indices = savableChunk.indices;
+
+            chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
+
+            saveChunkToFile(chunk);
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
@@ -175,13 +189,20 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     
             return 0;
         });
+    
+    if (!chunk->mesh.isEmpty && chunk->mesh.needsUpdate) {
+        chunk->mesh.stagingVertices = std::move(vertices);
+        chunk->mesh.stagingIndices = std::move(indices);
+        chunk->mesh.hasNewMesh = true;
+        chunk->mesh.isEmpty = chunk->mesh.stagingVertices.empty() && chunk->mesh.stagingIndices.empty();
 
-    chunk->mesh.vertices = std::move(vertices);
-    chunk->mesh.indices = std::move(indices);
+    } else {
+        chunk->mesh.vertices = std::move(vertices);
+        chunk->mesh.indices = std::move(indices);
+        chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
+    }
     
     chunk->mesh.needsUpdate = false;
-    chunk->mesh.isUploaded = false;
-    chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
 
     if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
 }
@@ -215,28 +236,10 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
 
     chunk->setBlockID(localX, localY, localZ, blockID);
     chunk->mesh.isEmpty = false;
+    chunk->mesh.isUploaded = true;   
 
     chunk->mesh.needsUpdate = true;
-    meshUpdateQueue.push(chunk); 
-
-    if (localX == 0) markNeighborDirty(chunkPos, { -1, 0, 0 });
-    if (localX == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 1, 0, 0 });
-
-    if (localY == 0) markNeighborDirty(chunkPos, { 0, -1, 0 });
-    if (localY == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 0, 1, 0 });
-
-    if (localZ == 0) markNeighborDirty(chunkPos, { 0, 0, -1 });
-    if (localZ == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 0, 0, 1 });
-}
-
-// Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
-// WIP
-void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
-    ChunkPosition neighborPos = {
-        pos.x + offset.x,
-        pos.y + offset.y,
-        pos.z + offset.z
-    };
+    meshUpdateQueue.push(chunk);
 }
 
 // Updates the chunks around the player based on their position
@@ -278,7 +281,7 @@ std::vector<glm::ivec2> World::generateSortedOffsets(int radius) {
 void World::uploadChunkMeshes(int maxPerFrame) {
     for (int i = 0; i < maxPerFrame; ++i) {
         std::shared_ptr<Chunk> chunk;
-        if (!meshUploadQueue.tryPop(chunk) || !chunk || chunk->mesh.isUploaded) continue;
+        if (!meshUploadQueue.tryPop(chunk) || !chunk || (chunk->mesh.isUploaded && !chunk->mesh.hasNewMesh)) continue;
         try {
             uploadMeshToGPU(*chunk);
             chunk->mesh.needsUpdate = false;
@@ -292,7 +295,14 @@ void World::uploadChunkMeshes(int maxPerFrame) {
 
 // Uploads the mesh data to the GPU
 void World::uploadMeshToGPU(Chunk& chunk) {
-    if (chunk.mesh.isUploaded || chunk.mesh.isEmpty) return;
+    if (chunk.mesh.isEmpty) return;
+
+    if (chunk.mesh.isUploaded && chunk.mesh.hasNewMesh) {
+        chunk.mesh.VAO.deleteBuffers();
+        chunk.mesh.isUploaded = false;
+        chunk.mesh.vertices = std::move(chunk.mesh.stagingVertices);
+        chunk.mesh.indices  = std::move(chunk.mesh.stagingIndices);
+    }
     
     if (!chunk.mesh.vertices.empty()) {
         chunk.mesh.VAO.init();
@@ -302,6 +312,8 @@ void World::uploadMeshToGPU(Chunk& chunk) {
         chunk.mesh.VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
         chunk.mesh.VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
         chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
+
+        chunk.mesh.hasNewMesh = false;
     }
 }
 
@@ -343,33 +355,36 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
 
 // Unloads distant chunks that are no longer needed
 void World::unloadDistantChunks() {
-    ChunkPosition pos;
-    if (!chunkRemovalQueue.tryPop(pos)) return;
+    int maxUnloads = Player::instance().VIEW_DISTANCE * 2;
+    for (int i = 0; i < maxUnloads; ++i) {
+        ChunkPosition pos;
+        if (!chunkRemovalQueue.tryPop(pos)) break;
 
-    if (std::abs(pos.x - Player::instance().getChunkPosition().x) <= Player::instance().VIEW_DISTANCE &&
-        std::abs(pos.z - Player::instance().getChunkPosition().z) <= Player::instance().VIEW_DISTANCE) {
-        return;
-    }
-
-    auto it = chunks.find(pos);
-    if (it == chunks.end()) return;
-
-    std::shared_ptr<Chunk> chunkPtr = it->second;
-    if (!chunkPtr) return;
-
-    saveChunkToFile(chunkPtr);
-
-    if (chunkPtr->mesh.isUploaded) {
-        try {
-            chunkPtr->mesh.VAO.deleteBuffers();
-        } catch (...) {
-            std::cerr << "Exception in deleteBuffers!" << std::endl;
+        if (std::abs(pos.x - Player::instance().getChunkPosition().x) <= Player::instance().VIEW_DISTANCE &&
+            std::abs(pos.z - Player::instance().getChunkPosition().z) <= Player::instance().VIEW_DISTANCE) {
+            continue;
         }
-        chunkPtr->mesh.vertices.clear();
-        chunkPtr->mesh.indices.clear();
-    }
 
-    chunks.erase(it);
+        auto it = chunks.find(pos);
+        if (it == chunks.end()) continue;
+
+        std::shared_ptr<Chunk> chunkPtr = it->second;
+        if (!chunkPtr) continue;
+
+        chunkSaveQueue.push(chunkPtr->makeSavableCopy());
+
+        if (chunkPtr->mesh.isUploaded) {
+            try {
+                chunkPtr->mesh.VAO.deleteBuffers();
+            } catch (...) {
+                std::cerr << "Exception in deleteBuffers!" << std::endl;
+            }
+            chunkPtr->mesh.vertices.clear();
+            chunkPtr->mesh.indices.clear();
+        }
+
+        chunks.erase(it);
+    }
 }
 
 int World::getBlockIDAtWorldPosition(int wx, int wy, int wz) const {
@@ -401,7 +416,7 @@ bool World::collidesWithBlockAABB(glm::vec3 pos, glm::vec3 size) const {
         for (int y = min.y; y <= max.y; ++y) {
             for (int z = min.z; z <= max.z; ++z) {
                 int blockID = getBlockIDAtWorldPosition(x, y, z);
-                if (blockID != 0 && !BlockRegister::instance().blocks[blockID].isTransparent) {
+                if (blockID != 0 && BlockRegister::instance().blocks[blockID].isSolid) {
                     return true;
                 }
             }
@@ -417,16 +432,16 @@ bool World::wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const {
     glm::vec3 blockHalfSize = glm::vec3(0.5f);
     
     const Player& player = Player::instance();
-    glm::vec3 playerCenter = player.getPosition();
+    glm::vec3 playerCenter = player.getPosition() - glm::vec3(0.0f, player.eyeOffset, 0.0f);
     glm::vec3 playerHalfSize = player.playerSize * 0.5f;
 
     return !(
-        playerCenter.x + playerHalfSize.x < blockCenter.x - blockHalfSize.x ||
-        playerCenter.x - playerHalfSize.x > blockCenter.x + blockHalfSize.x ||
-        playerCenter.y + playerHalfSize.y < blockCenter.y - blockHalfSize.y ||
-        playerCenter.y - playerHalfSize.y > blockCenter.y + blockHalfSize.y ||
-        playerCenter.z + playerHalfSize.z < blockCenter.z - blockHalfSize.z ||
-        playerCenter.z - playerHalfSize.z > blockCenter.z + blockHalfSize.z
+        playerCenter.x + playerHalfSize.x <= blockCenter.x - blockHalfSize.x ||
+        playerCenter.x - playerHalfSize.x >= blockCenter.x + blockHalfSize.x ||
+        playerCenter.y + playerHalfSize.y <= blockCenter.y - blockHalfSize.y ||
+        playerCenter.y - playerHalfSize.y >= blockCenter.y + blockHalfSize.y ||
+        playerCenter.z + playerHalfSize.z <= blockCenter.z - blockHalfSize.z ||
+        playerCenter.z - playerHalfSize.z >= blockCenter.z + blockHalfSize.z
     );
 }
 
