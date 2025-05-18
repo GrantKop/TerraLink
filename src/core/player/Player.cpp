@@ -207,7 +207,7 @@ void Player::handleInput(float deltaTime) {
         }
 
         const float groundFriction = 10.25f;
-        const float airFriction = 2.0f;
+        const float airFriction = 2.5f;
         float friction = onGround ? groundFriction : airFriction;
 
         if (glm::length(inputDir) > 0.0f) {
@@ -216,7 +216,7 @@ void Player::handleInput(float deltaTime) {
             glm::vec3 targetVelocity = inputDir * camera.movementSpeed;
         
             const float groundedAcceleration = 8.0f;
-            const float airAcceleration = 3.5f;
+            const float airAcceleration = 3.0f;
 
             float accelerationRate = onGround ? groundedAcceleration : airAcceleration;
             currentVelocity = glm::mix(currentVelocity, targetVelocity, accelerationRate * deltaTime);

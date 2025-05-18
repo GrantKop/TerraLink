@@ -175,12 +175,17 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     
             return 0;
         });
-
-    chunk->mesh.vertices = std::move(vertices);
-    chunk->mesh.indices = std::move(indices);
+    
+    if (!chunk->mesh.isEmpty && chunk->mesh.needsUpdate) {
+        chunk->mesh.stagingVertices = std::move(vertices);
+        chunk->mesh.stagingIndices = std::move(indices);
+        chunk->mesh.hasNewMesh = true;
+    } else {
+        chunk->mesh.vertices = std::move(vertices);
+        chunk->mesh.indices = std::move(indices);
+    }
     
     chunk->mesh.needsUpdate = false;
-    chunk->mesh.isUploaded = false;
     chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
 
     if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
@@ -217,26 +222,7 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
     chunk->mesh.isEmpty = false;
 
     chunk->mesh.needsUpdate = true;
-    meshUpdateQueue.push(chunk); 
-
-    if (localX == 0) markNeighborDirty(chunkPos, { -1, 0, 0 });
-    if (localX == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 1, 0, 0 });
-
-    if (localY == 0) markNeighborDirty(chunkPos, { 0, -1, 0 });
-    if (localY == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 0, 1, 0 });
-
-    if (localZ == 0) markNeighborDirty(chunkPos, { 0, 0, -1 });
-    if (localZ == CHUNK_SIZE - 1) markNeighborDirty(chunkPos, { 0, 0, 1 });
-}
-
-// Marks a specific neighboring chunk as dirty, indicating that it needs to be updated
-// WIP
-void World::markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset) {
-    ChunkPosition neighborPos = {
-        pos.x + offset.x,
-        pos.y + offset.y,
-        pos.z + offset.z
-    };
+    meshUpdateQueue.push(chunk);
 }
 
 // Updates the chunks around the player based on their position
@@ -278,7 +264,7 @@ std::vector<glm::ivec2> World::generateSortedOffsets(int radius) {
 void World::uploadChunkMeshes(int maxPerFrame) {
     for (int i = 0; i < maxPerFrame; ++i) {
         std::shared_ptr<Chunk> chunk;
-        if (!meshUploadQueue.tryPop(chunk) || !chunk || chunk->mesh.isUploaded) continue;
+        if (!meshUploadQueue.tryPop(chunk) || !chunk || (chunk->mesh.isUploaded && !chunk->mesh.hasNewMesh)) continue;
         try {
             uploadMeshToGPU(*chunk);
             chunk->mesh.needsUpdate = false;
@@ -292,7 +278,14 @@ void World::uploadChunkMeshes(int maxPerFrame) {
 
 // Uploads the mesh data to the GPU
 void World::uploadMeshToGPU(Chunk& chunk) {
-    if (chunk.mesh.isUploaded || chunk.mesh.isEmpty) return;
+    if (chunk.mesh.isEmpty) return;
+
+    if (chunk.mesh.isUploaded && chunk.mesh.hasNewMesh) {
+        chunk.mesh.VAO.deleteBuffers();
+        chunk.mesh.isUploaded = false;
+        chunk.mesh.vertices = std::move(chunk.mesh.stagingVertices);
+        chunk.mesh.indices  = std::move(chunk.mesh.stagingIndices);
+    }
     
     if (!chunk.mesh.vertices.empty()) {
         chunk.mesh.VAO.init();
@@ -302,6 +295,8 @@ void World::uploadMeshToGPU(Chunk& chunk) {
         chunk.mesh.VAO.addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
         chunk.mesh.VAO.addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
         chunk.mesh.VAO.addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
+
+        chunk.mesh.hasNewMesh = false;
     }
 }
 

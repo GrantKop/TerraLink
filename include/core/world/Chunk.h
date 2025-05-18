@@ -46,8 +46,11 @@ struct ChunkMesh {
 
     // Chunk mesh thread flags
     bool isUploaded = false;
-    bool needsUpdate = true;
+    bool needsUpdate = false;
     bool isEmpty = true;
+    std::vector<Vertex> stagingVertices;
+    std::vector<GLuint> stagingIndices;
+    std::atomic<bool> hasNewMesh = false;
 };
 
 class Chunk {
