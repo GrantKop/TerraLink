@@ -1,6 +1,7 @@
 #include "network/Network.h"
-
 #include "network/UDPSocket.h"
+
+UDPSocket NetworkManager::udpSocket;
 
 NetworkRole NetworkManager::currentRole = NetworkRole::CLIENT;
 

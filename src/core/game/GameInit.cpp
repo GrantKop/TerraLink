@@ -1,4 +1,4 @@
-#include "game/GameInit.h"
+#include "core/game/GameInit.h"
 
 #include "core/game/Game.h"
 #include "core/player/Player.h"
@@ -79,11 +79,11 @@ namespace GameInit {
             std::string value = line.substr(equalPos + 1);
 
             if (key == "mode") {
-                if (value == "server") {
+                if (value == "server" || value == "Server" || value == "SERVER") {
                     NetworkManager::setRole(NetworkRole::SERVER);
-                } else if (value == "client") {
+                } else if (value == "client" || value == "Client" || value == "CLIENT") {
                     NetworkManager::setRole(NetworkRole::CLIENT);
-                } else if (value == "host") {
+                } else if (value == "host" || value == "Host" || value == "HOST") {
                     NetworkManager::setRole(NetworkRole::HOST);
                 } else {
                     std::cerr << "Invalid network role: " << value << std::endl;

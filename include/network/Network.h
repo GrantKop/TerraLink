@@ -4,9 +4,10 @@
 #include <cstdint>
 #include <string>
 
-#include "network/UDPSocket.h"
 #include "network/Message.h"
 #include "network/NetworkRole.h"
+
+class UDPSocket;
 
 class NetworkManager {
 public:

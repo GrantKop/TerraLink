@@ -7,8 +7,6 @@
 #include "network/Network.h"
 #include "core/game/GameInit.h"
 
-bool enableFog;
-
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
 
@@ -74,7 +72,7 @@ int main() {
 
     glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.3f, 0.7f, 0.2f);
     GLint location = glGetUniformLocation(shaderProgram.ID, "useFog");
-    glUniform1i(location, enableFog ? 1 : 0);
+    glUniform1i(location, Game::instance().isFogEnabled() ? 1 : 0);
     
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);

@@ -37,6 +37,9 @@ public:
 
 private:
     SOCKET socketHandle;
+
+    std::string ip;
+    uint16_t port;
 };
 
 bool initSockets();
