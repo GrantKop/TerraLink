@@ -416,7 +416,7 @@ bool World::collidesWithBlockAABB(glm::vec3 pos, glm::vec3 size) const {
         for (int y = min.y; y <= max.y; ++y) {
             for (int z = min.z; z <= max.z; ++z) {
                 int blockID = getBlockIDAtWorldPosition(x, y, z);
-                if (blockID != 0 && !BlockRegister::instance().blocks[blockID].isTransparent) {
+                if (blockID != 0 && BlockRegister::instance().blocks[blockID].isSolid) {
                     return true;
                 }
             }
@@ -436,12 +436,12 @@ bool World::wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const {
     glm::vec3 playerHalfSize = player.playerSize * 0.5f;
 
     return !(
-        playerCenter.x + playerHalfSize.x < blockCenter.x - blockHalfSize.x ||
-        playerCenter.x - playerHalfSize.x > blockCenter.x + blockHalfSize.x ||
-        playerCenter.y + playerHalfSize.y < blockCenter.y - blockHalfSize.y ||
-        playerCenter.y - playerHalfSize.y > blockCenter.y + blockHalfSize.y ||
-        playerCenter.z + playerHalfSize.z < blockCenter.z - blockHalfSize.z ||
-        playerCenter.z - playerHalfSize.z > blockCenter.z + blockHalfSize.z
+        playerCenter.x + playerHalfSize.x <= blockCenter.x - blockHalfSize.x ||
+        playerCenter.x - playerHalfSize.x >= blockCenter.x + blockHalfSize.x ||
+        playerCenter.y + playerHalfSize.y <= blockCenter.y - blockHalfSize.y ||
+        playerCenter.y - playerHalfSize.y >= blockCenter.y + blockHalfSize.y ||
+        playerCenter.z + playerHalfSize.z <= blockCenter.z - blockHalfSize.z ||
+        playerCenter.z - playerHalfSize.z >= blockCenter.z + blockHalfSize.z
     );
 }
 
