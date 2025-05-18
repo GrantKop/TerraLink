@@ -319,6 +319,11 @@ void Player::handleInput(float deltaTime) {
             if (!World::instance().wouldBlockOverlapPlayer(placePos)) {
                 World::instance().setBlockAtWorldPosition(placePos.x, placePos.y, placePos.z, selectedBlockID);
             }
+            if (World::instance().collidesWithBlockAABB(playerPosition, playerSize)) {
+                float newY = placePos.y + 1.0f + (playerSize.y * 0.5f);
+                playerPosition.y = newY;
+                camera.position.y = newY + eyeOffset;
+            }
         }
     }
     lastRightClick = rightNow;

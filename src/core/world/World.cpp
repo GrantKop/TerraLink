@@ -432,7 +432,7 @@ bool World::wouldBlockOverlapPlayer(const glm::ivec3& blockPos) const {
     glm::vec3 blockHalfSize = glm::vec3(0.5f);
     
     const Player& player = Player::instance();
-    glm::vec3 playerCenter = player.getPosition();
+    glm::vec3 playerCenter = player.getPosition() - glm::vec3(0.0f, player.eyeOffset, 0.0f);
     glm::vec3 playerHalfSize = player.playerSize * 0.5f;
 
     return !(
