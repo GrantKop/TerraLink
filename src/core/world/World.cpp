@@ -30,6 +30,7 @@ void World::shutdown() {
     chunkRemovalQueue.stop();
     chunkUploadQueue.stop();
     meshUpdateQueue.stop();
+    chunkSaveQueue.stop();
 
     std::cout << "\nJoining world generation threads..." << std::endl;
     for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
@@ -193,13 +194,15 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
         chunk->mesh.stagingVertices = std::move(vertices);
         chunk->mesh.stagingIndices = std::move(indices);
         chunk->mesh.hasNewMesh = true;
+        chunk->mesh.isEmpty = chunk->mesh.stagingVertices.empty() && chunk->mesh.stagingIndices.empty();
+
     } else {
         chunk->mesh.vertices = std::move(vertices);
         chunk->mesh.indices = std::move(indices);
+        chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
     }
     
     chunk->mesh.needsUpdate = false;
-    chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
 
     if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
 }
@@ -233,6 +236,7 @@ void World::setBlockAtWorldPosition(int wx, int wy, int wz, int blockID) {
 
     chunk->setBlockID(localX, localY, localZ, blockID);
     chunk->mesh.isEmpty = false;
+    chunk->mesh.isUploaded = true;   
 
     chunk->mesh.needsUpdate = true;
     meshUpdateQueue.push(chunk);

@@ -72,7 +72,7 @@ public:
         return glm::normalize(dir);
     }
 
-    std::optional<RaycastHit> raycastToBlock(const World& world, float maxDistance = 8.0f) const;
+    std::optional<RaycastHit> raycastToBlock(const World& world, float maxDistance = 5.0f) const;
 
 private:
     void updateCameraVectors();
