@@ -160,6 +160,10 @@ void Atlas::linkBlocksToAtlas(BlockRegister* blockRegister) {
             if (block.model == "covered_cross") {
                 covered_cross_linking(block, texture, textureKey, s, t);
             }
+
+            if (block.model == "air") {
+                block.vertices.clear();
+            }
         }
     }
 }

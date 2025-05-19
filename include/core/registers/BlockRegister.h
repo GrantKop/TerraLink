@@ -41,7 +41,7 @@ private:
     std::unordered_map<std::string, int> nameToIndexMap;
 
     void registerBlock(std::string name, std::vector<std::string> states, std::vector<std::string> textures, std::string model,
-                       bool solid = true, bool transparent = false, bool air = false, BLOCKTYPE type = AIR);
+                       bool solid = true, bool transparent = true, bool air = false, BLOCKTYPE type = AIR);
     void parseBlockMapJson(std::string contents, std::string fileName);
     void loadBlocks();
 

@@ -1,0 +1,7 @@
+{
+    "model": "air",
+    "block_type": "air",
+    "solid": false,
+    "transparent": true,
+    "textures": {}
+}

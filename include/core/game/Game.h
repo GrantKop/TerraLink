@@ -41,10 +41,10 @@ private:
 
     bool enableFog = false;
 
-    bool DEV_MODE = true;
+    bool DEV_MODE = false;
     float gameVersionMajor = 0.f;
     float gameVersionMinor = 4.f;
-    float gameVersionPatch = 8.f;
+    float gameVersionPatch = 9.f;
 
     std::filesystem::path basePath = DEV_MODE
         ? std::filesystem::current_path().parent_path().parent_path()

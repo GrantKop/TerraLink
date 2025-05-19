@@ -118,14 +118,17 @@ void Chunk::setPosition(const ChunkPosition& pos) {
 void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
                          std::function<int(glm::ivec3 offset, int, int, int)> getBlockIDFromNeighbor) const
 {
-    thread_local std::vector<uint8_t> isTransparentCache;
+    thread_local std::vector<bool> isTransparentCache;
     thread_local const std::vector<Block>* blockListPtr = &BlockRegister::instance().blocks;
 
     // Ensure the transparency cache is up-to-date
     if (isTransparentCache.size() != blockListPtr->size()) {
         isTransparentCache.resize(blockListPtr->size());
-        for (size_t i = 0; i < blockListPtr->size(); ++i)
+        for (size_t i = 0; i < blockListPtr->size(); ++i) {
             isTransparentCache[i] = (*blockListPtr)[i].isTransparent;
+            // print block name and if it is transparent
+            std::cerr << "Block: " << (*blockListPtr)[i].name << " is transparent: " << (*blockListPtr)[i].isTransparent << std::endl;
+        }
     }
 
     GLuint indexOffset = 0;

@@ -72,7 +72,7 @@ int BlockRegister::getBlockIndex(std::string name) {
 
 // Registers a new block with the specified properties
 void BlockRegister::registerBlock(std::string name, std::vector<std::string> states, std::vector<std::string> textures,
-                                  std::string model, bool solid, bool transparent, bool air, BLOCKTYPE type) {
+                                  std::string model, bool solid, bool transparent, bool air, BLOCKTYPE type) {                 
     Block block;
 
     block.isSolid = solid;
@@ -114,6 +114,11 @@ void BlockRegister::parseBlockMapJson(std::string contents, std::string fileName
         }
     }
 
+    bool isAir = false;
+    if (name == "Air") {
+        isAir = true;
+    }
+
     std::string blockType = blockJson["block_type"].get<std::string>();
     std::transform(blockType.begin(), blockType.end(), blockType.begin(), ::toupper);
     if (blockTypeMap.find(blockType) == blockTypeMap.end()) {
@@ -140,17 +145,17 @@ void BlockRegister::parseBlockMapJson(std::string contents, std::string fileName
         states.push_back(state);
     }
 
-    registerBlock(name, states, textures, blockJson["model"].get<std::string>(), solid, transparent, false, type);
+    registerBlock(name, states, textures, blockJson["model"].get<std::string>(), solid, transparent, isAir, type);
 }
 
 // Loads blocks from JSON files in a specified directory
 void BlockRegister::loadBlocks() {
 
-    // Registers a default air block as block 0 in the vector
-    if (blocks.size() == 0) {
-        blocks.push_back(Block("Air", 0, false, true, true, AIR));
-        nameToIndexMap["Air"] = 0;
-    }
+    // // Registers a default air block as block 0 in the vector
+    // if (blocks.size() == 0) {
+    //     blocks.push_back(Block("Air", 0, false, true, true, AIR));
+    //     nameToIndexMap["Air"] = 0;
+    // }
 
     #if defined(_WIN32)
     if (!std::filesystem::exists(Game::instance().getBasePath() + "/assets/maps/blocks/")) {
@@ -247,7 +252,9 @@ void BlockRegister::linkModelToBlock(Block& block) {
     if (block.model == "covered_cross") {
         link_covered_cross(block);
     }
-
+    if (block.model == "air") {
+        block.vertices.clear();
+    }
 }
 
 // Model specific linking for the default cube model
