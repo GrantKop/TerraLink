@@ -42,13 +42,14 @@ gdb:
 	@cd build/Debug && gdb TerraLink.exe
 
 installer:
-	@echo "Configuring CMake for Release build..."
+	@printf "\nConfiguring CMake for Release build...\n\n"
 	@cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/install
-	@echo "Building project in Release mode..."
+	@printf "\nBuilding project in Release mode...\n\n"
 	@cmake --build build --config Release
-	@echo "Installing project..."
+	@printf "\nInstalling project...\n\n"
 	@cmake --install build --config Release
-	@echo "Project installed to build/install"
+	@printf "\nProject installed to build/install\n"
+	@printf "\nCreating installer...\n\n"
 	@cd build && "C:/Program Files/CMake/bin/cpack.exe" -G NSIS
 
 install: installer

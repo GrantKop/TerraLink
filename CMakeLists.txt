@@ -76,10 +76,15 @@ set(CPACK_GENERATOR "NSIS")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/assets/icon/icon.ico")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 
-install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/glfw3.dll"
-        DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/glfw3.dll" DESTINATION bin)
 
-install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/zstd.dll"
-        DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/zstd.dll" DESTINATION bin)
+
+file(TO_CMAKE_PATH "$ENV{APPDATA}" _appdata_forward)
+string(REPLACE "/" "\\\\" _appdata_win "${_appdata_forward}")
+
+set(CPACK_NSIS_INSTALL_ROOT "${_appdata_win}")
+set(CPACK_NSIS_INSTALL_DIRECTORY "TerraLink")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "TerraLink")
 
 include(CPack)
