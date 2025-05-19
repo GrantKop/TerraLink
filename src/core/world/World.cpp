@@ -190,7 +190,7 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
             return 0;
         });
     
-    if (!chunk->mesh.isEmpty && chunk->mesh.needsUpdate) {
+    if (chunk->mesh.needsUpdate) {
         chunk->mesh.stagingVertices = std::move(vertices);
         chunk->mesh.stagingIndices = std::move(indices);
         chunk->mesh.hasNewMesh = true;
@@ -205,6 +205,12 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
     chunk->mesh.needsUpdate = false;
 
     if (!chunk->mesh.isEmpty) meshUploadQueue.push(chunk);
+    if (chunk->mesh.isUploaded && chunk->mesh.hasNewMesh) {
+            chunk->mesh.VAO.deleteBuffers();
+            chunk->mesh.isUploaded = false;
+            chunk->mesh.vertices = std::move(chunk->mesh.stagingVertices);
+            chunk->mesh.indices  = std::move(chunk->mesh.stagingIndices);
+    }
 }
 
 // Sets a block at the specified world position
