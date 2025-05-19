@@ -126,8 +126,6 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
         isTransparentCache.resize(blockListPtr->size());
         for (size_t i = 0; i < blockListPtr->size(); ++i) {
             isTransparentCache[i] = (*blockListPtr)[i].isTransparent;
-            // print block name and if it is transparent
-            std::cerr << "Block: " << (*blockListPtr)[i].name << " is transparent: " << (*blockListPtr)[i].isTransparent << std::endl;
         }
     }
 
