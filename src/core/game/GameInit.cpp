@@ -32,7 +32,7 @@ namespace GameInit {
             std::string value = line.substr(equalPos + 1);
 
             if (key == "renderDistance") {
-                Player::instance().VIEW_DISTANCE = std::stoi(value);
+                Player::instance().syncViewDistance(std::stoi(value));
             } else if (key == "fov") {
                 float fov = std::stof(value);
                 if (fov < 40.0f) fov = 40.0f;

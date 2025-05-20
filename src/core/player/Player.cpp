@@ -17,7 +17,7 @@ Player& Player::instance() {
 }
 
 Player::Player(GLFWwindow* window) : playerPosition(5.0f, 130.0f, 3.0f), camera(glm::vec3(5.0f, 130.0f + eyeOffset, 3.0f)) {
-    camera.updateCameraMatrix(0.1f, 500.0f, window);
+    camera.updateCameraMatrix(0.1f, getRenderDistance(), window);
     this->window = window;
     glfwSetScrollCallback(window, scrollCallback);
 }
@@ -66,7 +66,7 @@ void Player::update(float deltaTime) {
     jumpBufferTime = std::max(0.0f, jumpBufferTime);
     jumpCooldown = std::max(0.0f, jumpCooldown);
 
-    camera.updateCameraMatrix(0.1f, 800.0f, window);
+    camera.updateCameraMatrix(0.1f, getRenderDistance(), window);
     if (gameMode == 0) {
         glm::vec3 groundCheck = playerPosition;
         groundCheck.y -= 0.15f;
@@ -372,4 +372,12 @@ static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     if (player.selectedBlockID > 13) player.selectedBlockID = 1;
 
     std::cout << "Selected Block ID: " << player.selectedBlockID << std::endl;
+}
+
+void Player::syncViewDistance(int viewDistance) {
+    VIEW_DISTANCE = viewDistance;
+    FAR_FOG_DISTANCE = VIEW_DISTANCE * 16 - 1;
+    NEAR_FOG_DISTANCE = FAR_FOG_DISTANCE - (VIEW_DISTANCE * 2);
+    BOTTOM_FOG_DISTANCE = std::max(90, VIEW_DISTANCE * 16);
+    GL_RENDER_DISTANCE = (float)VIEW_DISTANCE * 48.0f;
 }

@@ -104,9 +104,9 @@ void World::managerThread() {
             for (const auto& pos : drainedCreation) chunkPositionSet.erase(pos);
             for (const auto& chunk : drainedMesh) chunkPositionSet.erase(chunk->getPosition());
 
-            updateChunksAroundPlayer(current, Player::instance().VIEW_DISTANCE);
+            updateChunksAroundPlayer(current, Player::instance().getViewDistance());
         }
-        queueChunksForRemoval(current, Player::instance().VIEW_DISTANCE + 1);
+        queueChunksForRemoval(current, Player::instance().getViewDistance() + 1);
 
         SavableChunk savableChunk;
         while (chunkSaveQueue.tryPop(savableChunk)) {
@@ -164,8 +164,8 @@ void World::meshWorkerThread() {
             continue;
         }
         if (!chunk->mesh.needsUpdate && chunk->mesh.isUploaded) continue;
-        if (std::abs(chunk->getPosition().x - Player::instance().getChunkPosition().x) > Player::instance().VIEW_DISTANCE ||
-            std::abs(chunk->getPosition().z - Player::instance().getChunkPosition().z) > Player::instance().VIEW_DISTANCE) {
+        if (std::abs(chunk->getPosition().x - Player::instance().getChunkPosition().x) > Player::instance().getViewDistance() ||
+            std::abs(chunk->getPosition().z - Player::instance().getChunkPosition().z) > Player::instance().getViewDistance()) {
             continue;
         }
         generateMesh(chunk);
@@ -361,13 +361,13 @@ void World::queueChunksForRemoval(const glm::ivec3& centerChunk, const int VIEW_
 
 // Unloads distant chunks that are no longer needed
 void World::unloadDistantChunks() {
-    int maxUnloads = Player::instance().VIEW_DISTANCE * 2;
+    int maxUnloads = Player::instance().getViewDistance() * 2;
     for (int i = 0; i < maxUnloads; ++i) {
         ChunkPosition pos;
         if (!chunkRemovalQueue.tryPop(pos)) break;
 
-        if (std::abs(pos.x - Player::instance().getChunkPosition().x) <= Player::instance().VIEW_DISTANCE &&
-            std::abs(pos.z - Player::instance().getChunkPosition().z) <= Player::instance().VIEW_DISTANCE) {
+        if (std::abs(pos.x - Player::instance().getChunkPosition().x) <= Player::instance().getViewDistance() &&
+            std::abs(pos.z - Player::instance().getChunkPosition().z) <= Player::instance().getViewDistance()) {
             continue;
         }
 
