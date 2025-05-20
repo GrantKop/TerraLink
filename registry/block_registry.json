@@ -1,8 +1,12 @@
 {
     "Air": 0,
     "Birch Log": 4,
+    "Birch Planks": 16,
+    "Bricks": 17,
     "Cactus": 12,
+    "Cobble Stone": 18,
     "Dark Log": 5,
+    "Dark Planks": 19,
     "Dead Bush": 13,
     "Dirt": 3,
     "Grass": 2,

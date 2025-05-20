@@ -1,0 +1,9 @@
+{
+    "model": "block_full",
+    "block_type": "stone",
+    "solid": true,
+    "transparent": false,
+    "textures": {
+        "all": "cobble_stone"
+    }
+}
