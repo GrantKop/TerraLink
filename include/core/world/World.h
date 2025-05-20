@@ -33,8 +33,6 @@ public:
 
     void setBlockAtWorldPosition(int wx, int wy, int wz, int blockID);
 
-    void markNeighborDirty(const ChunkPosition& pos, glm::ivec3 offset);
-
     void queueChunksForMeshing(const glm::vec3& playerPos);
     void updateChunksAroundPlayer(const glm::ivec3& playerChunk, const int VIEW_DISTANCE);
     std::vector<glm::ivec2> generateSortedOffsets(int radius);
