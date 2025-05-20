@@ -42,7 +42,10 @@ namespace GameInit {
                 if (fov > 120.0f) fov = 120.0f;
                 Player::instance().getCamera().setBaseFOV(fov);
             } else if (key == "sensitivity") {
-                Player::instance().getCamera().setSensitivity(std::stof(value));
+                float sensitivity = std::stof(value);
+                if (sensitivity < 10.0f) sensitivity = 10.0f;
+                if (sensitivity > 500.0f) sensitivity = 500.0f;
+                Player::instance().getCamera().setSensitivity(sensitivity);
             } else if (key == "playerName") {
                 Player::instance().setPlayerName(value);
             } else if (key == "saveName") {
