@@ -5,10 +5,13 @@ uniform sampler2D tex0;
 uniform vec4 lightColor;
 uniform vec3 fogColor;
 uniform vec3 camPos;
-uniform vec3 foliageColor;  // You can tint grass/leaves here
+uniform vec3 foliageColor;
 uniform float fogDensity;
-uniform vec3 lightDir;      // New: directional light direction (normalized)
+uniform vec3 lightDir;
 uniform bool useFog;
+uniform float fogStart;
+uniform float fogEnd;
+uniform float fogBottom;
 
 in vec3 normal;
 in vec2 texCoord;
@@ -22,27 +25,31 @@ void main() {
     if (texColor.a < 0.05)
         discard;
 
-    // Fog
-    vec2 delta = fragWorldPos.xz - camPos.xz;
-    float distance = length(delta);
-    float fogStart = 220.0;
-    float fogEnd = 260.0;
+    // fog
+    float distToCam = length(fragWorldPos.xz - camPos.xz); 
+    float distFog = clamp((fogEnd - distToCam) / (fogEnd - fogStart), 0.0, 1.0);
 
-    float fogFactor = clamp((fogEnd - distance) / (fogEnd - fogStart), 0.0, 1.0);
+    float fogBottomEnd = fogBottom + 40;
+    float fogWallStrength = smoothstep(fogBottom, fogBottomEnd, camPos.y);
+
+    float heightFade = clamp((fragWorldPos.y - camPos.y + 16.0) / 48.0, 0.0, 1.0);
+
+    float heightFog = mix(1.0, heightFade, fogWallStrength);
+
+    float fogFactor = min(distFog, heightFog);
 
     // Lighting
     vec3 N = normalize(normal);
-    vec3 L = normalize(-lightDir);  // Direction *to* light
+    vec3 L = normalize(-lightDir);
     vec3 V = normalize(camPos - curPos);
-    vec3 H = normalize(L + V);      // Halfway vector for specular
+    vec3 H = normalize(L + V);
 
     float ambient = 0.4;
     float diffuse = max(dot(N, L), 0.0);
-    float specular = pow(max(dot(N, H), 0.0), 16.0);  // shininess factor = 16
+    float specular = pow(max(dot(N, H), 0.0), 16.0);
 
     vec3 lighting = (ambient + diffuse + 0.5 * specular) * lightColor.rgb;
 
-    // Optional foliage tint
     vec3 surfaceColor = texColor.rgb;
     float gray = dot(surfaceColor, vec3(0.299, 0.587, 0.114));
     if (texColor.g > texColor.r && texColor.g > texColor.b)
@@ -52,7 +59,6 @@ void main() {
 
     vec3 finalColor;
 
-    // Mix with fog
     if (useFog) {
         finalColor = mix(fogColor, litColor, fogFactor);
     } else {

@@ -1,6 +1,7 @@
 #include "core/player/Camera.h"
 
 #include "core/world/World.h"
+#include "core/player/Player.h"
 
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) 
     : position(position), front(glm::vec3(0.0f, 0.0f, -1.0f)), 
@@ -16,7 +17,7 @@ void Camera::setFOV(float fov, GLFWwindow* window) {
     this->fov = fov;
 
     if (window) {
-        updateCameraMatrix(0.1f, 800.0f, window);
+        updateCameraMatrix(0.1f, Player::instance().getRenderDistance(), window);
     }
 }
 

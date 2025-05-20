@@ -32,14 +32,20 @@ namespace GameInit {
             std::string value = line.substr(equalPos + 1);
 
             if (key == "renderDistance") {
-                Player::instance().VIEW_DISTANCE = std::stoi(value);
+                int renderDistance = std::stoi(value);
+                if (renderDistance < 1) renderDistance = 1;
+                if (renderDistance > 64) renderDistance = 64;
+                Player::instance().syncViewDistance(renderDistance);
             } else if (key == "fov") {
                 float fov = std::stof(value);
                 if (fov < 40.0f) fov = 40.0f;
                 if (fov > 120.0f) fov = 120.0f;
                 Player::instance().getCamera().setBaseFOV(fov);
             } else if (key == "sensitivity") {
-                Player::instance().getCamera().setSensitivity(std::stof(value));
+                float sensitivity = std::stof(value);
+                if (sensitivity < 10.0f) sensitivity = 10.0f;
+                if (sensitivity > 500.0f) sensitivity = 500.0f;
+                Player::instance().getCamera().setSensitivity(sensitivity);
             } else if (key == "playerName") {
                 Player::instance().setPlayerName(value);
             } else if (key == "saveName") {

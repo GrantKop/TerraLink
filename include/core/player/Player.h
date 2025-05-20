@@ -52,8 +52,12 @@ public:
     void setPlayerName(const std::string& name);
 
     std::string getPlayerName();
-
-    int VIEW_DISTANCE = 2;
+    void syncViewDistance(int viewDistance);
+    int getViewDistance() const { return VIEW_DISTANCE; }
+    int getRenderDistance() const { return GL_RENDER_DISTANCE; }
+    int getFarFogDistance() const { return FAR_FOG_DISTANCE; }
+    int getNearFogDistance() const { return NEAR_FOG_DISTANCE; }
+    int getBottomFogDistance() const { return BOTTOM_FOG_DISTANCE; }
 
 private:
     Camera camera;
@@ -65,6 +69,12 @@ private:
     std::optional<glm::ivec3> highlightedBlock;
 
     static Player* s_instance;
+
+    int VIEW_DISTANCE = 2;
+    int NEAR_FOG_DISTANCE = 26;
+    int FAR_FOG_DISTANCE = 32;
+    int BOTTOM_FOG_DISTANCE = 32;
+    float GL_RENDER_DISTANCE = 40.0f;
 };
 
 #endif

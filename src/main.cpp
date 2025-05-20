@@ -73,6 +73,10 @@ int main() {
     glUniform3f(glGetUniformLocation(shaderProgram.ID, "foliageColor"), 0.3f, 0.7f, 0.2f);
     GLint location = glGetUniformLocation(shaderProgram.ID, "useFog");
     glUniform1i(location, Game::instance().isFogEnabled() ? 1 : 0);
+
+    shaderProgram.setFloat("fogStart", Player::instance().getNearFogDistance());
+    shaderProgram.setFloat("fogEnd", Player::instance().getFarFogDistance());
+    shaderProgram.setFloat("fogBottom", Player::instance().getBottomFogDistance());
     
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
