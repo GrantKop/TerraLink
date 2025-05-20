@@ -246,7 +246,7 @@ void BlockRegister::parseBlockRegistryJson() {
 
 // Sets vertices and normals for a block based on its model
 void BlockRegister::linkModelToBlock(Block& block) {
-    if (block.model == "block_full") {
+    if (block.model == "block_full" || block.model == "block_slim") {
         link_block_full(block);
     }
     if (block.model == "covered_cross") {
@@ -260,8 +260,15 @@ void BlockRegister::linkModelToBlock(Block& block) {
 // Model specific linking for the default cube model
 // Json reading library reads textures on map in alphabetical order, default blocks must be created with BaBoFLRT order in mind
 void BlockRegister::link_block_full(Block& block) {
-
-    std::string modelPath = Game::instance().getBasePath() + "/assets/models/block_full.obj";
+    std::string modelPath;
+    if (block.model == "block_full") {
+        modelPath = Game::instance().getBasePath() + "/assets/models/block_full.obj";
+    } else if (block.model == "block_slim") {
+        modelPath = Game::instance().getBasePath() + "/assets/models/block_slim.obj";
+    } else {
+        std::cerr << "Invalid block model: " << block.model << std::endl;
+        return;
+    }
     std::ifstream file(modelPath);
     if (!file.is_open()) {
         std::cerr << "Failed to open block model file: " << modelPath << std::endl;

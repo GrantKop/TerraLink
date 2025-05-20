@@ -153,7 +153,7 @@ void Atlas::linkBlocksToAtlas(BlockRegister* blockRegister) {
             float s = (float)textureMap[texture].first / (float)width;
             float t = ((float)width - (float)textureMap[texture].second - (float)largestTexture) / (float)width;
 
-            if (block.model == "block_full") {
+            if (block.model == "block_full" || block.model == "block_slim") {
                 block_full_linking(block, texture, textureKey, s, t);
             }
 

@@ -59,6 +59,8 @@ public:
     int getNearFogDistance() const { return NEAR_FOG_DISTANCE; }
     int getBottomFogDistance() const { return BOTTOM_FOG_DISTANCE; }
 
+    int blockCount = 15;
+
 private:
     Camera camera;
     GLFWwindow* window = nullptr;

@@ -1,5 +1,5 @@
 {
-    "model": "block_full",
+    "model": "block_slim",
     "block_type": "wood",
     "solid": true,
     "transparent": true,
