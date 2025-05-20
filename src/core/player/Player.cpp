@@ -16,7 +16,7 @@ Player& Player::instance() {
     return *s_instance;
 }
 
-Player::Player(GLFWwindow* window) : playerPosition(5.0f, 130.0f, 3.0f), camera(glm::vec3(5.0f, 130.0f + eyeOffset, 3.0f)) {
+Player::Player(GLFWwindow* window) : playerPosition(5.0f, 90.0f, 3.0f), camera(glm::vec3(5.0f, 130.0f + eyeOffset, 3.0f)) {
     camera.updateCameraMatrix(0.1f, getRenderDistance(), window);
     this->window = window;
     glfwSetScrollCallback(window, scrollCallback);
