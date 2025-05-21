@@ -48,6 +48,11 @@ set(zstd_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/zstd")
 find_package(zstd CONFIG REQUIRED)
 target_link_libraries(TerraLink PRIVATE zstd::libzstd_shared)
 
+# OpenAL Soft
+set(openal-soft_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/openal-soft")
+find_package(OpenAL CONFIG REQUIRED)
+target_link_libraries(TerraLink PRIVATE OpenAL::OpenAL)
+
 
 # --- Install targets ---
 install(TARGETS TerraLink RUNTIME DESTINATION bin)
@@ -77,8 +82,8 @@ set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/assets/icon/icon.ico")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 
 install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/glfw3.dll" DESTINATION bin)
-
 install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/zstd.dll" DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/OpenAL32.dll" DESTINATION bin)
 
 file(TO_CMAKE_PATH "$ENV{APPDATA}" _appdata_forward)
 string(REPLACE "/" "\\\\" _appdata_win "${_appdata_forward}")
