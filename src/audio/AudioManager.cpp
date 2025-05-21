@@ -1,5 +1,5 @@
 #include "audio/AudioManager.h"
-#include "stb_vorbis.c"  // Must be compiled as .c or before cpp includes
+#include "stb_vorbis.c"
 
 #include <AL/al.h>
 #include <AL/alc.h>

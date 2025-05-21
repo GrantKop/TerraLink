@@ -59,7 +59,7 @@ public:
     int getNearFogDistance() const { return NEAR_FOG_DISTANCE; }
     int getBottomFogDistance() const { return BOTTOM_FOG_DISTANCE; }
 
-    int blockCount = 19;
+    int blockCount = 18;
 
 private:
     Camera camera;
