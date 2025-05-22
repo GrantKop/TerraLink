@@ -1,7 +1,7 @@
 BUILD_DIR = build
 TOOLCHAIN_FILE = ../vcpkg/scripts/buildsystems/vcpkg.cmake
 
-.PHONY: configure build clean run vcpkg gdb debug
+.PHONY: configure build clean run vcpkg gdb debug installer
 
 setup: vcpkg configure build
 
