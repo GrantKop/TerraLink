@@ -53,6 +53,10 @@ set(openal-soft_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/opena
 find_package(OpenAL CONFIG REQUIRED)
 target_link_libraries(TerraLink PRIVATE OpenAL::OpenAL)
 
+# Vorbis
+find_package(Vorbis REQUIRED)
+target_link_libraries(TerraLink PRIVATE Vorbis::vorbisfile)
+
 
 # --- Install targets ---
 install(TARGETS TerraLink RUNTIME DESTINATION bin)

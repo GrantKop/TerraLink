@@ -1,11 +1,17 @@
 #include "audio/AudioManager.h"
-#include "stb_vorbis.c"
+
+#include <vorbis/vorbisfile.h>
+#define DR_WAV_IMPLEMENTATION
+#include "utils/dr_wav.h"
 
 #include <AL/al.h>
 #include <AL/alc.h>
+#include <string>
+#include <vector>
 #include <random>
 #include <chrono>
 #include <iostream>
+#include <cctype>
 
 namespace AudioManager {
 
@@ -70,43 +76,86 @@ namespace AudioManager {
         musicTracks.push_back(filepath);
     }
 
-    static bool loadOGG(const std::string& path, ALuint& buffer, ALenum& format, ALsizei& freq, std::vector<short>& pcm) {
-        int channels, sampleRate;
-        short* output;
-        int sampleCount = stb_vorbis_decode_filename(path.c_str(), &channels, &sampleRate, &output);
-        if (sampleCount <= 0) {
-            std::cerr << "[Audio] Failed to load: " << path << "\n";
-            return false;
+    static std::string getFileExtension(const std::string& path) {
+        auto dot = path.find_last_of('.');
+        if (dot == std::string::npos) return "";
+        std::string ext = path.substr(dot + 1);
+        for (auto& c : ext) c = static_cast<char>(std::tolower(c));
+        return ext;
+    }
+
+    static bool loadAudioFile(const std::string& path, ALuint& buffer, ALenum& format, ALsizei& freq, std::vector<short>& pcm) {
+        std::string ext = getFileExtension(path);
+
+        if (ext == "wav") {
+            unsigned int channels, sampleRate;
+            drwav_uint64 frameCount;
+            short* data = drwav_open_file_and_read_pcm_frames_s16(path.c_str(), &channels, &sampleRate, &frameCount, nullptr);
+            if (!data) {
+                std::cerr << "[Audio] Failed to load WAV: " << path << "\n";
+                return false;
+            }
+
+            pcm.assign(data, data + frameCount * channels);
+            drwav_free(data, nullptr);
+
+            format = (channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
+            freq = sampleRate;
+            return true;
+
+        } else if (ext == "ogg") {
+            FILE* file = fopen(path.c_str(), "rb");
+            if (!file) {
+                std::cerr << "[Audio] Failed to open OGG file: " << path << "\n";
+                return false;
+            }
+
+            OggVorbis_File vf;
+            if (ov_open(file, &vf, nullptr, 0) < 0) {
+                std::cerr << "[Audio] Invalid OGG stream: " << path << "\n";
+                fclose(file);
+                return false;
+            }
+
+            vorbis_info* vi = ov_info(&vf, -1);
+            format = (vi->channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
+            freq = vi->rate;
+
+            char temp[4096];
+            int bitstream;
+            long bytesRead;
+            do {
+                bytesRead = ov_read(&vf, temp, sizeof(temp), 0, 2, 1, &bitstream);
+                if (bytesRead > 0) {
+                    pcm.insert(pcm.end(), reinterpret_cast<short*>(temp), reinterpret_cast<short*>(temp + bytesRead));
+                }
+            } while (bytesRead > 0);
+
+            ov_clear(&vf);
+            return true;
         }
 
-        pcm.assign(output, output + (sampleCount * channels));
-        free(output);
-
-        format = (channels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
-        freq = sampleRate;
-
-        alBufferData(buffer, format, pcm.data(), pcm.size() * sizeof(short), freq);
-        return true;
+        std::cerr << "[Audio] Unsupported file extension: " << ext << "\n";
+        return false;
     }
 
     void playRandomMusic() {
         if (musicTracks.empty()) return;
 
         std::uniform_int_distribution<int> dist(0, static_cast<int>(musicTracks.size()) - 1);
-        int index = dist(rng);
-        const std::string& path = musicTracks[index];
+        const std::string& path = musicTracks[dist(rng)];
 
         std::vector<short> pcm;
         ALenum format;
         ALsizei freq;
 
-        if (musicBuffer != 0) {
+        if (musicBuffer != 0)
             alDeleteBuffers(1, &musicBuffer);
-        }
 
         alGenBuffers(1, &musicBuffer);
-        if (!loadOGG(path, musicBuffer, format, freq, pcm)) return;
+        if (!loadAudioFile(path, musicBuffer, format, freq, pcm)) return;
 
+        alBufferData(musicBuffer, format, pcm.data(), static_cast<ALsizei>(pcm.size() * sizeof(short)), freq);
         alSourcei(musicSource, AL_BUFFER, musicBuffer);
         alSourcef(musicSource, AL_GAIN, musicVolume);
         alSourcei(musicSource, AL_LOOPING, AL_FALSE);
@@ -126,12 +175,13 @@ namespace AudioManager {
         ALenum format;
         ALsizei freq;
 
-        if (!loadOGG(path, buffer, format, freq, pcm)) {
-            alDeleteBuffers(1, &buffer);
+        if (!loadAudioFile(path, buffer, format, freq, pcm)) {
             alDeleteSources(1, &source);
+            alDeleteBuffers(1, &buffer);
             return;
         }
 
+        alBufferData(buffer, format, pcm.data(), static_cast<ALsizei>(pcm.size() * sizeof(short)), freq);
         alSourcei(source, AL_BUFFER, buffer);
         alSourcef(source, AL_GAIN, soundVolume);
         alSourcePlay(source);
