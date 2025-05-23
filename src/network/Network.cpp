@@ -5,6 +5,20 @@ UDPSocket NetworkManager::udpSocket;
 
 NetworkRole NetworkManager::currentRole = NetworkRole::CLIENT;
 
+NetworkManager* NetworkManager::s_instance = nullptr;
+
+NetworkManager::NetworkManager() {}
+
+NetworkManager::~NetworkManager() {}
+
+void NetworkManager::setInstance(NetworkManager* instance) {
+    s_instance = instance;
+}
+
+NetworkManager& NetworkManager::instance() {
+    return *s_instance;
+}
+
 void NetworkManager::setRole(NetworkRole role) {
     currentRole = role;
 }

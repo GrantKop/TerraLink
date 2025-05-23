@@ -1,16 +1,29 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #include <memory>
 #include <string>
 #include <filesystem>
+
+#include "core/player/Player.h"
+#include "core/registers/BlockRegister.h"
+#include "graphics/Shader.h"
+#include "graphics/Texture.h"
 
 class World;
 
 class Game {
 public:
-    Game();
+    Game(GLFWwindow* windowptr);
     ~Game();
+
+    void gameLoop();
+
+    void loadAssets();
+    void setupShadersAndUniforms();
 
     static void setInstance(Game* instance);
     static Game& instance();
@@ -20,6 +33,7 @@ public:
 
     void init();
     void tick();
+    void render();
     void shutdown();
 
     void setWorldSave(const std::string& saveName);
@@ -35,9 +49,17 @@ public:
     void setReleaseMode(bool releaseMode) { DEV_MODE = !releaseMode; }
     bool isReleaseMode() const { return !DEV_MODE; }
 
+    std::string fpsCount();
+
 private:
     std::string curWorldSave;
     std::unique_ptr<World> world;
+
+    std::unique_ptr<Player> player;
+
+    std::unique_ptr<BlockRegister> blockRegister;
+
+    GLFWwindow* window = nullptr;
 
     bool enableFog = false;
 
@@ -51,6 +73,11 @@ private:
         : std::filesystem::current_path().parent_path();
     std::filesystem::path savePath = basePath / "saves/";
     static Game* s_instance;
+       
+    std::unique_ptr<Shader> shaderProgram;
+    std::unique_ptr<Texture> atlas;
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
 };
 
 #endif

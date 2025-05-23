@@ -14,6 +14,7 @@ public:
     static Player& instance();
 
     Player(GLFWwindow* window);
+    Player();
 
     std::optional<glm::ivec3> getHighlightedBlock() const;
 

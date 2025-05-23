@@ -11,6 +11,13 @@ class UDPSocket;
 
 class NetworkManager {
 public:
+
+    NetworkManager();
+    ~NetworkManager();
+
+    static void setInstance(NetworkManager* instance);
+    static NetworkManager& instance();
+
     static void setRole(NetworkRole role);
     static NetworkRole getRole();
 
@@ -28,6 +35,8 @@ private:
     static NetworkRole currentRole;
 
     static UDPSocket udpSocket;
+
+    static NetworkManager* s_instance;
 };
 
 
