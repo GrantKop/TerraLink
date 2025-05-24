@@ -15,6 +15,8 @@
 #include <thread>
 #include <atomic>
 
+#include "core/game/Game.h"
+
 static std::atomic<bool> trackPending = false;
 
 namespace AudioManager {
@@ -40,6 +42,11 @@ namespace AudioManager {
 
     static std::atomic<bool> shutdownAudioThread = false;
     static std::thread audioThread;
+    static std::vector<std::thread> soundThreads;
+
+    constexpr int MAX_SOUND_SOURCES = 32;
+    static std::vector<ALuint> sourcePool;
+    static std::vector<bool> sourceInUse;
 
     static ThreadSafeQueue<std::string> trackRequestQueue;
 
@@ -62,7 +69,14 @@ namespace AudioManager {
             return;
         }
 
+        alDistanceModel(AL_LINEAR_DISTANCE_CLAMPED);
+
         alGenSources(1, &musicSource);
+
+        sourcePool.resize(MAX_SOUND_SOURCES);
+        sourceInUse.resize(MAX_SOUND_SOURCES, false);
+        alGenSources(MAX_SOUND_SOURCES, sourcePool.data());
+
         startAudioThread();
     }
 
@@ -77,6 +91,16 @@ namespace AudioManager {
         alDeleteSources(1, &musicSource);
         alDeleteBuffers(1, &musicBuffer);
 
+        alSourceStopv(sourcePool.size(), sourcePool.data());
+        alDeleteSources(static_cast<ALsizei>(sourcePool.size()), sourcePool.data());
+        sourcePool.clear();
+        sourceInUse.clear();
+
+        for (auto& t : soundThreads) {
+            if (t.joinable()) t.join();
+        }
+        soundThreads.clear();
+
         if (context) {
             alcMakeContextCurrent(nullptr);
             alcDestroyContext(context);
@@ -88,6 +112,7 @@ namespace AudioManager {
 
         trackPending = false;
     }
+
 
     void setMusicVolume(float volume) {
         musicVolume = volume;
@@ -181,7 +206,7 @@ namespace AudioManager {
                 }
 
                 if (isFadingIn) {
-                    fadeTimer += deltaSeconds;
+                    fadeTimer += deltaSeconds * 0.25f;
                     float t = std::min(fadeTimer / fadeDuration, 1.0f);
                     currentGain = t * musicVolume;
                     alSourcef(musicSource, AL_GAIN, currentGain);
@@ -262,11 +287,115 @@ namespace AudioManager {
     void update(float deltaTime) {
         ALint state;
         alGetSourcei(musicSource, AL_SOURCE_STATE, &state);
+
         if (state != AL_PLAYING) {
             timeSinceLastTrack += deltaTime;
-            if (timeSinceLastTrack >= nextTrackDelay) {
+
+            float minDelay = 30.0f;
+            float maxDelay = 330.0f;
+
+            if (timeSinceLastTrack >= maxDelay) {
                 requestNextTrack();
+            } else if (timeSinceLastTrack >= minDelay) {
+                std::uniform_real_distribution<float> chance(0.0f, 1.0f);
+                if (chance(rng) < 0.00008f) {
+                    requestNextTrack();
+                }
             }
         }
+    }
+
+    void AudioManager::playBlockSound(BLOCKTYPE blockType, const glm::vec3& soundPos, const glm::vec3& playerPos, const std::string& soundType) {
+        float maxDistance = 16.0f;
+        float dist = glm::distance(playerPos, soundPos);
+        float falloffPower = 1.5f;
+        float volumeMultiplier = pow(1.0f - glm::clamp(dist / maxDistance, 0.0f, 1.0f), falloffPower);
+
+        if (volumeMultiplier <= 0.01f) return;
+
+        std::string path = Game::instance().getBasePath() + "/assets/sounds/effects/";
+        path += blockTypeToString(blockType);
+        path += "/" + soundType + ".wav";
+
+        playSoundEffect(path, soundVolume * volumeMultiplier, &soundPos);
+    }
+
+    void AudioManager::playSoundEffect(const std::string& path, float gain, const glm::vec3* position) {
+        std::vector<short> pcm;
+        ALenum format;
+        ALsizei freq;
+
+        ALuint buffer;
+        alGenBuffers(1, &buffer);
+
+        if (!loadAudioFile(path, buffer, format, freq, pcm)) {
+            alDeleteBuffers(1, &buffer);
+            return;
+        }
+
+        int idx = getFreeSourceIndex();
+        if (idx == -1) {
+            alDeleteBuffers(1, &buffer);
+            return;
+        }
+
+        ALuint source = sourcePool[idx];
+
+        alSourceStop(source);
+        alSourcei(source, AL_BUFFER, 0);
+        alBufferData(buffer, format, pcm.data(), static_cast<ALsizei>(pcm.size() * sizeof(short)), freq);
+        alSourcei(source, AL_BUFFER, buffer);
+        alSourcef(source, AL_GAIN, gain);
+        std::uniform_real_distribution<float> pitchRange(0.9f, 1.1f);
+        alSourcef(source, AL_PITCH, pitchRange(rng));
+        alSourcef(source, AL_REFERENCE_DISTANCE, 2.0f);
+        alSourcef(source, AL_MAX_DISTANCE, 16.0f);
+        alSourcef(source, AL_ROLLOFF_FACTOR, 1.0f);
+
+        if (position) {
+            alSource3f(source, AL_POSITION, position->x, position->y, position->z);
+        }
+
+        alSourcePlay(source);
+
+        ALint playState;
+        alGetSourcei(source, AL_SOURCE_STATE, &playState);
+        if (playState != AL_PLAYING) {
+            std::cerr << "Failed to play sound: " << path << "\n";
+            alSourcei(source, AL_BUFFER, 0);
+            alDeleteBuffers(1, &buffer);
+            sourceInUse[idx] = false;
+            return;
+        }
+
+        soundThreads.emplace_back([buffer, idx] {
+            ALint state;
+            do {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                alGetSourcei(sourcePool[idx], AL_SOURCE_STATE, &state);
+            } while (state == AL_PLAYING);
+            alSourcei(sourcePool[idx], AL_BUFFER, 0);
+            alDeleteBuffers(1, &buffer);
+            sourceInUse[idx] = false;
+        });
+
+        if (soundThreads.size() > 64) {
+            for (auto& t : soundThreads) {
+                if (t.joinable()) t.join();
+            }
+            soundThreads.clear();
+        }
+    }
+
+    int getFreeSourceIndex() {
+        for (int i = 0; i < MAX_SOUND_SOURCES; ++i) {
+            ALint state;
+            alGetSourcei(sourcePool[i], AL_SOURCE_STATE, &state);
+            if (state != AL_PLAYING) {
+                sourceInUse[i] = true;
+                return i;
+            }
+        }
+        return -1;
     }
 }

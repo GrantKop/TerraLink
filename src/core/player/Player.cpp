@@ -1,5 +1,7 @@
 #include "core/player/Player.h"
 
+#include "audio/AudioManager.h"
+
 Player* Player::s_instance = nullptr;
 
 static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -248,6 +250,34 @@ void Player::handleInput(float deltaTime) {
         }
 
         moveWithCollision(currentVelocity, deltaTime);
+
+        static float stepTimer = 0.0f;
+        stepTimer -= deltaTime;
+
+        float walkSpeed = glm::length(glm::vec2(currentVelocity.x, currentVelocity.z));
+        bool isMoving = walkSpeed > 0.25f;
+        bool onGround = this->onGround;
+
+        if (isMoving && onGround && stepTimer <= 0.0f) {
+            glm::vec3 belowFeet = playerPosition - glm::vec3(0.0f, 1.05f, 0.0f);
+            glm::ivec3 blockBelow = glm::floor(belowFeet);
+
+            int blockID = World::instance().getBlockIDAtWorldPosition(blockBelow.x, blockBelow.y, blockBelow.z);
+
+            if (blockID > 0) {
+                BLOCKTYPE type = BlockRegister::instance().getBlockByIndex(blockID).type;
+                AudioManager::playBlockSound(type, playerPosition, camera.position, "step");
+            }
+            float stepInterval = 0.55f;
+
+            if (isSprinting) {
+                stepInterval = 0.375f;
+            } else if (isSneaking) {
+                stepInterval = 0.855f;
+            }
+
+            stepTimer = stepInterval;
+        }
     }
 
     static bool lastNPress = false;
@@ -305,7 +335,10 @@ void Player::handleInput(float deltaTime) {
     bool leftNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
     if (leftNow && !lastLeftClick && cursorLocked) {
         if (auto hit = camera.raycastToBlock(World::instance())) {
+            int blockID = World::instance().getBlockIDAtWorldPosition(hit->block.x, hit->block.y, hit->block.z);
             World::instance().setBlockAtWorldPosition(hit->block.x, hit->block.y, hit->block.z, 0);
+            BLOCKTYPE type = BlockRegister::instance().getBlockByIndex(blockID).type;
+            AudioManager::playBlockSound(type, glm::vec3(hit->block) + 0.5f, camera.position, "break");
         }
     }    
     lastLeftClick = leftNow;
@@ -318,6 +351,8 @@ void Player::handleInput(float deltaTime) {
             glm::vec3 blockCenter = glm::vec3(placePos) + 0.5f;
             if (!World::instance().wouldBlockOverlapPlayer(placePos)) {
                 World::instance().setBlockAtWorldPosition(placePos.x, placePos.y, placePos.z, selectedBlockID);
+                BLOCKTYPE placed = BlockRegister::instance().getBlockByIndex(selectedBlockID).type;
+                AudioManager::playBlockSound(placed, glm::vec3(placePos) + 0.5f, camera.position, "place");
             }
             if (World::instance().collidesWithBlockAABB(playerPosition, playerSize)) {
                 float newY = placePos.y + 1.0f + (playerSize.y * 0.5f);

@@ -75,7 +75,8 @@ void Game::loadAssets() {
     shaderProgram->use();
     atlas->setUniform(*shaderProgram, "tex0", 0);
 
-    AudioManager::setMusicVolume(0.18f);
+    AudioManager::setMusicVolume(0.75f);
+    AudioManager::setSoundVolume(0.75f);
     AudioManager::init();
 
     AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/block_symphony.ogg");
@@ -129,13 +130,13 @@ std::string Game::getSavePath() const {
 
 void Game::init() {
 
+    GameInit::parseGameSettings((basePath.string() + "/game.settings").c_str());
+
     setupShadersAndUniforms();
     loadAssets();
 
     world = std::make_unique<World>();
     World::setInstance(world.get());
-
-    GameInit::parseGameSettings((basePath.string() + "/game.settings").c_str());
 
     world->init();
     world->createSaveDirectory();

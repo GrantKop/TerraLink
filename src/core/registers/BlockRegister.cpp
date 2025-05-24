@@ -119,13 +119,15 @@ void BlockRegister::parseBlockMapJson(std::string contents, std::string fileName
         isAir = true;
     }
 
-    std::string blockType = blockJson["block_type"].get<std::string>();
+    std::string blockTypeRaw = blockJson["block_type"].get<std::string>();
+    std::string blockType = blockTypeRaw;
     std::transform(blockType.begin(), blockType.end(), blockType.begin(), ::toupper);
+
     if (blockTypeMap.find(blockType) == blockTypeMap.end()) {
         std::cerr << "Invalid block type: " << blockType << std::endl;
         return;
     }
-    BLOCKTYPE type = blockTypeMap[blockJson["block_type"].get<std::string>()];
+    BLOCKTYPE type = blockTypeMap[blockType];
 
     bool solid = blockJson["solid"];
     bool transparent = blockJson["transparent"];
@@ -150,13 +152,6 @@ void BlockRegister::parseBlockMapJson(std::string contents, std::string fileName
 
 // Loads blocks from JSON files in a specified directory
 void BlockRegister::loadBlocks() {
-
-    // // Registers a default air block as block 0 in the vector
-    // if (blocks.size() == 0) {
-    //     blocks.push_back(Block("Air", 0, false, true, true, AIR));
-    //     nameToIndexMap["Air"] = 0;
-    // }
-
     #if defined(_WIN32)
     if (!std::filesystem::exists(Game::instance().getBasePath() + "/assets/maps/blocks/")) {
         std::cerr << "Error locating folder: ./assets/maps/blocks/" << std::endl;
