@@ -12,6 +12,10 @@
 #include <chrono>
 #include <iostream>
 #include <cctype>
+#include <thread>
+#include <atomic>
+
+static std::atomic<bool> trackPending = false;
 
 namespace AudioManager {
 
@@ -21,6 +25,12 @@ namespace AudioManager {
     static float musicVolume = 1.0f;
     static float soundVolume = 1.0f;
 
+    static float fadeDuration = 3.0f;
+    static float currentGain = 0.0f;
+    static float fadeTimer = 0.0f;
+    static bool isFadingIn = false;
+    static bool isFadingOut = false;
+
     static std::vector<std::string> musicTracks;
     static ALuint musicSource = 0;
     static ALuint musicBuffer = 0;
@@ -28,25 +38,42 @@ namespace AudioManager {
     static float timeSinceLastTrack = 0.0f;
     static float nextTrackDelay = 30.0f;
 
+    static std::atomic<bool> shutdownAudioThread = false;
+    static std::thread audioThread;
+
+    static ThreadSafeQueue<std::string> trackRequestQueue;
+
     std::default_random_engine rng(std::chrono::system_clock::now().time_since_epoch().count());
+
+    void startAudioThread();
+    static std::string getFileExtension(const std::string& path);
+    static bool loadAudioFile(const std::string& path, ALuint& buffer, ALenum& format, ALsizei& freq, std::vector<short>& pcm);
 
     void init() {
         device = alcOpenDevice(nullptr);
         if (!device) {
-            std::cerr << "[Audio] Failed to open device.\n";
+            std::cerr << "Failed to open audio device.\n";
             return;
         }
 
         context = alcCreateContext(device, nullptr);
         if (!context || !alcMakeContextCurrent(context)) {
-            std::cerr << "[Audio] Failed to set context.\n";
+            std::cerr << "Failed to set audio context.\n";
             return;
         }
 
         alGenSources(1, &musicSource);
+        startAudioThread();
     }
 
     void shutdown() {
+        shutdownAudioThread = true;
+        trackRequestQueue.stop();
+
+        if (audioThread.joinable())
+            audioThread.join();
+
+        alSourceStop(musicSource);
         alDeleteSources(1, &musicSource);
         alDeleteBuffers(1, &musicBuffer);
 
@@ -58,11 +85,12 @@ namespace AudioManager {
         if (device) {
             alcCloseDevice(device);
         }
+
+        trackPending = false;
     }
 
     void setMusicVolume(float volume) {
         musicVolume = volume;
-        alSourcef(musicSource, AL_GAIN, musicVolume);
     }
 
     void setSoundVolume(float volume) {
@@ -74,6 +102,98 @@ namespace AudioManager {
 
     void addMusicTrack(const std::string& filepath) {
         musicTracks.push_back(filepath);
+    }
+
+    void requestNextTrack() {
+        if (!trackPending && !musicTracks.empty()) {
+            std::uniform_int_distribution<int> dist(0, static_cast<int>(musicTracks.size()) - 1);
+            trackRequestQueue.push(musicTracks[dist(rng)]);
+            trackPending = true;
+        }
+    }
+
+    void startAudioThread() {
+        audioThread = std::thread([] {
+            std::string nextPath;
+            std::string pendingPath;
+            bool hasPending = false;
+
+            std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
+
+            while (!shutdownAudioThread.load()) {
+                auto now = std::chrono::steady_clock::now();
+                float deltaSeconds = std::chrono::duration<float>(now - lastTime).count();
+                lastTime = now;
+
+                if (!hasPending) {
+                    if (trackRequestQueue.tryPop(pendingPath)) {
+                        hasPending = true;
+                    }
+                }
+
+                ALint state;
+                alGetSourcei(musicSource, AL_SOURCE_STATE, &state);
+
+                if (hasPending && state == AL_PLAYING && !isFadingOut) {
+                    isFadingOut = true;
+                    fadeTimer = 0.0f;
+                    lastTime = std::chrono::steady_clock::now();
+                }
+
+                if (hasPending && state != AL_PLAYING && !isFadingIn) {
+                    std::vector<short> pcm;
+                    ALenum format;
+                    ALsizei freq;
+
+                    if (musicBuffer != 0) {
+                        alSourcei(musicSource, AL_BUFFER, 0);
+                        alDeleteBuffers(1, &musicBuffer);
+                        musicBuffer = 0;
+                    }
+
+                    alGenBuffers(1, &musicBuffer);
+                    if (!loadAudioFile(pendingPath, musicBuffer, format, freq, pcm)) {
+                        hasPending = false;
+                        trackPending = false;
+                        continue;
+                    }
+
+                    alBufferData(musicBuffer, format, pcm.data(),
+                                 static_cast<ALsizei>(pcm.size() * sizeof(short)), freq);
+
+                    currentGain = 0.0f;
+                    fadeTimer = 0.0f;
+                    isFadingIn = true;
+                    lastTime = std::chrono::steady_clock::now();
+
+                    alSourcei(musicSource, AL_BUFFER, musicBuffer);
+                    alSourcef(musicSource, AL_GAIN, currentGain);
+                    alSourcei(musicSource, AL_LOOPING, AL_FALSE);
+                    alSourcePlay(musicSource);
+
+                    std::cout << "Now playing: " << pendingPath << "\n";
+
+                    std::uniform_real_distribution<float> nextDelay(30.0f, 75.0f);
+                    nextTrackDelay = nextDelay(rng);
+                    timeSinceLastTrack = 0.0f;
+                    trackPending = false;
+                    hasPending = false;
+                }
+
+                if (isFadingIn) {
+                    fadeTimer += deltaSeconds;
+                    float t = std::min(fadeTimer / fadeDuration, 1.0f);
+                    currentGain = t * musicVolume;
+                    alSourcef(musicSource, AL_GAIN, currentGain);
+
+                    if (t >= 1.0f) {
+                        isFadingIn = false;
+                    }
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        });
     }
 
     static std::string getFileExtension(const std::string& path) {
@@ -92,7 +212,7 @@ namespace AudioManager {
             drwav_uint64 frameCount;
             short* data = drwav_open_file_and_read_pcm_frames_s16(path.c_str(), &channels, &sampleRate, &frameCount, nullptr);
             if (!data) {
-                std::cerr << "[Audio] Failed to load WAV: " << path << "\n";
+                std::cerr << "Failed to load WAV: " << path << "\n";
                 return false;
             }
 
@@ -106,13 +226,13 @@ namespace AudioManager {
         } else if (ext == "ogg") {
             FILE* file = fopen(path.c_str(), "rb");
             if (!file) {
-                std::cerr << "[Audio] Failed to open OGG file: " << path << "\n";
+                std::cerr << "Failed to open OGG file: " << path << "\n";
                 return false;
             }
 
             OggVorbis_File vf;
             if (ov_open(file, &vf, nullptr, 0) < 0) {
-                std::cerr << "[Audio] Invalid OGG stream: " << path << "\n";
+                std::cerr << "Invalid OGG stream: " << path << "\n";
                 fclose(file);
                 return false;
             }
@@ -135,64 +255,8 @@ namespace AudioManager {
             return true;
         }
 
-        std::cerr << "[Audio] Unsupported file extension: " << ext << "\n";
+        std::cerr << "Unsupported audio file extension: " << ext << "\n";
         return false;
-    }
-
-    void playRandomMusic() {
-        if (musicTracks.empty()) return;
-
-        std::uniform_int_distribution<int> dist(0, static_cast<int>(musicTracks.size()) - 1);
-        const std::string& path = musicTracks[dist(rng)];
-
-        std::vector<short> pcm;
-        ALenum format;
-        ALsizei freq;
-
-        if (musicBuffer != 0)
-            alDeleteBuffers(1, &musicBuffer);
-
-        alGenBuffers(1, &musicBuffer);
-        if (!loadAudioFile(path, musicBuffer, format, freq, pcm)) return;
-
-        alBufferData(musicBuffer, format, pcm.data(), static_cast<ALsizei>(pcm.size() * sizeof(short)), freq);
-        alSourcei(musicSource, AL_BUFFER, musicBuffer);
-        alSourcef(musicSource, AL_GAIN, musicVolume);
-        alSourcei(musicSource, AL_LOOPING, AL_FALSE);
-        alSourcePlay(musicSource);
-
-        std::uniform_real_distribution<float> nextDelay(30.0f, 75.0f);
-        nextTrackDelay = nextDelay(rng);
-        timeSinceLastTrack = 0.0f;
-    }
-
-    void playSoundEffect(const std::string& path) {
-        ALuint buffer, source;
-        alGenBuffers(1, &buffer);
-        alGenSources(1, &source);
-
-        std::vector<short> pcm;
-        ALenum format;
-        ALsizei freq;
-
-        if (!loadAudioFile(path, buffer, format, freq, pcm)) {
-            alDeleteSources(1, &source);
-            alDeleteBuffers(1, &buffer);
-            return;
-        }
-
-        alBufferData(buffer, format, pcm.data(), static_cast<ALsizei>(pcm.size() * sizeof(short)), freq);
-        alSourcei(source, AL_BUFFER, buffer);
-        alSourcef(source, AL_GAIN, soundVolume);
-        alSourcePlay(source);
-
-        ALint state;
-        do {
-            alGetSourcei(source, AL_SOURCE_STATE, &state);
-        } while (state == AL_PLAYING);
-
-        alDeleteSources(1, &source);
-        alDeleteBuffers(1, &buffer);
     }
 
     void update(float deltaTime) {
@@ -201,9 +265,8 @@ namespace AudioManager {
         if (state != AL_PLAYING) {
             timeSinceLastTrack += deltaTime;
             if (timeSinceLastTrack >= nextTrackDelay) {
-                playRandomMusic();
+                requestNextTrack();
             }
         }
     }
-
 }

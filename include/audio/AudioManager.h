@@ -2,6 +2,17 @@
 #define AUDIO_MANAGER_H
 
 #include <string>
+#include <vector>
+#include <AL/al.h>
+
+#include "core/threads/ThreadSafeQueue.h"
+
+struct DecodedAudio {
+    std::vector<short> pcm;
+    ALenum format;
+    ALsizei freq;
+    std::string trackPath;
+};
 
 namespace AudioManager {
 
@@ -16,9 +27,7 @@ namespace AudioManager {
 
     void addMusicTrack(const std::string& filepath);
 
-    void playRandomMusic();
-    void playSoundEffect(const std::string& filepath);
-
+    void requestNextTrack();
     void update(float deltaTime);
 }
 

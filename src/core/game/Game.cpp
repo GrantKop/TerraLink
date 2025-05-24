@@ -67,18 +67,21 @@ void Game::loadAssets() {
     blockAtlas.linkBlocksToAtlas(blockRegister.get());
     BlockRegister::setInstance(blockRegister.get());
 
-    Texture load((Game::instance().getBasePath() + "/assets/textures/blocks/block_atlas.png").c_str(), GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-    atlas = std::make_unique<Texture>(load);
-    load.deleteTexture();
+    atlas = std::make_unique<Texture>(
+        (getBasePath() + "/assets/textures/blocks/block_atlas.png").c_str(),
+        GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+        GL_NEAREST, GL_CLAMP_TO_BORDER
+    );
     shaderProgram->use();
     atlas->setUniform(*shaderProgram, "tex0", 0);
 
+    AudioManager::setMusicVolume(0.18f);
     AudioManager::init();
-    AudioManager::setMusicVolume(0.5f);
 
     AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/block_symphony.ogg");
     AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/creative_melodies.ogg");
     AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/pixel_glow.ogg");
+    AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/bittersweet_blocks.ogg");
 }
 
 void Game::setupShadersAndUniforms() {
@@ -170,15 +173,14 @@ void Game::render() {
 }
 
 void Game::shutdown() {
-    if (world) {
-        world.reset();
-    }
     atlas->deleteTexture();
     shaderProgram->deleteShader();
     AudioManager::shutdown();
 
     glfwTerminate();
+
     world->shutdown();
+
 }
 
 std::string Game::getWorldSave() const {
