@@ -14,6 +14,7 @@ public:
     static Player& instance();
 
     Player(GLFWwindow* window);
+    Player();
 
     std::optional<glm::ivec3> getHighlightedBlock() const;
 
@@ -59,7 +60,7 @@ public:
     int getNearFogDistance() const { return NEAR_FOG_DISTANCE; }
     int getBottomFogDistance() const { return BOTTOM_FOG_DISTANCE; }
 
-    int blockCount = 19;
+    int blockCount = 18;
 
 private:
     Camera camera;

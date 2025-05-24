@@ -15,6 +15,7 @@
 class Shader {
     public:
         Shader(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, std::string geometryShaderPath = "");
+        Shader();
         ~Shader();
 
         GLuint ID;
@@ -31,6 +32,7 @@ class Shader {
         void setUniform3(const std::string& name, const glm::mat3& mat);
         void setUniform4(const std::string& name, const glm::vec4& vec);
         void setUniform3(const std::string& name, const glm::vec3& vec);
+        void setUniform1b(const std::string& name, bool value);
 
         void setFloat(const std::string& name, float value);
         void setInt(const std::string& name, int value);

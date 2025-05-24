@@ -13,6 +13,7 @@ class Texture {
 
     public:
         Texture(const char* path, GLenum texType, GLuint texSlot, GLenum format, GLenum pixelType, GLenum minMagFilter = GL_NEAREST, GLenum wrapFilter = GL_REPEAT);
+        Texture();
         ~Texture(); 
 
         // Texture info for openGL

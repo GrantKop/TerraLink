@@ -19,6 +19,19 @@ enum BLOCKTYPE {
     SAND
 };
 
+inline const char* blockTypeToString(BLOCKTYPE type) {
+    switch (type) {
+        case AIR:    return "air";
+        case DIRT:   return "dirt";
+        case GRASS:  return "grass";
+        case STONE:  return "stone";
+        case WOOD:   return "wood";
+        case LEAVES: return "leaves";
+        case SAND:   return "sand";
+        default:     return "stone";
+    }
+}
+
 // Enum for block faces
 enum Face {
     BACK = 0,
