@@ -6,12 +6,17 @@
 #include "network/Network.h"
 #include "core/game/GameInit.h"
 
+bool DEV_MODE = true;
+float gameVersionMajor = 0.f;
+float gameVersionMinor = 5.f;
+float gameVersionPatch = 2.f;
+
 int main() {
 
     initGLFW(3, 3);
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, "TerraLink", 800, 600)) {
+    if (!createWindow(window, "TerraLink", 800, 600, !DEV_MODE)) {
         glfwTerminate();
         return -1;
     }
@@ -19,8 +24,9 @@ int main() {
     NetworkManager networkManager;
     NetworkManager::setInstance(&networkManager);
 
-    Game game(window);
+    Game game(window, DEV_MODE);
     Game::setInstance(&game);
+    game.setGameVersion(gameVersionMajor, gameVersionMinor, gameVersionPatch);
 
     bool onlineMode = GameInit::parseNetworkSettings((game.getBasePath() + "/network.settings").c_str());
 

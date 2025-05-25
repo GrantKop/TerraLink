@@ -22,7 +22,7 @@ std::string Game::fpsCount() {
     return std::string(("TerraLink " + getGameVersion()).c_str()) + "  //  " + std::to_string(fps) + " fps";
 }
 
-Game::Game(GLFWwindow* windowptr) {
+Game::Game(GLFWwindow* windowptr, bool devMode) {
     window = windowptr;
     if (window == nullptr) {
         std::cerr << "Error: Window is null!" << std::endl;
@@ -31,6 +31,13 @@ Game::Game(GLFWwindow* windowptr) {
 
     player = std::make_unique<Player>(window);
     Player::setInstance(player.get());
+
+    DEV_MODE = devMode;
+    basePath = DEV_MODE
+        ? std::filesystem::current_path().parent_path().parent_path()
+        : std::filesystem::current_path().parent_path();
+
+    savePath = basePath / "saves";
 }
 
 Game::~Game() {}

@@ -17,7 +17,7 @@ class World;
 
 class Game {
 public:
-    Game(GLFWwindow* windowptr);
+    Game(GLFWwindow* windowptr, bool devMode = true);
     ~Game();
 
     void gameLoop();
@@ -45,6 +45,11 @@ public:
     bool isFogEnabled() const { return enableFog; }
 
     std::string getGameVersion() const;
+    void setGameVersion(float major, float minor, float patch) {
+        gameVersionMajor = major;
+        gameVersionMinor = minor;
+        gameVersionPatch = patch;
+    }
 
     void setReleaseMode(bool releaseMode) { DEV_MODE = !releaseMode; }
     bool isReleaseMode() const { return !DEV_MODE; }
@@ -71,15 +76,13 @@ private:
     float musicVolume = 0.5f;
     float soundVolume = 0.5f;
 
-    bool DEV_MODE = false;
-    float gameVersionMajor = 0.f;
-    float gameVersionMinor = 5.f;
-    float gameVersionPatch = 2.f;
+    bool DEV_MODE;
+    float gameVersionMajor;
+    float gameVersionMinor;
+    float gameVersionPatch;
 
-    std::filesystem::path basePath = DEV_MODE
-        ? std::filesystem::current_path().parent_path().parent_path()
-        : std::filesystem::current_path().parent_path();
-    std::filesystem::path savePath = basePath / "saves/";
+    std::filesystem::path basePath;
+    std::filesystem::path savePath;
     static Game* s_instance;
        
     std::unique_ptr<Shader> shaderProgram;
