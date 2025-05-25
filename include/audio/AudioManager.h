@@ -8,13 +8,6 @@
 #include "core/threads/ThreadSafeQueue.h"
 #include "core/world/Block.h"
 
-struct DecodedAudio {
-    std::vector<short> pcm;
-    ALenum format;
-    ALsizei freq;
-    std::string trackPath;
-};
-
 namespace AudioManager {
 
     void init();
@@ -27,7 +20,6 @@ namespace AudioManager {
     float getSoundVolume();
 
     void addMusicTrack(const std::string& filepath);
-
     void requestNextTrack();
     void update(float deltaTime);
 
@@ -35,6 +27,11 @@ namespace AudioManager {
     void playSoundEffect(const std::string& path, float gain, const glm::vec3* position);
 
     int getFreeSourceIndex();
+
+    void startAudioThread();
+    void startSoundThread();
+
+    bool loadAudioFile(const std::string& path, ALuint& buffer, ALenum& format, ALsizei& freq, std::vector<short>& pcm);
 }
 
 #endif

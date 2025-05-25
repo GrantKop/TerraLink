@@ -20,7 +20,7 @@ public:
 
     void update(float deltaTime);
 
-    int gameMode = 1;
+    int gameMode = 0;
     int selectedBlockID = 1;
     float verticalVelocity = 0.0f;
     glm::vec3 currentVelocity = glm::vec3(0.0f);

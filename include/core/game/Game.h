@@ -49,6 +49,11 @@ public:
     void setReleaseMode(bool releaseMode) { DEV_MODE = !releaseMode; }
     bool isReleaseMode() const { return !DEV_MODE; }
 
+    void setMusicVolume(float volume) { musicVolume = volume; }
+    float getMusicVolume() const { return musicVolume; }
+    void setSoundVolume(float volume) { soundVolume = volume; }
+    float getSoundVolume() const { return soundVolume; }
+
     std::string fpsCount();
 
 private:
@@ -63,7 +68,10 @@ private:
 
     bool enableFog = false;
 
-    bool DEV_MODE = true;
+    float musicVolume = 0.5f;
+    float soundVolume = 0.5f;
+
+    bool DEV_MODE = false;
     float gameVersionMajor = 0.f;
     float gameVersionMinor = 5.f;
     float gameVersionPatch = 2.f;

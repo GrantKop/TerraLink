@@ -572,7 +572,7 @@ bool World::loadChunkFromFile(const ChunkPosition& pos, std::shared_ptr<Chunk>& 
 
 // Sets the save directory for the world
 void World::setSaveDirectory(const std::string& saveDir) {
-    saveDirectory = Game::instance().getSavePath() + saveDir;
+    saveDirectory = (std::filesystem::path(Game::instance().getSavePath()) / saveDir).string();
 }
 
 // Creates the save directory if it doesn't exist
@@ -636,9 +636,52 @@ void World::savePlayerData(Player& player, const std::string& playerID) {
 
 // Loads the player data from a file
 bool World::loadPlayerData(Player& player, const std::string& playerID) {
-    std::string filePath = saveDirectory + "/players/" + getPlayerID() + ".json";
+    std::string filePath = saveDirectory + "players/" + getPlayerID() + ".json";
 
-    if (!std::filesystem::exists(filePath)) return false;
+    if (!std::filesystem::exists(filePath)) {
+        int wx = 0;
+        int wz = 0;
+        int groundY = -1;
+
+        for (int y = 256; y >= 0; --y) {
+            ChunkPosition chunkPos = {
+                (wx < 0 && wx % CHUNK_SIZE != 0) ? (wx / CHUNK_SIZE - 1) : (wx / CHUNK_SIZE),
+                (y  < 0 && y  % CHUNK_SIZE != 0) ? (y  / CHUNK_SIZE - 1) : (y  / CHUNK_SIZE),
+                (wz < 0 && wz % CHUNK_SIZE != 0) ? (wz / CHUNK_SIZE - 1) : (wz / CHUNK_SIZE)
+            };
+
+            if (chunks.find(chunkPos) == chunks.end()) {
+                std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
+                if (!loadChunkFromFile(chunkPos, chunk)) {
+                    chunk->setPosition(chunkPos);
+                    chunk->generateTerrain();
+                    generateMesh(chunk);
+                    uploadMeshToGPU(*chunk);
+                }
+                chunks[chunkPos] = chunk;
+            }
+
+            int blockID = getBlockIDAtWorldPosition(wx, y, wz);
+            if (blockID != 0 && BlockRegister::instance().blocks[blockID].isSolid) {
+                groundY = y + 1;
+                break;
+            }
+        }
+
+        if (groundY == -1) groundY = 64;
+
+        player.setPosition({
+            static_cast<float>(wx),
+            static_cast<float>(groundY) + player.playerSize.y * 0.5f + 0.01f,
+            static_cast<float>(wz)
+        });
+
+        player.getCamera().yaw = 0.0f;
+        player.getCamera().pitch = 0.0f;
+        player.gameMode = 0;
+
+        return true;
+    }
 
     std::ifstream file(filePath);
     if (!file.is_open()) {
@@ -650,15 +693,52 @@ bool World::loadPlayerData(Player& player, const std::string& playerID) {
     json playerData;
     file >> playerData;
 
-    player.setPosition({
+    glm::vec3 pos {
         playerData["position"]["x"].get<float>(),
         playerData["position"]["y"].get<float>(),
         playerData["position"]["z"].get<float>()
+    };
+
+    int wx = static_cast<int>(std::floor(pos.x));
+    int wz = static_cast<int>(std::floor(pos.z));
+    int startY = static_cast<int>(std::floor(pos.y));
+    int groundY = -1;
+
+    for (int y = startY; y >= 0; --y) {
+        ChunkPosition chunkPos = {
+            (wx < 0 && wx % CHUNK_SIZE != 0) ? (wx / CHUNK_SIZE - 1) : (wx / CHUNK_SIZE),
+            (y   < 0 && y   % CHUNK_SIZE != 0) ? (y   / CHUNK_SIZE - 1) : (y   / CHUNK_SIZE),
+            (wz < 0 && wz % CHUNK_SIZE != 0) ? (wz / CHUNK_SIZE - 1) : (wz / CHUNK_SIZE)
+        };
+
+        if (chunks.find(chunkPos) == chunks.end()) {
+            std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
+            if (!loadChunkFromFile(chunkPos, chunk)) {
+                chunk->setPosition(chunkPos);
+                chunk->generateTerrain();
+                generateMesh(chunk);
+                uploadMeshToGPU(*chunk);
+            }
+            chunks[chunkPos] = chunk;
+        }
+
+        int blockID = getBlockIDAtWorldPosition(wx, y, wz);
+        if (blockID != 0 && BlockRegister::instance().blocks[blockID].isSolid) {
+            groundY = y + 1;
+            break;
+        }
+    }
+
+    if (groundY == -1) groundY = startY;
+
+    player.setPosition({
+        pos.x,
+        static_cast<float>(groundY) + player.playerSize.y * 0.5f + 0.01f,
+        pos.z
     });
 
     player.getCamera().yaw = playerData["rotation"]["yaw"].get<float>();
     player.getCamera().pitch = playerData["rotation"]["pitch"].get<float>();
-
     player.gameMode = playerData["gameMode"].get<int>();
 
     return true;

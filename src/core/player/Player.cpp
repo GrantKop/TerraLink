@@ -273,7 +273,7 @@ void Player::handleInput(float deltaTime) {
             if (isSprinting) {
                 stepInterval = 0.375f;
             } else if (isSneaking) {
-                stepInterval = 0.855f;
+                stepTimer = 0.0f;
             }
 
             stepTimer = stepInterval;

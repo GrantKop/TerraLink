@@ -75,8 +75,8 @@ void Game::loadAssets() {
     shaderProgram->use();
     atlas->setUniform(*shaderProgram, "tex0", 0);
 
-    AudioManager::setMusicVolume(0.75f);
-    AudioManager::setSoundVolume(0.75f);
+    AudioManager::setMusicVolume(musicVolume);
+    AudioManager::setSoundVolume(soundVolume);
     AudioManager::init();
 
     AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/block_symphony.ogg");
@@ -139,6 +139,7 @@ void Game::init() {
     World::setInstance(world.get());
 
     world->init();
+    world->setSaveDirectory(getWorldSave());
     world->createSaveDirectory();
 
     world->loadPlayerData(*player, player->getPlayerName());

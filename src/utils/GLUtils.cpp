@@ -41,7 +41,7 @@ bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, un
 
     glViewport(0, 0, width, height);
 
-    std::string iconPath = (std::filesystem::current_path().parent_path().parent_path() / "assets/icon/icon.png").string();
+    std::string iconPath = (std::filesystem::current_path().parent_path() / "assets/icon/icon.png").string();
 
     if (!std::filesystem::exists(iconPath)) {
         std::cerr << "Icon file not found at: " << iconPath << "\n";
