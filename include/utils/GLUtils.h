@@ -12,7 +12,7 @@ void initGLFW(unsigned int versionMajor, unsigned int versionMinor);
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 
-bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, unsigned int height, GLFWframebuffersizefun = framebufferSizeCallback);
+bool createWindow(GLFWwindow*& window, const char* title, unsigned int width, unsigned int height, bool isReleaseMode, GLFWframebuffersizefun = framebufferSizeCallback);
 
 int checkGLError();
 

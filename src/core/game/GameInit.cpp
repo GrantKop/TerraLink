@@ -49,12 +49,21 @@ namespace GameInit {
             } else if (key == "playerName") {
                 Player::instance().setPlayerName(value);
             } else if (key == "saveName") {
-                World::instance().setSaveDirectory(value);
                 Game::instance().setWorldSave(value);
             } else if (key == "seed") {
                 World::instance().setSeed(std::stoi(value));
             } else if (key == "distanceFog") {
                 Game::instance().setEnableFog(value == "true" || value == "1" || value == "True" || value == "TRUE");
+            } else if (key == "musicVolume") {
+                float musicVolume = std::stof(value) / 100.0f;
+                if (musicVolume < 0.0f) musicVolume = 0.0f;
+                if (musicVolume > 1.0f) musicVolume = 1.0f;
+                Game::instance().setMusicVolume(musicVolume);
+            } else if (key == "soundVolume") {
+                float soundVolume = std::stof(value) / 100.0f;
+                if (soundVolume < 0.0f) soundVolume = 0.0f;
+                if (soundVolume > 1.0f) soundVolume = 1.0f;
+                Game::instance().setSoundVolume(soundVolume);
             }
         }
     }
@@ -88,21 +97,22 @@ namespace GameInit {
             std::string value = line.substr(equalPos + 1);
 
             if (key == "mode") {
+
                 if (value == "server" || value == "Server" || value == "SERVER") {
-                    NetworkManager::setRole(NetworkRole::SERVER);
+                    NetworkManager::instance().setRole(NetworkRole::SERVER);
                 } else if (value == "client" || value == "Client" || value == "CLIENT") {
-                    NetworkManager::setRole(NetworkRole::CLIENT);
+                    NetworkManager::instance().setRole(NetworkRole::CLIENT);
                 } else if (value == "host" || value == "Host" || value == "HOST") {
-                    NetworkManager::setRole(NetworkRole::HOST);
+                  NetworkManager::instance().setRole(NetworkRole::HOST);
                 } else {
                     std::cerr << "Invalid network role: " << value << std::endl;
                     std::cerr << "Defaulting to CLIENT." << std::endl;
                     NetworkManager::setRole(NetworkRole::CLIENT);
                 }
             } else if (key == "ip") {
-                NetworkManager::setIP(value);
+                NetworkManager::instance().setIP(value);
             } else if (key == "port") {
-                NetworkManager::setPort(std::stoi(value));
+                NetworkManager::instance().setPort(std::stoi(value));
             } else if (key == "onlineMode") {
                 onlineMode = (value == "true" || value == "1" || value == "True" || value == "TRUE");
             }

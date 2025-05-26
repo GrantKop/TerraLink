@@ -1,8 +1,8 @@
 # ===== Player Settings =====
-# FOV range: 40 - 120
-# Sensitivity range: 10.0 - 500.0
 playerName = Private Boi
+# FOV range: 40 - 120
 fov = 80.0
+# Sensitivity range: 10.0 - 500.0
 sensitivity = 110.0
 
 # ===== Graphics Settings =====
@@ -11,6 +11,11 @@ sensitivity = 110.0
 # Recommended render distance: 4 - 32
 renderDistance = 16
 distanceFog = true
+
+# ===== Audio Settings =====
+# Volume is from 0-100
+musicVolume = 50
+soundVolume = 50
 
 # ===== World Settings =====
 saveName = default_world

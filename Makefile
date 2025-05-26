@@ -1,7 +1,7 @@
 BUILD_DIR = build
 TOOLCHAIN_FILE = ../vcpkg/scripts/buildsystems/vcpkg.cmake
 
-.PHONY: configure build clean run vcpkg gdb debug
+.PHONY: configure build clean run vcpkg gdb debug installer
 
 setup: vcpkg configure build
 
@@ -36,7 +36,7 @@ run: build
 vcpkg:
 	@git clone https://github.com/microsoft/vcpkg.git
 	@./vcpkg/bootstrap-vcpkg.bat
-	@cd vcpkg && ./vcpkg install glfw3 glad glm stb nlohmann-json zstd
+	@cd vcpkg && ./vcpkg install glfw3 glad glm stb nlohmann-json zstd openal-soft libvorbis libogg
 
 gdb: 
 	@cd build/Debug && gdb TerraLink.exe

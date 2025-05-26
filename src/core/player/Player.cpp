@@ -1,5 +1,7 @@
 #include "core/player/Player.h"
 
+#include "audio/AudioManager.h"
+
 Player* Player::s_instance = nullptr;
 
 static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -248,6 +250,24 @@ void Player::handleInput(float deltaTime) {
         }
 
         moveWithCollision(currentVelocity, deltaTime);
+
+        static glm::vec3 lastFootstepPos = playerPosition;
+        glm::vec3 horizontalDelta = glm::vec3(playerPosition.x, 0.0f, playerPosition.z) - glm::vec3(lastFootstepPos.x, 0.0f, lastFootstepPos.z);
+        distanceSinceLastStep += glm::length(horizontalDelta);
+
+        float strideLength = isSprinting ? 38.0f : 70.0f;
+
+        if (onGround && distanceSinceLastStep >= strideLength && glm::length(currentVelocity) > 0.2f && !isSneaking) {
+            glm::vec3 belowFeet = playerPosition - glm::vec3(0.0f, 1.05f, 0.0f);
+            glm::ivec3 blockBelow = glm::floor(belowFeet);
+            int blockID = World::instance().getBlockIDAtWorldPosition(blockBelow.x, blockBelow.y, blockBelow.z);
+            if (blockID > 0) {
+                BLOCKTYPE type = BlockRegister::instance().getBlockByIndex(blockID).type;
+                AudioManager::playBlockSound(type, playerPosition, camera.position, "step");
+            }
+            distanceSinceLastStep = 0.0f;
+            lastFootstepPos = playerPosition;
+        }
     }
 
     static bool lastNPress = false;
@@ -260,9 +280,18 @@ void Player::handleInput(float deltaTime) {
     lastNPress = glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS;
     
     static bool cursorLocked = true;
+    static bool justLocked = true;
+
 
     if (cursorLocked) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (justLocked) {
+            int width, height;
+            glfwGetWindowSize(window, &width, &height);
+            glfwSetCursorPos(window, width / 2, height / 2);
+            justLocked = false;
+        }
+
         camera.processMouseMovement(window);
     }
     
@@ -292,6 +321,7 @@ void Player::handleInput(float deltaTime) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             camera.firstClick = true;
             cursorLocked = false;
+            justLocked = true;
         }
         if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
@@ -305,7 +335,10 @@ void Player::handleInput(float deltaTime) {
     bool leftNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
     if (leftNow && !lastLeftClick && cursorLocked) {
         if (auto hit = camera.raycastToBlock(World::instance())) {
+            int blockID = World::instance().getBlockIDAtWorldPosition(hit->block.x, hit->block.y, hit->block.z);
             World::instance().setBlockAtWorldPosition(hit->block.x, hit->block.y, hit->block.z, 0);
+            BLOCKTYPE type = BlockRegister::instance().getBlockByIndex(blockID).type;
+            AudioManager::playBlockSound(type, glm::vec3(hit->block) + 0.5f, camera.position, "break");
         }
     }    
     lastLeftClick = leftNow;
@@ -318,6 +351,8 @@ void Player::handleInput(float deltaTime) {
             glm::vec3 blockCenter = glm::vec3(placePos) + 0.5f;
             if (!World::instance().wouldBlockOverlapPlayer(placePos)) {
                 World::instance().setBlockAtWorldPosition(placePos.x, placePos.y, placePos.z, selectedBlockID);
+                BLOCKTYPE placed = BlockRegister::instance().getBlockByIndex(selectedBlockID).type;
+                AudioManager::playBlockSound(placed, glm::vec3(placePos) + 0.5f, camera.position, "place");
             }
             if (World::instance().collidesWithBlockAABB(playerPosition, playerSize)) {
                 float newY = placePos.y + 1.0f + (playerSize.y * 0.5f);

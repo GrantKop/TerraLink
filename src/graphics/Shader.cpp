@@ -11,6 +11,8 @@ Shader::Shader(const std::string& vertexShaderPath, const std::string& fragmentS
     }
 }
 
+Shader::Shader() : ID(0) {}
+
 Shader::~Shader() {}
 
 void Shader::use() {

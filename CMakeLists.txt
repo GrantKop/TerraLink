@@ -48,6 +48,15 @@ set(zstd_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/zstd")
 find_package(zstd CONFIG REQUIRED)
 target_link_libraries(TerraLink PRIVATE zstd::libzstd_shared)
 
+# OpenAL Soft
+set(openal-soft_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/share/openal-soft")
+find_package(OpenAL CONFIG REQUIRED)
+target_link_libraries(TerraLink PRIVATE OpenAL::OpenAL)
+
+# Vorbis
+find_package(Vorbis REQUIRED)
+target_link_libraries(TerraLink PRIVATE Vorbis::vorbisfile)
+
 
 # --- Install targets ---
 install(TARGETS TerraLink RUNTIME DESTINATION bin)
@@ -69,16 +78,20 @@ set(CPACK_PACKAGE_NAME "TerraLink")
 set(CPACK_PACKAGE_VENDOR "Grant Kopczenski")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Procedural terrain engine")
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
-set(CPACK_PACKAGE_VERSION_MINOR "4")
-set(CPACK_PACKAGE_VERSION_PATCH "9")
+set(CPACK_PACKAGE_VERSION_MINOR "5")
+set(CPACK_PACKAGE_VERSION_PATCH "2")
 set(CPACK_PACKAGE_EXECUTABLES "TerraLink" "TerraLink")
 set(CPACK_GENERATOR "NSIS")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/assets/icon/icon.ico")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 
 install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/glfw3.dll" DESTINATION bin)
-
 install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/zstd.dll" DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/OpenAL32.dll" DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/vorbisfile.dll" DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/vorbis.dll"     DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/ogg.dll"        DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/fmt.dll"        DESTINATION bin)
 
 file(TO_CMAKE_PATH "$ENV{APPDATA}" _appdata_forward)
 string(REPLACE "/" "\\\\" _appdata_win "${_appdata_forward}")

@@ -14,12 +14,13 @@ public:
     static Player& instance();
 
     Player(GLFWwindow* window);
+    Player();
 
     std::optional<glm::ivec3> getHighlightedBlock() const;
 
     void update(float deltaTime);
 
-    int gameMode = 1;
+    int gameMode = 0;
     int selectedBlockID = 1;
     float verticalVelocity = 0.0f;
     glm::vec3 currentVelocity = glm::vec3(0.0f);
@@ -36,6 +37,8 @@ public:
     glm::vec3 playerSize = glm::vec3(0.6f, 1.8f, 0.6f);
     glm::vec3 playerPosition;
     const float eyeOffset = .7f;
+
+    float distanceSinceLastStep = 0.0f;
 
     void moveWithCollision(glm::vec3 velocity, float deltaTime);
 
@@ -59,7 +62,7 @@ public:
     int getNearFogDistance() const { return NEAR_FOG_DISTANCE; }
     int getBottomFogDistance() const { return BOTTOM_FOG_DISTANCE; }
 
-    int blockCount = 19;
+    int blockCount = 18;
 
 private:
     Camera camera;

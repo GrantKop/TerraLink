@@ -28,6 +28,8 @@ Texture::Texture(const char* path, GLenum texType, GLuint texSlot, GLenum format
     
 }
 
+Texture::Texture() : ID(0), type(GL_TEXTURE_2D), slot(0), texUniform(0), width(0), height(0), nrChannels(0) {}
+
 Texture::~Texture() {}
 
 void Texture::bind() {
