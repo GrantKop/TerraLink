@@ -68,6 +68,12 @@ void Player::update(float deltaTime) {
     jumpBufferTime = std::max(0.0f, jumpBufferTime);
     jumpCooldown = std::max(0.0f, jumpCooldown);
 
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    if (width == 0 || height == 0) {
+        return;
+    }
+
     camera.updateCameraMatrix(0.1f, getRenderDistance(), window);
     if (gameMode == 0) {
         glm::vec3 groundCheck = playerPosition;
