@@ -39,6 +39,13 @@ void Camera::setSensitivity(float sensitivity) {
     this->sensitivity = sensitivity;
 }
 
+// Sets the camera rotation based on yaw and pitch angles
+void Camera::setRotation(float yaw, float pitch) {
+    this->yaw = yaw;
+    this->pitch = pitch;
+    updateCameraVectors();
+}
+
 // Sets the camera matrix in the shader program
 void Camera::matrix(Shader& shaderProgram, const char* uniformName) {
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, uniformName), 1, GL_FALSE, glm::value_ptr(cameraMatrix));

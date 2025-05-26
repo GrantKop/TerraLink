@@ -1,6 +1,6 @@
 {
     "model": "block_full",
-    "block_type": "leaves",
+    "block_type": "sand",
     "solid": true,
     "transparent": false,
     "textures": {

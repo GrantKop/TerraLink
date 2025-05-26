@@ -19,6 +19,7 @@ namespace AudioManager {
     float getMusicVolume();
     float getSoundVolume();
 
+    void loadMusicTracks(const std::string& directoryPath);
     void addMusicTrack(const std::string& filepath);
     void requestNextTrack();
     void update(float deltaTime);

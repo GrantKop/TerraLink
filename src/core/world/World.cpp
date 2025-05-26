@@ -636,7 +636,7 @@ void World::savePlayerData(Player& player, const std::string& playerID) {
 
 // Loads the player data from a file
 bool World::loadPlayerData(Player& player, const std::string& playerID) {
-    std::string filePath = saveDirectory + "players/" + getPlayerID() + ".json";
+    std::string filePath = saveDirectory + "/players/" + getPlayerID() + ".json";
 
     if (!std::filesystem::exists(filePath)) {
         int wx = 0;
@@ -737,8 +737,10 @@ bool World::loadPlayerData(Player& player, const std::string& playerID) {
         pos.z
     });
 
-    player.getCamera().yaw = playerData["rotation"]["yaw"].get<float>();
-    player.getCamera().pitch = playerData["rotation"]["pitch"].get<float>();
+    player.getCamera().setRotation(
+        playerData["rotation"]["yaw"].get<float>(),
+        playerData["rotation"]["pitch"].get<float>()
+    );
     player.gameMode = playerData["gameMode"].get<int>();
 
     return true;

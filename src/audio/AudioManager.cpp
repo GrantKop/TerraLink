@@ -15,6 +15,9 @@
 #include <cctype>
 #include <thread>
 #include <atomic>
+#include <filesystem>
+namespace fs = std::filesystem;
+
 
 #include "core/game/Game.h"
 
@@ -53,6 +56,7 @@ namespace AudioManager {
     constexpr int NUM_SOUND_WORKERS = 4;
 
     static ThreadSafeQueue<std::string> trackRequestQueue;
+    static ThreadSafeQueue<ALuint> allocatedSoundBuffers;
 
     struct QueuedSound {
         std::string path;
@@ -64,7 +68,6 @@ namespace AudioManager {
     static ThreadSafeQueue<QueuedSound> soundRequestQueue;
     static ThreadSafeQueue<ALuint> bufferCleanupQueue;
     static std::array<std::atomic<bool>, MAX_SOUND_SOURCES> sourceFinished;
-    static std::vector<std::thread> cleanupThreads;
 
     std::default_random_engine rng(std::chrono::system_clock::now().time_since_epoch().count());
 
@@ -189,11 +192,6 @@ namespace AudioManager {
         }
         soundWorkers.clear();
 
-        for (auto& thread : cleanupThreads) {
-            if (thread.joinable()) thread.join();
-        }
-        cleanupThreads.clear();
-
         if (cleanupThread.joinable()) cleanupThread.join();
 
         for (int i = 0; i < MAX_SOUND_SOURCES; ++i) {
@@ -222,6 +220,11 @@ namespace AudioManager {
             }
         }
 
+        ALuint buf;
+        while (allocatedSoundBuffers.tryPop(buf)) {
+            alDeleteBuffers(1, &buf);
+        }
+
         if (context) {
             alcMakeContextCurrent(nullptr);
             alcDestroyContext(context);
@@ -240,6 +243,20 @@ namespace AudioManager {
     void setSoundVolume(float volume) { soundVolume = volume; }
     float getMusicVolume() { return musicVolume; }
     float getSoundVolume() { return soundVolume; }
+
+    void loadMusicTracks(const std::string& directoryPath) {
+        for (const auto& entry : fs::directory_iterator(directoryPath)) {
+            if (!entry.is_regular_file()) continue;
+
+            std::string path = entry.path().string();
+            std::string ext = entry.path().extension().string();
+
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+            if (ext == ".ogg" || ext == ".wav") {
+                addMusicTrack(path);
+            }
+        }
+    }
 
     void addMusicTrack(const std::string& filepath) {
         musicTracks.push_back(filepath);
@@ -345,6 +362,8 @@ namespace AudioManager {
                         continue;
                     }
 
+                    allocatedSoundBuffers.push(buffer);
+
                     ALuint src = sourcePool[idx];
                     alSourcei(src, AL_BUFFER, 0);
                     alBufferData(buffer, format, pcm.data(), pcm.size() * sizeof(short), freq);
@@ -367,17 +386,6 @@ namespace AudioManager {
                     sourceInUse[idx] = true;
                     sourceFinished[idx] = false;
                     alSourcePlay(src);
-
-                    cleanupThreads.emplace_back([src = sourcePool[idx], idx]() {
-                        ALint state;
-                        do {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                            alGetSourcei(src, AL_SOURCE_STATE, &state);
-                        } while (state == AL_PLAYING || state == AL_PAUSED);
-                        if (!shutdownAudioThread.load()) {
-                            sourceInUse[idx] = false;
-                        }
-                    });
                 }
             });
         }

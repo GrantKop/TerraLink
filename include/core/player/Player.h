@@ -38,6 +38,8 @@ public:
     glm::vec3 playerPosition;
     const float eyeOffset = .7f;
 
+    float distanceSinceLastStep = 0.0f;
+
     void moveWithCollision(glm::vec3 velocity, float deltaTime);
 
     void setPosition(float x, float y, float z);

@@ -59,6 +59,8 @@ public:
     float getBaseFOV() const;
     void setSensitivity(float sensitivity);
 
+    void setRotation(float yaw, float pitch);
+
     void matrix(Shader& shaderProgram, const char* uniformName);
     void updateCameraMatrix(float nearPlane, float farPlane, GLFWwindow* window);
     void updatePosition(CameraMovement direction, float deltaTime);

@@ -251,32 +251,22 @@ void Player::handleInput(float deltaTime) {
 
         moveWithCollision(currentVelocity, deltaTime);
 
-        static float stepTimer = 0.0f;
-        stepTimer -= deltaTime;
+        static glm::vec3 lastFootstepPos = playerPosition;
+        glm::vec3 horizontalDelta = glm::vec3(playerPosition.x, 0.0f, playerPosition.z) - glm::vec3(lastFootstepPos.x, 0.0f, lastFootstepPos.z);
+        distanceSinceLastStep += glm::length(horizontalDelta);
 
-        float walkSpeed = glm::length(glm::vec2(currentVelocity.x, currentVelocity.z));
-        bool isMoving = walkSpeed > 0.25f;
-        bool onGround = this->onGround;
+        float strideLength = isSprinting ? 38.0f : 70.0f;
 
-        if (isMoving && onGround && stepTimer <= 0.0f) {
+        if (onGround && distanceSinceLastStep >= strideLength && glm::length(currentVelocity) > 0.2f && !isSneaking) {
             glm::vec3 belowFeet = playerPosition - glm::vec3(0.0f, 1.05f, 0.0f);
             glm::ivec3 blockBelow = glm::floor(belowFeet);
-
             int blockID = World::instance().getBlockIDAtWorldPosition(blockBelow.x, blockBelow.y, blockBelow.z);
-
             if (blockID > 0) {
                 BLOCKTYPE type = BlockRegister::instance().getBlockByIndex(blockID).type;
                 AudioManager::playBlockSound(type, playerPosition, camera.position, "step");
             }
-            float stepInterval = 0.55f;
-
-            if (isSprinting) {
-                stepInterval = 0.375f;
-            } else if (isSneaking) {
-                stepTimer = 0.0f;
-            }
-
-            stepTimer = stepInterval;
+            distanceSinceLastStep = 0.0f;
+            lastFootstepPos = playerPosition;
         }
     }
 
@@ -290,9 +280,18 @@ void Player::handleInput(float deltaTime) {
     lastNPress = glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS;
     
     static bool cursorLocked = true;
+    static bool justLocked = true;
+
 
     if (cursorLocked) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (justLocked) {
+            int width, height;
+            glfwGetWindowSize(window, &width, &height);
+            glfwSetCursorPos(window, width / 2, height / 2);
+            justLocked = false;
+        }
+
         camera.processMouseMovement(window);
     }
     
@@ -322,6 +321,7 @@ void Player::handleInput(float deltaTime) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             camera.firstClick = true;
             cursorLocked = false;
+            justLocked = true;
         }
         if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);

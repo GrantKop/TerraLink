@@ -85,11 +85,7 @@ void Game::loadAssets() {
     AudioManager::setMusicVolume(musicVolume);
     AudioManager::setSoundVolume(soundVolume);
     AudioManager::init();
-
-    AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/block_symphony.ogg");
-    AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/creative_melodies.ogg");
-    AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/pixel_glow.ogg");
-    AudioManager::addMusicTrack(getBasePath() + "/assets/sounds/music/bittersweet_blocks.ogg");
+    AudioManager::loadMusicTracks(getBasePath() + "/assets/sounds/music/");
 }
 
 void Game::setupShadersAndUniforms() {
