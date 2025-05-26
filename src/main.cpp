@@ -6,10 +6,10 @@
 #include "network/Network.h"
 #include "core/game/GameInit.h"
 
-bool DEV_MODE = true;
+bool DEV_MODE = false;
 float gameVersionMajor = 0.f;
 float gameVersionMinor = 5.f;
-float gameVersionPatch = 2.f;
+float gameVersionPatch = 3.f;
 
 int main() {
 
