@@ -1,5 +1,6 @@
 #include "core/world/World.h"
 #include "core/player/Player.h"
+#include "network/Network.h"
 
 World* World::s_instance = nullptr;
 
@@ -37,14 +38,16 @@ void World::shutdown() {
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
 
-    std::cout << "Saving chunks to disk..." << std::endl;
+    if (!NetworkManager::instance().isOnlineMode() || NetworkManager::instance().isHost()) std::cout << "Saving chunks to disk..." << std::endl;
     for (auto& [pos, chunk] : chunks) {
         if (!chunk) continue;
 
-        try {
-            saveChunkToFile(chunk);
-        } catch (...) {
-            std::cerr << "Exception while saving chunk at " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+        if (!NetworkManager::instance().isOnlineMode() || NetworkManager::instance().isHost()) {
+            try {
+                saveChunkToFile(chunk);
+            } catch (...) {
+                std::cerr << "Exception while saving chunk at " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+            }
         }
 
         if (chunk->mesh.isUploaded) {
@@ -61,11 +64,13 @@ void World::shutdown() {
 
     chunks.clear();
 
-    std::cout << "Saving player data..." << std::endl;
-    try {
-        savePlayerData(Player::instance(), Player::instance().getPlayerName());
-    } catch (...) {
-        std::cerr << "Failed to save player data." << std::endl;
+    if (!NetworkManager::instance().isOnlineMode() || NetworkManager::instance().isHost()) {
+        std::cout << "Saving player data..." << std::endl;
+        try {
+            savePlayerData(Player::instance(), Player::instance().getPlayerName());
+        } catch (...) {
+            std::cerr << "Failed to save player data." << std::endl;
+        }
     }
 }
 
@@ -76,15 +81,20 @@ void World::init() {
     if (running) return;
     running = true;
 
-    int threads = std::max(1u, std::thread::hardware_concurrency());
+    int threads = std::thread::hardware_concurrency();
     
-    for (int i = 0; i < (threads / 2) - 1; ++i)
+    for (int i = 0; i < (threads / 2) - 1; ++i) {
         chunkGenThreads.emplace_back(&World::chunkWorkerThread, this);
+    }
 
-    for (int i = 0; i < (threads / 2) - 1; ++i)
+    for (int i = 0; i < (threads / 2) - 1; ++i) {
         meshGenThreads.emplace_back(&World::meshWorkerThread, this);
+    }
 
     chunkManagerThread = std::thread(&World::managerThread, this);
+    if (NetworkManager::instance().isClient() || NetworkManager::instance().isHost()) {
+        tcpSocket = NetworkManager::instance().getTCPSocket();
+    } 
 }
 
 // Thread function for loading chunks around the player
@@ -135,8 +145,12 @@ void World::chunkWorkerThread() {
 
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
 
-        if (loadChunkFromFile(pos, chunk)) {
+        if (NetworkManager::instance().isClient() && NetworkManager::instance().isOnlineMode()) {
+            networkWorker(pos);
+
+        } else if (loadChunkFromFile(pos, chunk)) {
             meshUploadQueue.push(chunk);
+
         } else {
             chunk = std::make_shared<Chunk>();
             chunk->setPosition(pos);
@@ -749,6 +763,144 @@ bool World::loadPlayerData(Player& player, const std::string& playerID) {
 // Returns a players identifier
 std::string World::getPlayerID() const {
     return Player::instance().getPlayerName();
+}
+
+#include "network/Serializer.h"
+
+void World::serializeChunk(const std::shared_ptr<Chunk>& chunk, std::vector<uint8_t>& out) {
+    out.clear();
+
+    // Position
+    Serializer::writeInt32(out, chunk->getPosition().x);
+    Serializer::writeInt32(out, chunk->getPosition().y);
+    Serializer::writeInt32(out, chunk->getPosition().z);
+
+    // Block Data
+    const auto& blocks = chunk->getBlocks();
+    Serializer::writeInt32(out, static_cast<int32_t>(blocks.size()));
+    out.insert(out.end(),
+        reinterpret_cast<const uint8_t*>(blocks.data()),
+        reinterpret_cast<const uint8_t*>(blocks.data()) + blocks.size() * sizeof(uint16_t));
+
+    // Vertices
+    const auto& verts = chunk->mesh.vertices;
+    Serializer::writeInt32(out, static_cast<int32_t>(verts.size()));
+    out.insert(out.end(),
+        reinterpret_cast<const uint8_t*>(verts.data()),
+        reinterpret_cast<const uint8_t*>(verts.data()) + verts.size() * sizeof(Vertex));
+
+    // Indices
+    const auto& indices = chunk->mesh.indices;
+    Serializer::writeInt32(out, static_cast<int32_t>(indices.size()));
+    out.insert(out.end(),
+        reinterpret_cast<const uint8_t*>(indices.data()),
+        reinterpret_cast<const uint8_t*>(indices.data()) + indices.size() * sizeof(GLuint));
+}
+
+std::shared_ptr<Chunk> World::deserializeChunk(const std::vector<uint8_t>& in) {
+    size_t offset = 0;
+
+    int x = Serializer::readInt32(in, offset);
+    int y = Serializer::readInt32(in, offset);
+    int z = Serializer::readInt32(in, offset);
+    ChunkPosition pos{x, y, z};
+
+    auto chunk = std::make_shared<Chunk>();
+    chunk->setPosition(pos);
+
+    // Block data
+    int blockCount = Serializer::readInt32(in, offset);
+    std::array<uint16_t, CHUNK_VOLUME> blocks{};
+    std::memcpy(blocks.data(), in.data() + offset, blockCount * sizeof(uint16_t));
+    offset += blockCount * sizeof(uint16_t);
+    chunk->setBlocks(blocks);
+
+    // Vertices
+    int vertCount = Serializer::readInt32(in, offset);
+    chunk->mesh.vertices.resize(vertCount);
+    std::memcpy(chunk->mesh.vertices.data(), in.data() + offset, vertCount * sizeof(Vertex));
+    offset += vertCount * sizeof(Vertex);
+
+    // Indices
+    int indexCount = Serializer::readInt32(in, offset);
+    chunk->mesh.indices.resize(indexCount);
+    std::memcpy(chunk->mesh.indices.data(), in.data() + offset, indexCount * sizeof(GLuint));
+    offset += indexCount * sizeof(GLuint);
+
+    chunk->mesh.isEmpty = chunk->mesh.vertices.empty() && chunk->mesh.indices.empty();
+    chunk->mesh.needsUpdate = false;
+    chunk->mesh.isUploaded = false;
+
+    return chunk;
+}
+
+void World::networkWorker(ChunkPosition pos) {
+    if (tcpSocket == INVALID_SOCKET) {
+        std::cerr << "[Client] Invalid TCP socket\n";
+        return;
+    }
+
+    Message request;
+    request.type = MessageType::ChunkRequest;
+
+    Serializer::writeInt32(request.data, pos.x);
+    Serializer::writeInt32(request.data, pos.y);
+    Serializer::writeInt32(request.data, pos.z);
+
+    std::vector<uint8_t> serialized = request.serialize();
+    if (serialized.empty()) {
+        std::cerr << "[Client] ERROR: Serialized message is empty!\n";
+    }
+    std::cout << "[Client] Sending message of length " << serialized.size() << "\n";
+    uint32_t length = static_cast<uint32_t>(serialized.size());
+    std::vector<uint8_t> prefix(4);
+    std::memcpy(prefix.data(), &length, 4);
+
+    TCPSocket::sendAll(tcpSocket, prefix);
+    TCPSocket::sendAll(tcpSocket, serialized);
+
+    std::vector<uint8_t> lenBuf;
+    if (!TCPSocket::recvAll(tcpSocket, lenBuf, 4)) {
+        std::cerr << "[Client] Failed to read chunk response size\n";
+        return;
+    }
+
+    uint32_t responseLength;
+    std::memcpy(&responseLength, lenBuf.data(), 4);
+    std::vector<uint8_t> payload;
+    if (!TCPSocket::recvAll(tcpSocket, payload, responseLength)) {
+        std::cerr << "[Client] Failed to read full chunk response\n";
+        return;
+    }
+
+    try {
+        Message response = Message::deserialize(payload);
+        if (response.type == MessageType::ChunkData) {
+            auto chunk = World::instance().deserializeChunk(response.data);
+            meshUploadQueue.push(chunk);
+        } else if (response.type == MessageType::ChunkNotFound) {
+            auto chunk = std::make_shared<Chunk>();
+            chunk->setPosition(pos);
+            chunk->generateTerrain();
+            meshGenerationQueue.push(chunk);
+
+            Message generated;
+            generated.type = MessageType::ChunkGeneratedByClient;
+            World::instance().serializeChunk(chunk, generated.data);
+            std::vector<uint8_t> sendBack = generated.serialize();
+            uint32_t sendBackLen = static_cast<uint32_t>(sendBack.size());
+            std::vector<uint8_t> sendBackPrefix(4);
+
+            std::memcpy(sendBackPrefix.data(), &sendBackLen, 4);
+            TCPSocket::sendAll(tcpSocket, sendBackPrefix);
+            TCPSocket::sendAll(tcpSocket, sendBack);
+
+            return;
+        }
+    } catch (...) {
+        std::cerr << "[Client] Failed to parse server response message\n";
+        return;
+    }
 }
 
 // Unused WIP

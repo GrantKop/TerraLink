@@ -107,6 +107,8 @@ public:
 
     SavableChunk makeSavableCopy() const;
 
+    bool checkServer = true;
+
 private:
     std::array<uint16_t, CHUNK_VOLUME> blocks = {0};
 

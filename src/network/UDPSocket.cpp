@@ -39,7 +39,9 @@ bool UDPSocket::bind(uint16_t port) {
     localAddr.sin_port = htons(port);
     localAddr.sin_addr.s_addr = INADDR_ANY;
 
-    return ::bind(socketHandle, (sockaddr*)&localAddr, sizeof(localAddr)) != SOCKET_ERROR;
+    bool success = ::bind(socketHandle, (sockaddr*)&localAddr, sizeof(localAddr)) != SOCKET_ERROR;
+    if (success) this->port = port;
+    return success;
 }
 
 bool UDPSocket::sendTo(const std::vector<uint8_t>& data, const Address& addr) {

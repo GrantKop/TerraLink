@@ -1,6 +1,20 @@
 #ifndef WORLD_H
 #define WORLD_H
 
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
+#ifdef T
+#undef T
+#endif
+
+#define NOMINMAX
+
 #include <unordered_set>
 #include <chrono>
 #include <ctime>
@@ -10,8 +24,14 @@
 #include "core/world/Chunk.h"
 #include "core/world/Cloud.h"
 #include "graphics/Shader.h"
+#include "network/TCPSocket.h"
 
 class Player;
+
+struct TimedChunkRequest {
+    ChunkPosition pos;
+    double requestTime;
+};
 
 class World {
 public:
@@ -28,6 +48,8 @@ public:
     void managerThread();
     void chunkWorkerThread();
     void meshWorkerThread();
+
+    void networkWorker(ChunkPosition pos);
 
     void generateMesh(const std::shared_ptr<Chunk>& chunk);
 
@@ -63,11 +85,17 @@ public:
 
     void chunkReset();
 
+    void serializeChunk(const std::shared_ptr<Chunk>& chunk, std::vector<uint8_t>& out);
+    std::shared_ptr<Chunk> deserializeChunk(const std::vector<uint8_t>& in);
+
+    void networkTick();
+
     void setSeed(uint32_t newSeed) { seed = newSeed; }
     uint32_t getSeed() const { return seed; }
 
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
     std::unordered_set<ChunkPosition> chunkPositionSet;
+    std::unordered_map<ChunkPosition, TimedChunkRequest> awaitingChunks;
 
     std::unordered_map<CloudPosition, CloudMesh> clouds;
     std::unordered_set<CloudPosition> activeClouds;
@@ -99,10 +127,12 @@ private:
 
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUpdateQueue;
 
+    SOCKET tcpSocket;
+
     uint32_t seed = 1;
 
-    int minY = -16;
-    int maxY = 40;
+    int minY = -5;
+    int maxY = 5;
 
     std::string saveDirectory;
 

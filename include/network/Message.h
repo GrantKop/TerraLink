@@ -8,7 +8,10 @@ enum class MessageType : uint8_t {
     PlayerPositionUpdate,
     ChunkRequest,
     ChunkData,
-    ChunkGeneratedByClient
+    ChunkGeneratedByClient,
+    ChunkNotFound,
+    Ping,
+    Pong
 };
 
 struct Message {

@@ -185,7 +185,6 @@ void Game::shutdown() {
     glfwTerminate();
 
     world->shutdown();
-
 }
 
 std::string Game::getWorldSave() const {

@@ -30,6 +30,7 @@ namespace GameInit {
 
             std::string key = line.substr(0, equalPos);
             std::string value = line.substr(equalPos + 1);
+            std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
             if (key == "renderDistance") {
                 int renderDistance = std::stoi(value);
@@ -53,7 +54,7 @@ namespace GameInit {
             } else if (key == "seed") {
                 World::instance().setSeed(std::stoi(value));
             } else if (key == "distanceFog") {
-                Game::instance().setEnableFog(value == "true" || value == "1" || value == "True" || value == "TRUE");
+                Game::instance().setEnableFog(value == "true" || value == "1");
             } else if (key == "musicVolume") {
                 float musicVolume = std::stof(value) / 100.0f;
                 if (musicVolume < 0.0f) musicVolume = 0.0f;
@@ -95,14 +96,14 @@ namespace GameInit {
 
             std::string key = line.substr(0, equalPos);
             std::string value = line.substr(equalPos + 1);
+            std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
             if (key == "mode") {
-
-                if (value == "server" || value == "Server" || value == "SERVER") {
+                if (value == "server") {
                     NetworkManager::instance().setRole(NetworkRole::SERVER);
-                } else if (value == "client" || value == "Client" || value == "CLIENT") {
+                } else if (value == "client") {
                     NetworkManager::instance().setRole(NetworkRole::CLIENT);
-                } else if (value == "host" || value == "Host" || value == "HOST") {
+                } else if (value == "host") {
                   NetworkManager::instance().setRole(NetworkRole::HOST);
                 } else {
                     std::cerr << "Invalid network role: " << value << std::endl;
@@ -110,11 +111,22 @@ namespace GameInit {
                     NetworkManager::setRole(NetworkRole::CLIENT);
                 }
             } else if (key == "ip") {
-                NetworkManager::instance().setIP(value);
+                if (value == "default") {
+                    NetworkManager::instance().setIP(NetworkManager::instance().getPublicIP());
+                } else if (value == "localhost") {
+                    NetworkManager::instance().setIP("127.0.0.1");
+                } else {
+                    NetworkManager::instance().setIP(value);
+                }
             } else if (key == "port") {
+                if (value == "" || value == "default") {
+                    std::cerr << "No port specified, defaulting to 55055" << std::endl;
+                    value = "55055";
+                }
                 NetworkManager::instance().setPort(std::stoi(value));
             } else if (key == "onlineMode") {
-                onlineMode = (value == "true" || value == "1" || value == "True" || value == "TRUE");
+                onlineMode = (value == "true" || value == "1");
+                NetworkManager::instance().setOnlineMode(onlineMode);
             }
         }
 
