@@ -1,6 +1,7 @@
 #include "core/world/World.h"
 #include "core/player/Player.h"
 #include "network/Network.h"
+#include "network/UDPSocket.h"
 
 World* World::s_instance = nullptr;
 
@@ -146,7 +147,15 @@ void World::chunkWorkerThread() {
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
 
         if (NetworkManager::instance().isClient() && NetworkManager::instance().isOnlineMode()) {
-            networkWorker(pos);
+            if (requestChunkOverUDP(pos, chunk)) {
+                meshUploadQueue.push(chunk);
+            } else {
+                chunk = std::make_shared<Chunk>();
+                chunk->setPosition(pos);
+                chunk->generateTerrain();
+                meshGenerationQueue.push(chunk);
+            }
+            continue;
 
         } else if (loadChunkFromFile(pos, chunk)) {
             meshUploadQueue.push(chunk);
@@ -225,7 +234,11 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
         chunk->mesh.isUploaded = false;
         chunk->mesh.vertices = std::move(chunk->mesh.stagingVertices);
         chunk->mesh.indices  = std::move(chunk->mesh.stagingIndices);
+        chunk->mesh.stagingIndices.clear();
+        chunk->mesh.stagingVertices.clear();
     }
+
+    sendChunkOverUDP(chunk->makeSavableCopy());
 }
 
 // Sets a block at the specified world position
@@ -767,30 +780,30 @@ std::string World::getPlayerID() const {
 
 #include "network/Serializer.h"
 
-void World::serializeChunk(const std::shared_ptr<Chunk>& chunk, std::vector<uint8_t>& out) {
+void World::serializeChunk(SavableChunk& chunk, std::vector<uint8_t>& out) {
     out.clear();
 
     // Position
-    Serializer::writeInt32(out, chunk->getPosition().x);
-    Serializer::writeInt32(out, chunk->getPosition().y);
-    Serializer::writeInt32(out, chunk->getPosition().z);
+    Serializer::writeInt32(out, chunk.position.x);
+    Serializer::writeInt32(out, chunk.position.y);
+    Serializer::writeInt32(out, chunk.position.z);
 
     // Block Data
-    const auto& blocks = chunk->getBlocks();
+    const auto& blocks = chunk.blocks;
     Serializer::writeInt32(out, static_cast<int32_t>(blocks.size()));
     out.insert(out.end(),
         reinterpret_cast<const uint8_t*>(blocks.data()),
         reinterpret_cast<const uint8_t*>(blocks.data()) + blocks.size() * sizeof(uint16_t));
 
     // Vertices
-    const auto& verts = chunk->mesh.vertices;
+    const auto& verts = chunk.vertices;
     Serializer::writeInt32(out, static_cast<int32_t>(verts.size()));
     out.insert(out.end(),
         reinterpret_cast<const uint8_t*>(verts.data()),
         reinterpret_cast<const uint8_t*>(verts.data()) + verts.size() * sizeof(Vertex));
 
     // Indices
-    const auto& indices = chunk->mesh.indices;
+    const auto& indices = chunk.indices;
     Serializer::writeInt32(out, static_cast<int32_t>(indices.size()));
     out.insert(out.end(),
         reinterpret_cast<const uint8_t*>(indices.data()),
@@ -886,7 +899,7 @@ void World::networkWorker(ChunkPosition pos) {
 
             Message generated;
             generated.type = MessageType::ChunkGeneratedByClient;
-            World::instance().serializeChunk(chunk, generated.data);
+            // World::instance().serializeChunk(*chunk, generated.data);
             std::vector<uint8_t> sendBack = generated.serialize();
             uint32_t sendBackLen = static_cast<uint32_t>(sendBack.size());
             std::vector<uint8_t> sendBackPrefix(4);
@@ -900,6 +913,106 @@ void World::networkWorker(ChunkPosition pos) {
     } catch (...) {
         std::cerr << "[Client] Failed to parse server response message\n";
         return;
+    }
+}
+
+bool World::requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>& outChunk) {
+    Message request;
+    request.type = MessageType::ChunkRequest;
+    Serializer::writeInt32(request.data, pos.x);
+    Serializer::writeInt32(request.data, pos.y);
+    Serializer::writeInt32(request.data, pos.z);
+
+    auto serialized = request.serialize();
+    if (!UDPSocket::instance().sendTo(serialized, UDPSocket::instance().getAddress())) {
+        std::cerr << "[Client] Failed to send UDP chunk request\n";
+        return false;
+    }
+
+    std::vector<uint8_t> responseBuf;
+    Address from;
+    if (!UDPSocket::instance().receiveFrom(responseBuf, from)) {
+        std::cerr << "[Client] UDP response timeout or error\n";
+        return false;
+    }
+
+    try {
+        Message response = Message::deserialize(responseBuf);
+        if (response.type != MessageType::ChunkGeneratedByClient) {
+            return false;
+        }
+
+        size_t offset = 0;
+        int32_t x = Serializer::readInt32(response.data, offset);
+        int32_t y = Serializer::readInt32(response.data, offset);
+        int32_t z = Serializer::readInt32(response.data, offset);
+        int32_t compressedSize = Serializer::readInt32(response.data, offset);
+
+        if (response.data.size() - offset < static_cast<size_t>(compressedSize)) {
+            std::cerr << "[Client] Compressed chunk data incomplete\n";
+            return false;
+        }
+
+        std::vector<uint8_t> compressedData(response.data.begin() + offset,
+                                            response.data.begin() + offset + compressedSize);
+
+        size_t decompressedSize = ZSTD_getFrameContentSize(compressedData.data(), compressedData.size());
+        if (decompressedSize == ZSTD_CONTENTSIZE_ERROR || decompressedSize == ZSTD_CONTENTSIZE_UNKNOWN) {
+            std::cerr << "[Client] Failed to get decompressed size\n";
+            return false;
+        }
+
+        std::vector<uint8_t> decompressed(decompressedSize);
+        size_t result = ZSTD_decompress(decompressed.data(), decompressedSize,
+                                        compressedData.data(), compressedData.size());
+        if (ZSTD_isError(result)) {
+            std::cerr << "[Client] Failed to decompress chunk: "
+                      << ZSTD_getErrorName(result) << "\n";
+            return false;
+        }
+
+        outChunk = deserializeChunk(decompressed);
+        return true;
+
+    } catch (...) {
+        std::cerr << "[Client] Failed to parse UDP chunk response\n";
+        return false;
+    }
+}
+
+void World::sendChunkOverUDP(SavableChunk chunk) {
+    Message message;
+    message.type = MessageType::ChunkGeneratedByClient;
+
+    Serializer::writeInt32(message.data, chunk.position.x);
+    Serializer::writeInt32(message.data, chunk.position.y);
+    Serializer::writeInt32(message.data, chunk.position.z);
+
+    std::vector<uint8_t> rawChunkData;
+    serializeChunk(chunk, rawChunkData);
+
+    size_t maxSize = ZSTD_compressBound(rawChunkData.size());
+    std::vector<char> compressed(maxSize);
+    size_t compressedSize = ZSTD_compress(compressed.data(), maxSize,
+                                          rawChunkData.data(), rawChunkData.size(), 1);
+
+    if (ZSTD_isError(compressedSize)) {
+        std::cerr << "ZSTD compression failed: " << ZSTD_getErrorName(compressedSize) << std::endl;
+        return;
+    }
+
+    Serializer::writeInt32(message.data, static_cast<int32_t>(compressedSize));
+    message.data.insert(message.data.end(), compressed.begin(), compressed.begin() + compressedSize);
+
+    std::vector<uint8_t> packet = message.serialize();
+    if (packet.size() > 65507) {
+        std::cerr << "[Client] Chunk too large to send over UDP\n";
+        return;
+    }
+
+    if (!UDPSocket::instance().sendTo(packet, NetworkManager::instance().getAddress())) {
+        std::cerr << "[Client] Failed to send chunk at " << chunk.position.x << ", "
+                  << chunk.position.y << ", " << chunk.position.z << " over UDP\n";
     }
 }
 

@@ -13,8 +13,7 @@
 #include "network/Message.h"
 #include "network/NetworkRole.h"
 #include "network/Address.h" 
-
-// class UDPSocket;
+#include "network/UDPSocket.h"
 
 class NetworkManager {
 public:
@@ -50,14 +49,25 @@ public:
         instance().onlineMode = mode;
     }
 
+    Address getAddress() const {
+        return serverAddress;
+    }
+
+    void setUDPSocket() {
+        udpSocket = new UDPSocket();
+        UDPSocket::setInstance(udpSocket);
+        udpSocket->setIP(serverAddress.ip);
+        udpSocket->setPort(serverAddress.port);
+    }
+
 private:
     static NetworkRole currentRole;
 
-    // UDPSocket* udpSocket;
     Address serverAddress;
     bool onlineMode = false;
 
     SOCKET tcpSocket = INVALID_SOCKET;
+    UDPSocket* udpSocket = nullptr;
 
     static NetworkManager* s_instance;
 };

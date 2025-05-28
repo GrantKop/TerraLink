@@ -27,6 +27,8 @@ public:
     Server(uint16_t listenPort);
     void run();
 
+    void stop();
+
     void handlePendingRequests();
 
 private:
@@ -39,8 +41,9 @@ private:
 
     void handleMessage(const Message& msg, const Address& from);
 
-    bool loadChunkFromFile(const ChunkPosition& pos, std::vector<uint8_t>& outData);
+    std::string getChunkFilePath(const ChunkPosition& pos);
     void saveChunkToFile(const std::shared_ptr<Chunk>& chunk);
+    void saveCompressedChunkToFile(const ChunkPosition& pos, const std::vector<uint8_t>& compressedData);
 
     std::shared_ptr<Chunk> deserializeChunk(const std::vector<uint8_t>& in);
     void serializeChunk(const std::shared_ptr<Chunk>& chunk, std::vector<uint8_t>& out);

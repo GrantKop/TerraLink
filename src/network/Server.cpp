@@ -17,6 +17,14 @@ void signalHandler(int signum) {
 }
 
 Server::Server(uint16_t listenPort) {
+    if (!socket.bind(listenPort)) {
+        std::cerr << "[Server] Failed to bind UDP socket on port " << listenPort << std::endl;
+        std::exit(1);
+    }
+
+    std::cout << "[Server] Listening on UDP port " << listenPort << "\n";
+
+    if (true) return;
     if (!listener.bind(listenPort)) {
         std::cerr << "[Server] Failed to bind TCP socket on port " << listenPort << std::endl;
         std::exit(1);
@@ -29,14 +37,38 @@ Server::Server(uint16_t listenPort) {
 }
 
 void Server::run() {
-    clientSocket = listener.acceptClient();
-    if (clientSocket == INVALID_SOCKET) {
-        std::cerr << "[Server] Failed to accept TCP client\n";
-        return;
-    }
-    std::cout << "[Server] TCP client connected!\n";
+    std::signal(SIGINT, signalHandler);
 
-    handleTCPClient(clientSocket);
+    std::thread([this]() {
+        while (serverRunning) {
+            handlePendingRequests();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }).detach();
+
+    while (serverRunning) {
+        std::vector<uint8_t> buffer;
+        Address from;
+
+        if (socket.receiveFrom(buffer, from)) {
+            try {
+                Message msg = Message::deserialize(buffer);
+                handleMessage(msg, from);
+            } catch (...) {
+                std::cerr << "[Server] Failed to deserialize incoming UDP message\n";
+            }
+        }
+    }
+
+    std::cout << "[Server] Shutting down.\n";
+    stop();
+}
+
+void Server::stop() {
+    serverRunning = false;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    socket.bind(0);
+    socket.close();
 }
 
 void Server::handleTCPClient(SOCKET socket) {
@@ -67,7 +99,7 @@ void Server::handleTCPClient(SOCKET socket) {
                 ChunkPosition pos{x, y, z};
 
                 std::vector<uint8_t> chunkData;
-                if (loadChunkFromFile(pos, chunkData)) {
+                if (true) { // Replace with actual file existence check !!!!!!!!!!!!!!!!!!
                     Message response;
                     response.type = MessageType::ChunkData;
                     response.data = chunkData;
@@ -123,8 +155,22 @@ void Server::handleMessage(const Message& msg, const Address& from) {
         chunkRequestQueue.push({pos, from});
     }
     else if (msg.type == MessageType::ChunkGeneratedByClient) {
-        std::shared_ptr<Chunk> chunk = deserializeChunk(msg.data);
-        saveChunkToFile(chunk);
+        size_t offset = 0;
+        int32_t x = Serializer::readInt32(msg.data, offset);
+        int32_t y = Serializer::readInt32(msg.data, offset);
+        int32_t z = Serializer::readInt32(msg.data, offset);
+        ChunkPosition pos{x, y, z};
+
+        int32_t compressedSize = Serializer::readInt32(msg.data, offset);
+        if (msg.data.size() - offset < static_cast<size_t>(compressedSize)) {
+            std::cerr << "[Server] Payload shorter than expected compressed size\n";
+            return;
+        }
+
+        std::vector<uint8_t> compressedChunk(msg.data.begin() + offset,
+                                             msg.data.begin() + offset + compressedSize);
+
+        saveCompressedChunkToFile(pos, compressedChunk);
     }
     else if (msg.type == MessageType::Ping) {
         std::cout << "[Server] Received ping from " << from.ip << ":" << from.port << std::endl;
@@ -137,48 +183,57 @@ void Server::handleMessage(const Message& msg, const Address& from) {
 void Server::handlePendingRequests() {
     PendingRequest req;
     while (chunkRequestQueue.tryPop(req)) {
-        std::vector<uint8_t> chunkData;
-        if (loadChunkFromFile(req.pos, chunkData)) {
-            Message response;
-            response.type = MessageType::ChunkData;
-            response.data = chunkData;
-            socket.sendTo(response.serialize(), req.client);
-        } else {
+        std::filesystem::path filePath = getChunkFilePath(req.pos);
+        if (!std::filesystem::exists(filePath)) {
             Message notFound;
             notFound.type = MessageType::ChunkNotFound;
             Serializer::writeInt32(notFound.data, req.pos.x);
             Serializer::writeInt32(notFound.data, req.pos.y);
             Serializer::writeInt32(notFound.data, req.pos.z);
             socket.sendTo(notFound.serialize(), req.client);
+            continue;
         }
+
+        std::ifstream in(filePath, std::ios::binary | std::ios::ate);
+        if (!in.is_open()) {
+            std::cerr << "[Server] Failed to open chunk file\n";
+            continue;
+        }
+
+        std::streamsize fileSize = in.tellg();
+        in.seekg(0);
+
+        std::vector<char> compressed(fileSize);
+        in.read(compressed.data(), fileSize);
+        in.close();
+
+        Message message;
+        message.type = MessageType::ChunkGeneratedByClient;
+
+        Serializer::writeInt32(message.data, req.pos.x);
+        Serializer::writeInt32(message.data, req.pos.y);
+        Serializer::writeInt32(message.data, req.pos.z);
+        Serializer::writeInt32(message.data, static_cast<int32_t>(fileSize));
+
+        message.data.insert(message.data.end(),
+                            reinterpret_cast<uint8_t*>(compressed.data()),
+                            reinterpret_cast<uint8_t*>(compressed.data()) + fileSize);
+
+        std::vector<uint8_t> packet = message.serialize();
+        if (packet.size() > 65507) {
+            std::cerr << "[Server] Chunk too large to send over UDP: " << packet.size() << " bytes\n";
+            continue;
+        }
+
+        socket.sendTo(packet, req.client);
     }
 }
 
-bool Server::loadChunkFromFile(const ChunkPosition& pos, std::vector<uint8_t>& outData) {
+std::string Server::getChunkFilePath(const ChunkPosition& pos) {
     std::ostringstream oss;
-    oss << std::filesystem::current_path().parent_path().parent_path().string() << "/saves/world/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".zst";
-    std::string filename = oss.str();
-
-    if (!std::filesystem::exists(filename)) return false;
-
-    std::ifstream in(filename, std::ios::binary | std::ios::ate);
-    if (!in.is_open()) return false;
-
-    std::streamsize fileSize = in.tellg();
-    in.seekg(0);
-
-    std::vector<char> compressed(fileSize);
-    in.read(compressed.data(), fileSize);
-    in.close();
-
-    size_t decompressedSize = ZSTD_getFrameContentSize(compressed.data(), fileSize);
-    if (ZSTD_isError(decompressedSize)) return false;
-
-    outData.resize(decompressedSize);
-    size_t result = ZSTD_decompress(outData.data(), decompressedSize, compressed.data(), fileSize);
-    if (ZSTD_isError(result)) return false;
-
-    return true;
+    oss << std::filesystem::current_path().parent_path().parent_path().string()
+        << "/saves/world/chunks/" << pos.x << "_" << pos.y << "_" << pos.z << ".zst";
+    return oss.str();
 }
 
 void Server::saveChunkToFile(const std::shared_ptr<Chunk>& chunk) {
@@ -208,6 +263,26 @@ void Server::saveChunkToFile(const std::shared_ptr<Chunk>& chunk) {
     }
 
     out.write(compressed.data(), compressedSize);
+    out.close();
+}
+
+void Server::saveCompressedChunkToFile(const ChunkPosition& pos, const std::vector<uint8_t>& compressedData) {
+    std::filesystem::path dir = std::filesystem::current_path().parent_path().parent_path() / "saves" / "world" / "chunks";
+    if (!std::filesystem::exists(dir)) {
+        std::filesystem::create_directories(dir);
+    }
+
+    std::ostringstream oss;
+    oss << dir.string() << "/" << pos.x << "_" << pos.y << "_" << pos.z << ".zst";
+    std::string filename = oss.str();
+
+    std::ofstream out(filename, std::ios::binary);
+    if (!out.is_open()) {
+        std::cerr << "[Server] Failed to open file for writing: " << filename << "\n";
+        return;
+    }
+
+    out.write(reinterpret_cast<const char*>(compressedData.data()), compressedData.size());
     out.close();
 }
 

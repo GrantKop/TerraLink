@@ -17,12 +17,28 @@ UDPSocket::~UDPSocket() {
 #endif
 }
 
+UDPSocket* UDPSocket::s_instance = nullptr;
+
+void UDPSocket::setInstance(UDPSocket* instance) {
+    s_instance = instance;
+}
+
+UDPSocket& UDPSocket::instance() {
+    if (!s_instance) {
+        std::cerr << "UDPSocket::instance() called before UDPSocket::setInstance()!\n";
+        std::exit(1);
+    }
+    return *s_instance;
+}
+
 void UDPSocket::setIP(const std::string& ip) {
     this->ip = ip;
+    address.ip = ip;
 }
 
 void UDPSocket::setPort(uint16_t port) {
     this->port = port;
+    address.port = port;
 }
 
 std::string UDPSocket::getIP() const {
@@ -84,4 +100,15 @@ void shutdownSockets() {
 #ifdef _WIN32
     WSACleanup();
 #endif
+}
+
+void UDPSocket::close() {
+    if (socketHandle != INVALID_SOCKET) {
+#ifdef _WIN32
+        closesocket(socketHandle);
+#else
+        close(socketHandle);
+#endif
+        socketHandle = INVALID_SOCKET;
+    }
 }

@@ -5,13 +5,14 @@
 #include <array>
 
 #include "network/Network.h"
-// #include "network/UDPSocket.h"
 
 NetworkRole NetworkManager::currentRole = NetworkRole::CLIENT;
 
 NetworkManager* NetworkManager::s_instance = nullptr;
 
-NetworkManager::NetworkManager() {}
+NetworkManager::NetworkManager() {
+    udpSocket = nullptr;
+}
 
 NetworkManager::~NetworkManager() {}
 

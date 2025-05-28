@@ -28,11 +28,6 @@
 
 class Player;
 
-struct TimedChunkRequest {
-    ChunkPosition pos;
-    double requestTime;
-};
-
 class World {
 public:
     explicit World(const std:: string& saveDir = "saves/");
@@ -50,6 +45,8 @@ public:
     void meshWorkerThread();
 
     void networkWorker(ChunkPosition pos);
+    bool requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>& outChunk);
+    void sendChunkOverUDP(SavableChunk chunk);
 
     void generateMesh(const std::shared_ptr<Chunk>& chunk);
 
@@ -85,7 +82,7 @@ public:
 
     void chunkReset();
 
-    void serializeChunk(const std::shared_ptr<Chunk>& chunk, std::vector<uint8_t>& out);
+    void serializeChunk(SavableChunk& chunk, std::vector<uint8_t>& out);
     std::shared_ptr<Chunk> deserializeChunk(const std::vector<uint8_t>& in);
 
     void networkTick();
@@ -95,7 +92,6 @@ public:
 
     std::unordered_map<ChunkPosition, std::shared_ptr<Chunk>, std::hash<ChunkPosition>> chunks;
     std::unordered_set<ChunkPosition> chunkPositionSet;
-    std::unordered_map<ChunkPosition, TimedChunkRequest> awaitingChunks;
 
     std::unordered_map<CloudPosition, CloudMesh> clouds;
     std::unordered_set<CloudPosition> activeClouds;

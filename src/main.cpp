@@ -65,7 +65,6 @@ int main() {
         std::cout << "[Server] Starting dedicated server on port " << NetworkManager::getPort() << "...\n";
         Server server(NetworkManager::getPort());
         server.run();
-        // server.handlePendingRequests();
         shutdownSockets();
         return 0;
     }
@@ -82,20 +81,23 @@ int main() {
     game.setGameVersion(gameVersionMajor, gameVersionMinor, gameVersionPatch);
 
     if (!onlineMode) {
+        shutdownSockets();
         game.init();
         game.gameLoop();
-        shutdownSockets();
         return 0;
     }
 
     switch (NetworkManager::getRole()) {
         case NetworkRole::CLIENT: {
+            NetworkManager::instance().setUDPSocket();
             std::cout << "[Client] Connecting to server at " << NetworkManager::getIP()
                       << ":" << NetworkManager::getPort() << "\n";
-            if (!NetworkManager::instance().connectTCP()) {
+
+            if (!waitForServerConnection(UDPSocket::instance(), NetworkManager::instance().getAddress())) {
                 shutdownSockets();
                 return -1;
             }
+        
             game.init();
             game.gameLoop();
             break;
@@ -103,17 +105,15 @@ int main() {
         case NetworkRole::HOST: {
             std::cout << "[Host] Running local server + client\n";
 
-            // Start server in a background thread
             Server* server = new Server(NetworkManager::getPort());
             std::thread serverThread([&]() {
                 server->run();
-                // server->handlePendingRequests();
             });
 
             game.init();
             game.gameLoop();
 
-            serverThread.detach(); // optional: cleanup on shutdown
+            serverThread.detach();
             delete server;
             break;
         }

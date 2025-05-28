@@ -232,8 +232,16 @@ SavableChunk Chunk::makeSavableCopy() const {
 
     copy.position = position;
     copy.blocks = blocks;
-    copy.vertices = mesh.vertices;
-    copy.indices = mesh.indices;
+    if (!mesh.stagingVertices.empty()) {
+        copy.vertices = std::move(mesh.stagingVertices);
+    } else {
+        copy.vertices = mesh.vertices;
+    }
+    if (!mesh.stagingIndices.empty()) {
+        copy.indices = std::move(mesh.stagingIndices);
+    } else {
+        copy.indices = mesh.indices;
+    }
 
     return copy;
 }

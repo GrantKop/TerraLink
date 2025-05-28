@@ -3,7 +3,7 @@
 # If mode is CLIENT, then ip and port are the target address.
 # 'default' IP will use your networks public IP address
 # use 'localhost' to host a LAN
-mode = SERVER
+mode = CLIENT
 ip = default
 port = 55055
 onlineMode = true

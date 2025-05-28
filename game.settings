@@ -14,7 +14,7 @@ distanceFog = true
 
 # ===== Audio Settings =====
 # Volume is from 0-100
-musicVolume = 50
+musicVolume = 0
 soundVolume = 50
 
 # ===== World Settings =====
