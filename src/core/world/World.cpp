@@ -990,7 +990,8 @@ bool World::requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>
 void World::sendChunkOverUDP(SavableChunk chunk) {
     Message message;
     if (chunk.hasMeshUpdate) {
-        message.type = MessageType::ClientChunkUpdate;
+        sendChunkUpdate(chunk);
+        return;
     } else {
         message.type = MessageType::ChunkGeneratedByClient;
     }
@@ -1024,6 +1025,54 @@ void World::sendChunkOverUDP(SavableChunk chunk) {
     if (!UDPSocket::instance().sendTo(packet, NetworkManager::instance().getAddress())) {
         std::cerr << "[Client] Failed to send chunk at " << chunk.position.x << ", "
                   << chunk.position.y << ", " << chunk.position.z << " over UDP\n";
+    }
+}
+
+void World::sendChunkUpdate(SavableChunk chunk) {
+    Message message;
+    message.type = MessageType::ClientChunkUpdate;
+
+    Serializer::writeInt32(message.data, chunk.position.x);
+    Serializer::writeInt32(message.data, chunk.position.y);
+    Serializer::writeInt32(message.data, chunk.position.z);
+
+    std::vector<uint8_t> rawChunkData;
+    serializeChunk(chunk, rawChunkData);
+
+    size_t maxSize = ZSTD_compressBound(rawChunkData.size());
+    std::vector<char> compressed(maxSize);
+    size_t compressedSize = ZSTD_compress(compressed.data(), maxSize,
+                                          rawChunkData.data(), rawChunkData.size(), 1);
+
+    if (ZSTD_isError(compressedSize)) {
+        std::cerr << "ZSTD compression failed: " << ZSTD_getErrorName(compressedSize) << std::endl;
+        return;
+    }
+
+    Serializer::writeInt32(message.data, static_cast<int32_t>(compressedSize));
+    message.data.insert(message.data.end(), compressed.begin(), compressed.begin() + compressedSize);
+
+    std::vector<uint8_t> packet = message.serialize();
+
+    if (chunk.hasMeshUpdate) {
+        uint32_t len = static_cast<uint32_t>(packet.size());
+        std::vector<uint8_t> lengthPrefix(4);
+        std::memcpy(lengthPrefix.data(), &len, 4);
+
+        if (!TCPSocket::sendAll(tcpSocket, lengthPrefix) || !TCPSocket::sendAll(tcpSocket, packet)) {
+            std::cerr << "[Client] Failed to send chunk update over TCP\n";
+        } else {
+            std::cout << "[Client] Sent chunk update over TCP\n";
+        }
+    } else {
+        if (packet.size() > 65507) {
+            std::cerr << "[Client] Chunk too large to send over UDP\n";
+            return;
+        }
+
+        if (!UDPSocket::instance().sendTo(packet, NetworkManager::instance().getAddress())) {
+            std::cerr << "[Client] Failed to send chunk over UDP\n";
+        }
     }
 }
 

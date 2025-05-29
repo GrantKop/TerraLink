@@ -48,6 +48,7 @@ public:
     bool requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>& outChunk);
     void sendChunkOverUDP(SavableChunk chunk);
 
+    void sendChunkUpdate(SavableChunk chunk);
     void pollTCPMessages();
 
     void generateMesh(const std::shared_ptr<Chunk>& chunk);

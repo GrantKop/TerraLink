@@ -162,6 +162,23 @@ void Server::handleTCPClient(SOCKET socket) {
             } else if (msg.type == MessageType::ChunkGeneratedByClient) {
                 std::shared_ptr<Chunk> chunk = deserializeChunk(msg.data);
                 saveChunkToFile(chunk);
+            } else if (msg.type == MessageType::ClientChunkUpdate) {
+                std::cout << "[Server] Received TCP chunk update from client\n";
+
+                std::shared_ptr<Chunk> chunk = deserializeChunk(msg.data);
+                saveChunkToFile(chunk);
+
+                std::vector<uint8_t> serialized = msg.serialize();
+                uint32_t len = static_cast<uint32_t>(serialized.size());
+                std::vector<uint8_t> lengthPrefix(4);
+                std::memcpy(lengthPrefix.data(), &len, 4);
+
+                std::lock_guard<std::mutex> lock(clientMapMutex);
+                for (const auto& [sock, _] : tcpClients) {
+                    if (sock == socket) continue;
+                    TCPSocket::sendAll(sock, lengthPrefix);
+                    TCPSocket::sendAll(sock, serialized);
+                }
             }      
         } catch (...) {
             std::cerr << "[Server] Failed to parse incoming TCP chunk request\n";
@@ -236,7 +253,8 @@ void Server::handleMessage(const Message& msg, const Address& from) {
         
         std::lock_guard<std::mutex> lock(clientMapMutex);
         for (const auto& [sock, addr] : tcpClients) {
-            if (addr.ip == from.ip && addr.port == from.port) continue;
+            // if (addr.ip == from.ip && addr.port == from.port) continue;
+            // std::cout << "[Server] Broadcasting chunk update to " << from.ip << ":" << from.port << "\n";
         
             TCPSocket::sendAll(sock, lengthPrefix);
             TCPSocket::sendAll(sock, serialized);
