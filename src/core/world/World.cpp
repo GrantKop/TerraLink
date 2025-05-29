@@ -1085,6 +1085,7 @@ void World::pollTCPMessages() {
             }
 
             std::shared_ptr<Chunk> chunk = deserializeChunk(decompressed);
+            std::cout << "[Client] Received chunk update for " << pos.x << ", " << pos.y << ", " << pos.z << "\n";
             meshUploadQueue.push(chunk);
         }
 

@@ -105,10 +105,6 @@ void Server::stop() {
 
 void Server::handleTCPClient(SOCKET socket) {
     std::signal(SIGINT, signalHandler);
-    {
-        std::lock_guard<std::mutex> lock(clientMapMutex);
-        tcpClients[socket] = Address();
-    }
     while (serverRunning) {
         std::vector<uint8_t> lengthBuf;
         if (!TCPSocket::recvAll(socket, lengthBuf, 4)) break;
@@ -213,6 +209,7 @@ void Server::handleMessage(const Message& msg, const Address& from) {
         saveCompressedChunkToFile(pos, compressedChunk);
     }
     else if (msg.type == MessageType::ClientChunkUpdate) {
+        std::cout << "[Server] Received chunk update from client\n";
         size_t offset = 0;
         int32_t x = Serializer::readInt32(msg.data, offset);
         int32_t y = Serializer::readInt32(msg.data, offset);
