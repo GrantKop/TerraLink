@@ -58,6 +58,7 @@ struct SavableChunk {
     std::array<uint16_t, CHUNK_VOLUME> blocks;
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
+    bool hasMeshUpdate = false;
 };
 
 class Chunk {

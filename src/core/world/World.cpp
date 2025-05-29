@@ -34,9 +34,11 @@ void World::shutdown() {
     meshUpdateQueue.stop();
     chunkSaveQueue.stop();
 
-    std::cout << "\nJoining world generation threads..." << std::endl;
+    std::cout << "\nJoining chunk generation threads..." << std::endl;
     for (auto& thread : chunkGenThreads) if (thread.joinable()) thread.join();
+    std::cout << "Joining chunk meshing threads..." << std::endl;
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
+    std::cout << "Joining chunk manager thread..." << std::endl;
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
 
     if (!NetworkManager::instance().isOnlineMode() || NetworkManager::instance().isHost()) std::cout << "Saving chunks to disk..." << std::endl;
@@ -131,6 +133,7 @@ void World::managerThread() {
 
             saveChunkToFile(chunk);
         }
+        pollTCPMessages();
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
@@ -150,8 +153,6 @@ void World::chunkWorkerThread() {
             if (requestChunkOverUDP(pos, chunk)) {
                 meshUploadQueue.push(chunk);
             } else {
-                chunk = std::make_shared<Chunk>();
-                chunk->setPosition(pos);
                 chunk->generateTerrain();
                 meshGenerationQueue.push(chunk);
             }
@@ -161,7 +162,6 @@ void World::chunkWorkerThread() {
             meshUploadQueue.push(chunk);
 
         } else {
-            chunk = std::make_shared<Chunk>();
             chunk->setPosition(pos);
             chunk->generateTerrain();
             meshGenerationQueue.push(chunk);
@@ -169,7 +169,7 @@ void World::chunkWorkerThread() {
     }
 }
 
-// Thread function for meshing chunks that have been marked for generation
+// Thread function for meshing chunks that have been generated
 void World::meshWorkerThread() {
     thread_local const auto& blockList = BlockRegister::instance().blocks;
     while (running) {
@@ -238,7 +238,7 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
         chunk->mesh.stagingVertices.clear();
     }
 
-    sendChunkOverUDP(chunk->makeSavableCopy());
+    if ((!chunk->mesh.isEmpty || chunk->mesh.hasNewMesh) && NetworkManager::instance().isOnlineMode()) sendChunkOverUDP(chunk->makeSavableCopy());
 }
 
 // Sets a block at the specified world position
@@ -899,7 +899,6 @@ void World::networkWorker(ChunkPosition pos) {
 
             Message generated;
             generated.type = MessageType::ChunkGeneratedByClient;
-            // World::instance().serializeChunk(*chunk, generated.data);
             std::vector<uint8_t> sendBack = generated.serialize();
             uint32_t sendBackLen = static_cast<uint32_t>(sendBack.size());
             std::vector<uint8_t> sendBackPrefix(4);
@@ -938,9 +937,17 @@ bool World::requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>
 
     try {
         Message response = Message::deserialize(responseBuf);
-        if (response.type != MessageType::ChunkGeneratedByClient) {
+        if (response.type == MessageType::ChunkNotFound) {
+            size_t offset = 0;
+            int32_t x = Serializer::readInt32(response.data, offset);
+            int32_t y = Serializer::readInt32(response.data, offset);
+            int32_t z = Serializer::readInt32(response.data, offset);
+            ChunkPosition missingPos{x, y, z};
+            outChunk->setPosition(missingPos);
             return false;
         }
+
+        if (response.type != MessageType::ChunkData) return false;
 
         size_t offset = 0;
         int32_t x = Serializer::readInt32(response.data, offset);
@@ -982,7 +989,11 @@ bool World::requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>
 
 void World::sendChunkOverUDP(SavableChunk chunk) {
     Message message;
-    message.type = MessageType::ChunkGeneratedByClient;
+    if (chunk.hasMeshUpdate) {
+        message.type = MessageType::ClientChunkUpdate;
+    } else {
+        message.type = MessageType::ChunkGeneratedByClient;
+    }
 
     Serializer::writeInt32(message.data, chunk.position.x);
     Serializer::writeInt32(message.data, chunk.position.y);
@@ -1013,6 +1024,72 @@ void World::sendChunkOverUDP(SavableChunk chunk) {
     if (!UDPSocket::instance().sendTo(packet, NetworkManager::instance().getAddress())) {
         std::cerr << "[Client] Failed to send chunk at " << chunk.position.x << ", "
                   << chunk.position.y << ", " << chunk.position.z << " over UDP\n";
+    }
+}
+
+void World::pollTCPMessages() {
+    if (tcpSocket == INVALID_SOCKET) return;
+
+    u_long bytesAvailable = 0;
+    ioctlsocket(tcpSocket, FIONREAD, &bytesAvailable);
+    if (bytesAvailable < 4) return;
+
+    std::vector<uint8_t> lenBuf(4);
+    if (!TCPSocket::recvAll(tcpSocket, lenBuf, 4)) {
+        std::cerr << "[Client] Failed to read TCP message length\n";
+        return;
+    }
+
+    uint32_t msgLength;
+    std::memcpy(&msgLength, lenBuf.data(), 4);
+    if (msgLength == 0 || msgLength > 10 * 1024 * 1024) {
+        std::cerr << "[Client] Invalid TCP message length: " << msgLength << "\n";
+        return;
+    }
+
+    std::vector<uint8_t> msgData;
+    if (!TCPSocket::recvAll(tcpSocket, msgData, msgLength)) {
+        std::cerr << "[Client] Failed to read full TCP message\n";
+        return;
+    }
+
+    try {
+        Message msg = Message::deserialize(msgData);
+
+        if (msg.type == MessageType::ClientChunkUpdate) {
+            size_t offset = 0;
+            int32_t x = Serializer::readInt32(msg.data, offset);
+            int32_t y = Serializer::readInt32(msg.data, offset);
+            int32_t z = Serializer::readInt32(msg.data, offset);
+            ChunkPosition pos{x, y, z};
+
+            int32_t compressedSize = Serializer::readInt32(msg.data, offset);
+            if (msg.data.size() - offset < static_cast<size_t>(compressedSize)) {
+                std::cerr << "[Client] Invalid chunk update payload\n";
+                return;
+            }
+
+            std::vector<uint8_t> compressed(msg.data.begin() + offset, msg.data.begin() + offset + compressedSize);
+
+            size_t decompressedSize = ZSTD_getFrameContentSize(compressed.data(), compressed.size());
+            if (decompressedSize == ZSTD_CONTENTSIZE_ERROR || decompressedSize == ZSTD_CONTENTSIZE_UNKNOWN) {
+                std::cerr << "[Client] Could not determine chunk size\n";
+                return;
+            }
+
+            std::vector<uint8_t> decompressed(decompressedSize);
+            size_t result = ZSTD_decompress(decompressed.data(), decompressedSize, compressed.data(), compressed.size());
+            if (ZSTD_isError(result)) {
+                std::cerr << "[Client] Decompression failed: " << ZSTD_getErrorName(result) << "\n";
+                return;
+            }
+
+            std::shared_ptr<Chunk> chunk = deserializeChunk(decompressed);
+            meshUploadQueue.push(chunk);
+        }
+
+    } catch (...) {
+        std::cerr << "[Client] Failed to deserialize TCP message\n";
     }
 }
 

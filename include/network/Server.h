@@ -37,6 +37,9 @@ private:
     SOCKET clientSocket = INVALID_SOCKET;
     ThreadSafeQueue<PendingRequest> chunkRequestQueue;
 
+    std::unordered_map<SOCKET, Address> tcpClients;
+    std::mutex clientMapMutex;
+
     void handleTCPClient(SOCKET socket);
 
     void handleMessage(const Message& msg, const Address& from);

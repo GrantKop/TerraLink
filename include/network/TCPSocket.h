@@ -23,7 +23,7 @@ public:
 
     bool bind(uint16_t port);
     bool listen();
-    SOCKET acceptClient();
+    SOCKET acceptClient(sockaddr_in* outAddr = nullptr);
     bool connectTo(const std::string& ip, uint16_t port);
 
     static bool sendAll(SOCKET socket, const std::vector<uint8_t>& data);

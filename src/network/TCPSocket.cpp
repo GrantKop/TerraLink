@@ -33,8 +33,18 @@ bool TCPSocket::listen() {
     return ::listen(socketHandle, SOMAXCONN) != SOCKET_ERROR;
 }
 
-SOCKET TCPSocket::acceptClient() {
-    return ::accept(socketHandle, nullptr, nullptr);
+SOCKET TCPSocket::acceptClient(sockaddr_in* outAddr) {
+    sockaddr_in clientAddr{};
+#ifdef _WIN32
+    int addrLen = sizeof(clientAddr);
+#else
+    socklen_t addrLen = sizeof(clientAddr);
+#endif
+    SOCKET clientSocket = ::accept(socketHandle, (sockaddr*)&clientAddr, &addrLen);
+    if (clientSocket != INVALID_SOCKET && outAddr) {
+        *outAddr = clientAddr;  // Copy client address
+    }
+    return clientSocket;
 }
 
 bool TCPSocket::connectTo(const std::string& ip, uint16_t port) {

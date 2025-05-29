@@ -15,7 +15,7 @@ float gameVersionPatch = 3.f;
 
 bool waitForServerConnection(UDPSocket& socket, const Address& serverAddr, float timeoutSeconds = 5.0f) {
     Message ping;
-    ping.type = MessageType::Ping;
+    ping.type = MessageType::PingPong;
 
     socket.sendTo(ping.serialize(), serverAddr);
 
@@ -27,19 +27,18 @@ bool waitForServerConnection(UDPSocket& socket, const Address& serverAddr, float
         if (socket.receiveFrom(buffer, from)) {
             try {
                 Message msg = Message::deserialize(buffer);
-                if (msg.type == MessageType::Pong) {
-                    std::cout << "[Client] Connected to server!\n";
+                if (msg.type == MessageType::PingPong) {
                     return true;
                 }
             } catch (...) {
-                std::cerr << "[Client] Failed to parse server response\n";
+                std::cerr << "[Client] [UDP] Failed to parse server response\n";
             }
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    std::cerr << "[Client] Failed to connect to server within timeout.\n";
+    std::cerr << "[Client] [UDP] Timed out attempting UDP handshake.\n";
     return false;
 }
 
@@ -62,7 +61,6 @@ int main() {
     bool onlineMode = GameInit::parseNetworkSettings((basePath / "network.settings").string());
 
     if (NetworkManager::getRole() == NetworkRole::SERVER) {
-        std::cout << "[Server] Starting dedicated server on port " << NetworkManager::getPort() << "...\n";
         Server server(NetworkManager::getPort());
         server.run();
         shutdownSockets();
@@ -90,8 +88,13 @@ int main() {
     switch (NetworkManager::getRole()) {
         case NetworkRole::CLIENT: {
             NetworkManager::instance().setUDPSocket();
-            std::cout << "[Client] Connecting to server at " << NetworkManager::getIP()
-                      << ":" << NetworkManager::getPort() << "\n";
+            TCPSocket tcpSocket;
+
+            if (!tcpSocket.connectTo(NetworkManager::getIP(), NetworkManager::getPort())) {
+                std::cerr << "[Client] [TCP] Failed to connect to server via TCP\n";
+                shutdownSockets();
+                return -1;
+            }
 
             if (!waitForServerConnection(UDPSocket::instance(), NetworkManager::instance().getAddress())) {
                 shutdownSockets();

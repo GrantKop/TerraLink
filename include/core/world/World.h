@@ -48,6 +48,8 @@ public:
     bool requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>& outChunk);
     void sendChunkOverUDP(SavableChunk chunk);
 
+    void pollTCPMessages();
+
     void generateMesh(const std::shared_ptr<Chunk>& chunk);
 
     void setBlockAtWorldPosition(int wx, int wy, int wz, int blockID);
@@ -85,8 +87,6 @@ public:
     void serializeChunk(SavableChunk& chunk, std::vector<uint8_t>& out);
     std::shared_ptr<Chunk> deserializeChunk(const std::vector<uint8_t>& in);
 
-    void networkTick();
-
     void setSeed(uint32_t newSeed) { seed = newSeed; }
     uint32_t getSeed() const { return seed; }
 
@@ -114,7 +114,7 @@ private:
 
     std::atomic<bool> running = false;
     
-    ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
+ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshGenerationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> chunkUploadQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;

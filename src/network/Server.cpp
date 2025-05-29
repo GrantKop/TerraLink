@@ -6,13 +6,16 @@
 #include <iostream>
 #include <zstd.h>
 #include <zstd_errors.h>
+#include <Ws2tcpip.h> 
 
 #include <csignal>
 
 std::atomic<bool> serverRunning = true;
 
 void signalHandler(int signum) {
-    std::cout << "\nCaught signal " << signum << ", shutting down...\n";
+    if (signum == SIGINT) {
+        std::cout << "Caught signal " << signum << ", use 'stop' command to shut down server\n";
+    }
     serverRunning = false;
 }
 
@@ -22,9 +25,6 @@ Server::Server(uint16_t listenPort) {
         std::exit(1);
     }
 
-    std::cout << "[Server] Listening on UDP port " << listenPort << "\n";
-
-    if (true) return;
     if (!listener.bind(listenPort)) {
         std::cerr << "[Server] Failed to bind TCP socket on port " << listenPort << std::endl;
         std::exit(1);
@@ -34,6 +34,9 @@ Server::Server(uint16_t listenPort) {
         std::cerr << "[Server] Failed to listen on TCP socket\n";
         std::exit(1);
     }
+
+    std::cout << "[Server] Listening on port " << listenPort << "\n";
+
 }
 
 void Server::run() {
@@ -43,6 +46,35 @@ void Server::run() {
         while (serverRunning) {
             handlePendingRequests();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }).detach();
+
+    std::thread([this]() {
+        while (serverRunning) {
+            sockaddr_in clientAddr;
+            socklen_t addrLen = sizeof(clientAddr);
+            SOCKET clientSocket = ::accept(listener.getHandle(), (sockaddr*)&clientAddr, &addrLen);
+            if (clientSocket != INVALID_SOCKET) {
+                char ipStr[INET_ADDRSTRLEN];
+            #ifdef _WIN32
+                InetNtopA(AF_INET, &(clientAddr.sin_addr), ipStr, INET_ADDRSTRLEN);
+            #else
+                inet_ntop(AF_INET, &(clientAddr.sin_addr), ipStr, INET_ADDRSTRLEN);
+            #endif
+                uint16_t port = ntohs(clientAddr.sin_port);
+
+                Address addr;
+                addr.ip = ipStr;
+                addr.port = port;
+
+                {
+                    std::lock_guard<std::mutex> lock(clientMapMutex);
+                    tcpClients[clientSocket] = addr;
+                }
+            
+                std::cout << "[Server] New client connected: " << addr.ip << ":" << addr.port << "\n";
+                std::thread(&Server::handleTCPClient, this, clientSocket).detach();
+            }
         }
     }).detach();
 
@@ -73,6 +105,10 @@ void Server::stop() {
 
 void Server::handleTCPClient(SOCKET socket) {
     std::signal(SIGINT, signalHandler);
+    {
+        std::lock_guard<std::mutex> lock(clientMapMutex);
+        tcpClients[socket] = Address();
+    }
     while (serverRunning) {
         std::vector<uint8_t> lengthBuf;
         if (!TCPSocket::recvAll(socket, lengthBuf, 4)) break;
@@ -99,7 +135,7 @@ void Server::handleTCPClient(SOCKET socket) {
                 ChunkPosition pos{x, y, z};
 
                 std::vector<uint8_t> chunkData;
-                if (true) { // Replace with actual file existence check !!!!!!!!!!!!!!!!!!
+                if (true) { // Replace with actual file existence check !!!!!!!!!!!!!!!!!!¡
                     Message response;
                     response.type = MessageType::ChunkData;
                     response.data = chunkData;
@@ -137,6 +173,10 @@ void Server::handleTCPClient(SOCKET socket) {
     }
 
     std::cerr << "[Server] Client disconnected\n";
+    {
+        std::lock_guard<std::mutex> lock(clientMapMutex);
+        tcpClients.erase(socket);
+    }
 #ifdef _WIN32
     closesocket(socket);
 #else
@@ -172,10 +212,43 @@ void Server::handleMessage(const Message& msg, const Address& from) {
 
         saveCompressedChunkToFile(pos, compressedChunk);
     }
-    else if (msg.type == MessageType::Ping) {
-        std::cout << "[Server] Received ping from " << from.ip << ":" << from.port << std::endl;
+    else if (msg.type == MessageType::ClientChunkUpdate) {
+        size_t offset = 0;
+        int32_t x = Serializer::readInt32(msg.data, offset);
+        int32_t y = Serializer::readInt32(msg.data, offset);
+        int32_t z = Serializer::readInt32(msg.data, offset);
+        ChunkPosition pos{x, y, z};
+
+        int32_t compressedSize = Serializer::readInt32(msg.data, offset);
+        if (msg.data.size() - offset < static_cast<size_t>(compressedSize)) {
+            std::cerr << "[Server] Payload shorter than expected compressed size\n";
+            return;
+        }
+
+        std::vector<uint8_t> compressedChunk(
+            msg.data.begin() + offset,
+            msg.data.begin() + offset + compressedSize
+        );
+
+        saveCompressedChunkToFile(pos, compressedChunk);
+
+        std::vector<uint8_t> serialized = msg.serialize();
+        uint32_t len = static_cast<uint32_t>(serialized.size());
+        std::vector<uint8_t> lengthPrefix(4);
+        std::memcpy(lengthPrefix.data(), &len, 4);
+        
+        std::lock_guard<std::mutex> lock(clientMapMutex);
+        for (const auto& [sock, addr] : tcpClients) {
+            if (addr.ip == from.ip && addr.port == from.port) continue;
+        
+            TCPSocket::sendAll(sock, lengthPrefix);
+            TCPSocket::sendAll(sock, serialized);
+        }
+    }
+
+    else if (msg.type == MessageType::PingPong) {
         Message pong;
-        pong.type = MessageType::Pong;
+        pong.type = MessageType::PingPong;
         socket.sendTo(pong.serialize(), from);
     }
 }
@@ -208,7 +281,7 @@ void Server::handlePendingRequests() {
         in.close();
 
         Message message;
-        message.type = MessageType::ChunkGeneratedByClient;
+        message.type = MessageType::ChunkData;
 
         Serializer::writeInt32(message.data, req.pos.x);
         Serializer::writeInt32(message.data, req.pos.y);

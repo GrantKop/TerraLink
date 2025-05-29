@@ -5,13 +5,13 @@
 #include <vector>
 
 enum class MessageType : uint8_t {
-    PlayerPositionUpdate,
     ChunkRequest,
     ChunkData,
     ChunkGeneratedByClient,
     ChunkNotFound,
-    Ping,
-    Pong
+    ClientChunkUpdate,
+    ClientDisconnect,
+    PingPong,
 };
 
 struct Message {

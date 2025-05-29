@@ -5,6 +5,8 @@
 #include "core/registers/AtlasRegister.h"
 #include "core/game/GameInit.h"
 #include "graphics/Shader.h"
+#include "network/Network.h"
+#include "network/Serializer.h"
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;

@@ -243,5 +243,7 @@ SavableChunk Chunk::makeSavableCopy() const {
         copy.indices = mesh.indices;
     }
 
+    copy.hasMeshUpdate = mesh.hasNewMesh;
+
     return copy;
 }
