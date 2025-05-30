@@ -42,7 +42,7 @@ SOCKET TCPSocket::acceptClient(sockaddr_in* outAddr) {
 #endif
     SOCKET clientSocket = ::accept(socketHandle, (sockaddr*)&clientAddr, &addrLen);
     if (clientSocket != INVALID_SOCKET && outAddr) {
-        *outAddr = clientAddr;  // Copy client address
+        *outAddr = clientAddr;
     }
     return clientSocket;
 }
