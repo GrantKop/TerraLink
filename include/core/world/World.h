@@ -1,6 +1,20 @@
 #ifndef WORLD_H
 #define WORLD_H
 
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
+#ifdef T
+#undef T
+#endif
+
+#define NOMINMAX
+
 #include <unordered_set>
 #include <chrono>
 #include <ctime>
@@ -10,6 +24,7 @@
 #include "core/world/Chunk.h"
 #include "core/world/Cloud.h"
 #include "graphics/Shader.h"
+#include "network/TCPSocket.h"
 
 class Player;
 
@@ -28,6 +43,15 @@ public:
     void managerThread();
     void chunkWorkerThread();
     void meshWorkerThread();
+
+    void chunkUpdateThread();
+
+    void networkWorker(ChunkPosition pos);
+    bool requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>& outChunk);
+    void sendChunkOverUDP(SavableChunk chunk);
+
+    void sendChunkUpdate(SavableChunk chunk);
+    void pollTCPMessages();
 
     void generateMesh(const std::shared_ptr<Chunk>& chunk);
 
@@ -63,6 +87,9 @@ public:
 
     void chunkReset();
 
+    void serializeChunk(SavableChunk& chunk, std::vector<uint8_t>& out);
+    std::shared_ptr<Chunk> deserializeChunk(const std::vector<uint8_t>& in);
+
     void setSeed(uint32_t newSeed) { seed = newSeed; }
     uint32_t getSeed() const { return seed; }
 
@@ -87,8 +114,10 @@ private:
     std::vector<std::thread> chunkGenThreads;
     std::vector<std::thread> meshGenThreads;
     std::thread chunkManagerThread;
+    std::thread networkThread;
 
     std::atomic<bool> running = false;
+    std::atomic<bool> udpReceiving = false;
     
     ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshGenerationQueue;
@@ -99,10 +128,12 @@ private:
 
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUpdateQueue;
 
+    SOCKET tcpSocket;
+
     uint32_t seed = 1;
 
-    int minY = -16;
-    int maxY = 40;
+    int minY = -5;
+    int maxY = 5;
 
     std::string saveDirectory;
 

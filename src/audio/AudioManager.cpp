@@ -18,7 +18,6 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-
 #include "core/game/Game.h"
 
 static std::atomic<bool> trackPending = false;
@@ -270,6 +269,9 @@ namespace AudioManager {
         }
     }
 
+#undef min
+#include <algorithm>
+
     void startAudioThread() {
         audioThread = std::thread([] {
             std::string pendingPath;
@@ -401,7 +403,7 @@ namespace AudioManager {
         return -1;
     }
 
-    void AudioManager::update(float deltaTime) {
+    void update(float deltaTime) {
         ALint state;
         alGetSourcei(musicSource, AL_SOURCE_STATE, &state);
 
@@ -418,7 +420,7 @@ namespace AudioManager {
         }
     }
 
-    void AudioManager::playBlockSound(BLOCKTYPE blockType, const glm::vec3& soundPos, const glm::vec3& playerPos, const std::string& soundType) {
+    void playBlockSound(BLOCKTYPE blockType, const glm::vec3& soundPos, const glm::vec3& playerPos, const std::string& soundType) {
         float maxDistance = 16.0f;
         float dist = glm::distance(playerPos, soundPos);
         float falloffPower = 1.5f;

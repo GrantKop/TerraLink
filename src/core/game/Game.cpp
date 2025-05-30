@@ -5,6 +5,8 @@
 #include "core/registers/AtlasRegister.h"
 #include "core/game/GameInit.h"
 #include "graphics/Shader.h"
+#include "network/Network.h"
+#include "network/Serializer.h"
 
 int _fpsCount = 0, fps = 0;
 float prevTime = 0.0f;
@@ -143,7 +145,13 @@ void Game::init() {
 
     world->init();
     world->setSaveDirectory(getWorldSave());
-    world->createSaveDirectory();
+    if (!NetworkManager::instance().isOnlineMode()) world->createSaveDirectory();
+
+    std::cout << "Waiting for spawn chunks...\n";
+
+    // while (world->chunks.size() < 1) {
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // }
 
     world->loadPlayerData(*player, player->getPlayerName());
 }
@@ -185,7 +193,6 @@ void Game::shutdown() {
     glfwTerminate();
 
     world->shutdown();
-
 }
 
 std::string Game::getWorldSave() const {

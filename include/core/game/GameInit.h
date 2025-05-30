@@ -8,6 +8,8 @@
 namespace GameInit {
     void parseGameSettings(const std::string& filePath);
 
+    std::string getPlayerName(const std::string& filePath);
+
     bool parseNetworkSettings(const std::string& filePath);
 }
 

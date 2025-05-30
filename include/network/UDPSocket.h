@@ -18,7 +18,6 @@
     #define SOCKET_ERROR (-1)
 #endif
 
-#include "network/Network.h"
 #include "network/Address.h"
 
 class UDPSocket {
@@ -26,17 +25,30 @@ public:
     UDPSocket();
     ~UDPSocket();
 
+    static void setInstance(UDPSocket* instance);
+    static UDPSocket& instance();
+
     void setIP(const std::string& ip);
     void setPort(uint16_t port);
     std::string getIP() const;
     uint16_t getPort() const;
 
+    Address getAddress() const {
+        return { ip, port };
+    }
+
     bool bind(uint16_t port);
     bool sendTo(const std::vector<uint8_t>& data, const Address& addr);
     bool receiveFrom(std::vector<uint8_t>& data, Address& fromAddr);
 
+    void close();
+
 private:
     SOCKET socketHandle;
+
+    Address address;
+
+    static UDPSocket* s_instance;
 
     std::string ip;
     uint16_t port;

@@ -22,6 +22,11 @@ void Serializer::writeVec3(std::vector<uint8_t>& buf, const glm::vec3& vec) {
     writeFloat(buf, vec.z);
 }
 
+void Serializer::writeString(std::vector<uint8_t>& buf, const std::string& str) {
+    writeInt32(buf, static_cast<int32_t>(str.size()));
+    buf.insert(buf.end(), str.begin(), str.end());
+}
+
 uint8_t Serializer::readUInt8(const std::vector<uint8_t>& buf, size_t& offset) {
     return buf[offset++];
 }
@@ -46,4 +51,11 @@ glm::vec3 Serializer::readVec3(const std::vector<uint8_t>& buf, size_t& offset) 
     float y = readFloat(buf, offset);
     float z = readFloat(buf, offset);
     return glm::vec3(x, y, z);
+}
+
+std::string Serializer::readString(const std::vector<uint8_t>& buf, size_t& offset) {
+    int32_t length = readInt32(buf, offset);
+    std::string str(buf.data() + offset, buf.data() + offset + length);
+    offset += length;
+    return str;
 }

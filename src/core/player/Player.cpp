@@ -61,6 +61,9 @@ void Player::moveWithCollision(glm::vec3 velocity, float deltaTime) {
     camera.position = playerPosition + glm::vec3(0.0f, eyeOffset, 0.0f);
 }
 
+#undef max
+#include <algorithm>
+
 // Updates the player's position and camera based on input
 void Player::update(float deltaTime) {
     jumpBufferTime -= deltaTime;

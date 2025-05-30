@@ -5,10 +5,17 @@
 #include <vector>
 
 enum class MessageType : uint8_t {
-    PlayerPositionUpdate,
     ChunkRequest,
     ChunkData,
-    ChunkGeneratedByClient
+    ChunkGeneratedByClient,
+    ChunkNotFound,
+    ClientChunkUpdate,
+    ClientDisconnect,
+    ClientDisconnectAck,
+    ClientConnect,
+    ClientConnectAck,
+    ClientInfo,
+    Heartbeat
 };
 
 struct Message {

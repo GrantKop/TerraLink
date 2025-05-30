@@ -1,13 +1,19 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#endif
+
 #include <cstdint>
 #include <string>
 
 #include "network/Message.h"
 #include "network/NetworkRole.h"
-
-class UDPSocket;
+#include "network/Address.h" 
+#include "network/UDPSocket.h"
 
 class NetworkManager {
 public:
@@ -31,13 +37,39 @@ public:
     static bool isClient();
     static bool isHost();
 
+    bool connectTCP();
+    SOCKET getTCPSocket() const;
+
+    static std::string getPublicIP();
+
+    static bool isOnlineMode() {
+        return instance().onlineMode;
+    }
+    static void setOnlineMode(bool mode) {
+        instance().onlineMode = mode;
+    }
+
+    Address getAddress() const {
+        return serverAddress;
+    }
+
+    void setUDPSocket() {
+        udpSocket = new UDPSocket();
+        UDPSocket::setInstance(udpSocket);
+        udpSocket->setIP(serverAddress.ip);
+        udpSocket->setPort(serverAddress.port);
+    }
+
 private:
     static NetworkRole currentRole;
 
-    static UDPSocket udpSocket;
+    Address serverAddress;
+    bool onlineMode = false;
+
+    SOCKET tcpSocket = INVALID_SOCKET;
+    UDPSocket* udpSocket = nullptr;
 
     static NetworkManager* s_instance;
 };
-
 
 #endif
