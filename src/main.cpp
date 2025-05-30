@@ -62,6 +62,11 @@ int main() {
     bool onlineMode = GameInit::parseNetworkSettings((basePath / "network.settings").string());
 
     if (NetworkManager::getRole() == NetworkRole::SERVER) {
+        if (!NetworkManager::instance().isOnlineMode()) {
+            std::cerr << "Server mode requires online mode to be enabled in network.settings.\n";
+            shutdownSockets();
+            return -1;
+        }
         Server server(NetworkManager::getPort());
         server.run();
         shutdownSockets();
