@@ -36,6 +36,9 @@ public:
     void render();
     void shutdown();
 
+    void renderUI();
+    void renderBlockOutline();
+
     void setWorldSave(const std::string& saveName);
     std::string getWorldSave() const;
 
@@ -86,7 +89,13 @@ private:
     static Game* s_instance;
        
     std::unique_ptr<Shader> shaderProgram;
+    std::unique_ptr<Shader> uiShaderProgram;
+    std::unique_ptr<Shader> wireFrameShaderProgram;
     std::unique_ptr<Texture> atlas;
+    std::unique_ptr<Texture> crosshairTex;
+    std::unique_ptr<VertexArrayObject> crosshairVAO;
+    std::unique_ptr<VertexArrayObject> wireFrameVAO;
+    
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 };

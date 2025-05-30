@@ -54,7 +54,10 @@ void Game::gameLoop() {
 
         tick();
         render();
+        renderUI();
 
+        glfwSwapBuffers(window);
+        glfwPollEvents();
         glfwSetWindowTitle(window, fpsCount().c_str());
     }
 
@@ -84,6 +87,57 @@ void Game::loadAssets() {
     shaderProgram->use();
     atlas->setUniform(*shaderProgram, "tex0", 0);
 
+    crosshairTex = std::make_unique<Texture>(
+        (getBasePath() + "/assets/textures/ui/crosshair.png").c_str(),
+        GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+        GL_NEAREST, GL_CLAMP_TO_BORDER);
+
+        int width = 32, height = 32;
+
+    std::vector<Vertex> crosshairVertices = {
+        {{0.0f, 0.0f, 0.0f},        {0, 0, 1},    {0.0f, 1.0f}},
+        {{1.0f, 0.0f, 0.0f},        {0, 0, 1},    {1.0f, 1.0f}},
+        {{1.0f, 1.0f, 0.0f},        {0, 0, 1},    {1.0f, 0.0f}},
+        {{0.0f, 1.0f, 0.0f},        {0, 0, 1},    {0.0f, 0.0f}},
+    };
+
+    std::vector<GLuint> crosshairIndices = {
+        0, 2, 1,
+        0, 3, 2
+    };
+
+    crosshairVAO = std::make_unique<VertexArrayObject>();
+    crosshairVAO->init();
+    crosshairVAO->bind();
+    crosshairVAO->addVertexBuffer(crosshairVertices);
+    crosshairVAO->addElementBuffer(crosshairIndices);
+    crosshairVAO->addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    crosshairVAO->addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    crosshairVAO->addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
+    crosshairVAO->unbind();
+
+    uiShaderProgram->use();
+    crosshairTex->setUniform(*uiShaderProgram, "tex0", 0);
+
+    std::vector<Vertex> cubeVerts = {
+        {{0,0,0}, {}, {}}, {{1,0,0}, {}, {}}, {{1,1,0}, {}, {}}, {{0,1,0}, {}, {}},
+        {{0,0,1}, {}, {}}, {{1,0,1}, {}, {}}, {{1,1,1}, {}, {}}, {{0,1,1}, {}, {}}
+    };
+
+    std::vector<GLuint> cubeLineIndices = {
+        0,1, 1,2, 2,3, 3,0,
+        4,5, 5,6, 6,7, 7,4,
+        0,4, 1,5, 2,6, 3,7 
+    };
+    
+    wireFrameVAO = std::make_unique<VertexArrayObject>();
+    wireFrameVAO->init();
+    wireFrameVAO->bind();
+    wireFrameVAO->addVertexBuffer(cubeVerts);
+    wireFrameVAO->addElementBuffer(cubeLineIndices);
+    wireFrameVAO->addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    wireFrameVAO->unbind();
+
     AudioManager::setMusicVolume(musicVolume);
     AudioManager::setSoundVolume(soundVolume);
     AudioManager::init();
@@ -106,6 +160,16 @@ void Game::setupShadersAndUniforms() {
     shaderProgram->setFloat("fogStart", Player::instance().getNearFogDistance());
     shaderProgram->setFloat("fogEnd", Player::instance().getFarFogDistance());
     shaderProgram->setFloat("fogBottom", Player::instance().getBottomFogDistance());
+
+    uiShaderProgram = std::make_unique<Shader>(
+        getBasePath() + "/shaders/ui.vert",
+        getBasePath() + "/shaders/ui.frag"
+    );
+
+    wireFrameShaderProgram = std::make_unique<Shader>(
+        getBasePath() + "/shaders/wireframe.vert",
+        getBasePath() + "/shaders/wireframe.frag"
+    );
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -180,20 +244,83 @@ void Game::render() {
     }
 
     AudioManager::update(deltaTime);
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+    renderBlockOutline();
 }
 
 void Game::shutdown() {
     atlas->deleteTexture();
+    crosshairTex->deleteTexture();
     shaderProgram->deleteShader();
+    uiShaderProgram->deleteShader();
+    wireFrameShaderProgram->deleteShader();
     AudioManager::shutdown();
 
     glfwTerminate();
 
     world->shutdown();
 }
+
+void Game::renderUI() {
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    int winW, winH;
+    glfwGetFramebufferSize(window, &winW, &winH);
+
+    float scaleFactor = 0.015f;
+    float size = winH * scaleFactor;
+    float halfSize = size / 2.0f;
+
+    glm::mat4 projection = glm::ortho(0.0f, float(winW), float(winH), 0.0f, -1.0f, 1.0f);
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(winW / 2.0f - halfSize, winH / 2.0f - halfSize, 0.0f));
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(size, size, 1.0f));
+
+    glm::mat4 final = projection * model * scale;
+
+    uiShaderProgram->use();
+    crosshairTex->bind();
+    crosshairTex->setUniform(*uiShaderProgram, "tex0", 0);
+    uiShaderProgram->setMat4("uProjection", final);
+
+
+    crosshairVAO->bind();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    crosshairVAO->unbind();
+
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+}
+
+void Game::renderBlockOutline() {
+    glLineWidth(2.0f);
+    glEnable(GL_POLYGON_OFFSET_LINE);
+    glPolygonOffset(-1.0f, -1.0f);
+
+    auto hit = Player::instance().getHighlightedBlock();
+    glm::vec3 pos;
+
+    if (hit.has_value()) {
+        glm::ivec3 blockPos = hit.value();
+        int id = getWorld().getBlockIDAtWorldPosition(blockPos.x, blockPos.y, blockPos.z);
+        if (id == 0) return;
+
+        pos = glm::vec3(blockPos);
+    }
+
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), pos - glm::vec3(0.001f));
+    model = glm::scale(model, glm::vec3(1.002f));
+    glm::mat4 mvp = Player::instance().getCamera().cameraMatrix * model;
+
+    wireFrameShaderProgram->use();
+    wireFrameShaderProgram->setMat4("uMVP", mvp);
+
+    wireFrameVAO->bind();
+    glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
+    wireFrameVAO->unbind();
+
+}
+
 
 std::string Game::getWorldSave() const {
     return curWorldSave;

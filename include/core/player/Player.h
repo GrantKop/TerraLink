@@ -72,6 +72,7 @@ private:
 
     void handleInput(float deltaTime);
     std::optional<glm::ivec3> highlightedBlock;
+    glm::ivec3 highlightedNormal = glm::ivec3(0);
 
     static Player* s_instance;
 
