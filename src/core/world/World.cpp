@@ -2,6 +2,7 @@
 #include "core/player/Player.h"
 #include "network/Network.h"
 #include "network/UDPSocket.h"
+#include "network/Serializer.h"
 
 World* World::s_instance = nullptr;
 
@@ -99,7 +100,7 @@ void World::init() {
     chunkManagerThread = std::thread(&World::managerThread, this);
     if (NetworkManager::instance().isClient() || NetworkManager::instance().isHost()) {
         tcpSocket = NetworkManager::instance().getTCPSocket();
-        networkThread = std::thread(&World::chunkUpdateThread, this, Player::instance().getChunkPosition());
+        networkThread = std::thread(&World::chunkUpdateThread, this);
     } 
 }
 
