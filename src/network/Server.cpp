@@ -301,14 +301,17 @@ void Server::handleMessage(const Message& msg, const Address& from) {
         uint32_t len = static_cast<uint32_t>(serialized.size());
         std::vector<uint8_t> lengthPrefix(4);
         std::memcpy(lengthPrefix.data(), &len, 4);
-
-        std::lock_guard<std::mutex> lock(clientMapMutex);
-        for (const auto& client : connectedClients) {
-            if (client.second->ip == from.ip && client.second->UDP_port == from.port) continue;
-            if (client.second->UDP_port != 0) {
-                Address addr{client.second->ip, client.second->UDP_port};
-                if (!socket.sendTo(serialized, addr)) {
-                    std::cerr << "[Server] Failed to send chunk update to " << client.second->clientName << "\n";
+        {
+            std::lock_guard<std::mutex> lock(clientMapMutex);
+            for (const auto& client : connectedClients) {
+                if (client.second->ip == from.ip && client.second->UDP_port == from.port) continue;
+                if (client.second->UDP_port != 0) {
+                    Address addr{client.second->ip, client.second->UDP_port};
+                    std::cout << "[Server] Received chunk update from " << from.ip << ":" << from.port << "\n";
+                    std::cout << "[Server] Sending chunk update to " << client.second->clientName << " at " << addr.ip << ":" << addr.port << "\n";
+                    if (!socket.sendTo(serialized, addr)) {
+                        std::cerr << "[Server] Failed to send chunk update to " << client.second->clientName << "\n";
+                    }
                 }
             }
         }
@@ -325,9 +328,8 @@ void Server::handleMessage(const Message& msg, const Address& from) {
                         it->second->UDP_port = from.port;
                         break;
                     }
-                } else {
-                    ++it;
-                }
+                } 
+                ++it;
             } 
         }
         socket.sendTo(connectAck.serialize(), from);

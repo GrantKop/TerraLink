@@ -114,6 +114,7 @@ void World::chunkUpdateThread() {
             try {
                 Message msg = Message::deserialize(buffer);
                 if (msg.type == MessageType::ClientChunkUpdate) {
+                    std::cout << "[Client] Received chunk update from server\n";
                     size_t offset = 0;
                     int32_t x = Serializer::readInt32(msg.data, offset);
                     int32_t y = Serializer::readInt32(msg.data, offset);
@@ -144,6 +145,43 @@ void World::chunkUpdateThread() {
                     }
 
                     std::shared_ptr<Chunk> chunk = deserializeChunk(decompressed);
+                    meshUploadQueue.push(chunk);
+                } else if (msg.type == MessageType::ChunkNotFound) {
+                    continue;
+                } else if (msg.type == MessageType::ChunkData) {
+                    size_t offset = 0;
+                    int32_t x = Serializer::readInt32(msg.data, offset);
+                    int32_t y = Serializer::readInt32(msg.data, offset);
+                    int32_t z = Serializer::readInt32(msg.data, offset);
+                    int32_t compressedSize = Serializer::readInt32(msg.data, offset);
+
+                    if (msg.data.size() - offset < static_cast<size_t>(compressedSize)) {
+                        std::cerr << "[Client] Compressed chunk data incomplete\n";
+                        continue;
+                    }
+                
+                    std::vector<uint8_t> compressedData(msg.data.begin() + offset,
+                                                        msg.data.begin() + offset + compressedSize);
+                
+                    size_t decompressedSize = ZSTD_getFrameContentSize(compressedData.data(), compressedData.size());
+                    if (decompressedSize == ZSTD_CONTENTSIZE_ERROR || decompressedSize == ZSTD_CONTENTSIZE_UNKNOWN) {
+                        std::cerr << "[Client] Failed to get decompressed size\n";
+                        continue;
+                    }
+                
+                    std::vector<uint8_t> decompressed(decompressedSize);
+                    size_t result = ZSTD_decompress(decompressed.data(), decompressedSize,
+                                                    compressedData.data(), compressedData.size());
+                    if (ZSTD_isError(result)) {
+                        std::cerr << "[Client] Failed to decompress chunk: "
+                                  << ZSTD_getErrorName(result) << "\n";
+                        continue;
+                    }
+                    
+                    std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
+                    chunk->setPosition({x, y, z});
+                    chunk = deserializeChunk(decompressed);
+
                     meshUploadQueue.push(chunk);
                 }
 
@@ -1002,6 +1040,42 @@ bool World::requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>
             ChunkPosition missingPos{x, y, z};
             outChunk->setPosition(missingPos);
             return false;
+        }
+
+        if (response.type == MessageType::ClientChunkUpdate) {
+            std::cout << "[Client] Received chunk update from server\n";
+            size_t offset = 0;
+            int32_t x = Serializer::readInt32(response.data, offset);
+            int32_t y = Serializer::readInt32(response.data, offset);
+            int32_t z = Serializer::readInt32(response.data, offset);
+            ChunkPosition pos{x, y, z};
+
+            int32_t compressedSize = Serializer::readInt32(response.data, offset);
+
+            if (response.data.size() - offset < static_cast<size_t>(compressedSize)) {
+                std::cerr << "[Client] Invalid chunk update payload\n";
+                return false;
+            }
+            
+            std::vector<uint8_t> compressed(response.data.begin() + offset,
+                                            response.data.begin() + offset + compressedSize);
+            size_t decompressedSize = ZSTD_getFrameContentSize(compressed.data(), compressed.size());
+            if (decompressedSize == ZSTD_CONTENTSIZE_ERROR || decompressedSize == ZSTD_CONTENTSIZE_UNKNOWN) {
+                std::cerr << "[Client] Could not determine chunk size\n";
+                return false;
+
+            }
+            
+            std::vector<uint8_t> decompressed(decompressedSize);
+            size_t result = ZSTD_decompress(decompressed.data(), decompressedSize,
+                                            compressed.data(), compressed.size());
+            if (ZSTD_isError(result)) {
+                std::cerr << "[Client] Decompression failed: " << ZSTD_getErrorName(result) << "\n";
+                return false;
+            }
+            
+            std::shared_ptr<Chunk> chunk = deserializeChunk(decompressed);
+            meshUploadQueue.push(chunk);
         }
 
         if (response.type != MessageType::ChunkData) return false;
