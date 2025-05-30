@@ -54,7 +54,10 @@ void Game::gameLoop() {
 
         tick();
         render();
+        renderUI();
 
+        glfwSwapBuffers(window);
+        glfwPollEvents();
         glfwSetWindowTitle(window, fpsCount().c_str());
     }
 
@@ -84,6 +87,38 @@ void Game::loadAssets() {
     shaderProgram->use();
     atlas->setUniform(*shaderProgram, "tex0", 0);
 
+    crosshairTex = std::make_unique<Texture>(
+        (getBasePath() + "/assets/textures/ui/crosshair.png").c_str(),
+        GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+        GL_NEAREST, GL_CLAMP_TO_BORDER);
+
+        int width = 32, height = 32;
+
+    std::vector<Vertex> crosshairVertices = {
+        {{0.0f, 0.0f, 0.0f},        {0, 0, 1},    {0.0f, 1.0f}},
+        {{1.0f, 0.0f, 0.0f},        {0, 0, 1},    {1.0f, 1.0f}},
+        {{1.0f, 1.0f, 0.0f},        {0, 0, 1},    {1.0f, 0.0f}},
+        {{0.0f, 1.0f, 0.0f},        {0, 0, 1},    {0.0f, 0.0f}},
+    };
+
+    std::vector<GLuint> crosshairIndices = {
+        0, 2, 1,
+        0, 3, 2
+    };
+
+    crosshairVAO = std::make_unique<VertexArrayObject>();
+    crosshairVAO->init();
+    crosshairVAO->bind();
+    crosshairVAO->addVertexBuffer(crosshairVertices);
+    crosshairVAO->addElementBuffer(crosshairIndices);
+    crosshairVAO->addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    crosshairVAO->addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    crosshairVAO->addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
+    crosshairVAO->unbind();
+
+    uiShaderProgram->use();
+    crosshairTex->setUniform(*uiShaderProgram, "tex0", 0);
+
     AudioManager::setMusicVolume(musicVolume);
     AudioManager::setSoundVolume(soundVolume);
     AudioManager::init();
@@ -106,6 +141,11 @@ void Game::setupShadersAndUniforms() {
     shaderProgram->setFloat("fogStart", Player::instance().getNearFogDistance());
     shaderProgram->setFloat("fogEnd", Player::instance().getFarFogDistance());
     shaderProgram->setFloat("fogBottom", Player::instance().getBottomFogDistance());
+
+    uiShaderProgram = std::make_unique<Shader>(
+        getBasePath() + "/shaders/ui.vert",
+        getBasePath() + "/shaders/ui.frag"
+    );
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -180,19 +220,50 @@ void Game::render() {
     }
 
     AudioManager::update(deltaTime);
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
 }
 
 void Game::shutdown() {
     atlas->deleteTexture();
+    crosshairTex->deleteTexture();
     shaderProgram->deleteShader();
+    uiShaderProgram->deleteShader();
     AudioManager::shutdown();
 
     glfwTerminate();
 
     world->shutdown();
+}
+
+void Game::renderUI() {
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    int winW, winH;
+    glfwGetFramebufferSize(window, &winW, &winH);
+
+    float scaleFactor = 0.015f;
+    float size = winH * scaleFactor;
+    float halfSize = size / 2.0f;
+
+    glm::mat4 projection = glm::ortho(0.0f, float(winW), float(winH), 0.0f, -1.0f, 1.0f);
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(winW / 2.0f - halfSize, winH / 2.0f - halfSize, 0.0f));
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(size, size, 1.0f));
+
+    glm::mat4 final = projection * model * scale;
+
+    uiShaderProgram->use();
+    crosshairTex->bind();
+    crosshairTex->setUniform(*uiShaderProgram, "tex0", 0);
+    uiShaderProgram->setMat4("uProjection", final);
+
+
+    crosshairVAO->bind();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    crosshairVAO->unbind();
+
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
 }
 
 std::string Game::getWorldSave() const {

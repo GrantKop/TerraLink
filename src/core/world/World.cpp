@@ -41,7 +41,7 @@ void World::shutdown() {
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
     std::cout << "Joining chunk manager thread..." << std::endl;
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
-    std::cout << "Joining network thread..." << std::endl;
+    if (NetworkManager::instance().isOnlineMode()) std::cout << "Joining network thread..." << std::endl;
     if (networkThread.joinable()) networkThread.join();
 
     if (!NetworkManager::instance().isOnlineMode() || NetworkManager::instance().isHost()) std::cout << "Saving chunks to disk..." << std::endl;
