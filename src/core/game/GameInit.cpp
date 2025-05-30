@@ -69,6 +69,15 @@ namespace GameInit {
         }
     }
 
+    std::string trim(const std::string& s) {
+        size_t start = s.find_first_not_of(" \t\r\n");
+        size_t end = s.find_last_not_of(" \t\r\n");
+
+        if (start == std::string::npos || end == std::string::npos)
+            return "";
+        return s.substr(start, end - start + 1);
+    }
+
     std::string getPlayerName(const std::string& filePath) {
         std::ifstream file(filePath);
         if (!file.is_open()) {
@@ -83,8 +92,11 @@ namespace GameInit {
                 line = line.substr(0, commentLine);
             }
 
-            line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
-            if (line.empty()) continue;
+            line = trim(line);
+
+            if (line.empty()) {
+                continue;
+            }
 
             size_t equalPos = line.find("=");
             if (equalPos == std::string::npos) {
@@ -92,14 +104,15 @@ namespace GameInit {
                 continue;
             }
 
-            std::string key = line.substr(0, equalPos);
-            std::string value = line.substr(equalPos + 1);
+            std::string key = trim(line.substr(0, equalPos));
+            std::string value = trim(line.substr(equalPos + 1));
 
             if (key == "playerName") {
                 if (value.empty()) {
                     std::cerr << "Player name is empty, defaulting to 'Player'" << std::endl;
                     return "Player";
                 }
+                std::cout << "Player name set to: " << value << std::endl;
                 return value;
             }
         }

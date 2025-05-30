@@ -469,7 +469,7 @@ void World::unloadDistantChunks() {
         std::shared_ptr<Chunk> chunkPtr = it->second;
         if (!chunkPtr) continue;
 
-        if (!NetworkManager::instance().isOnlineMode || NetworkManager::instance().isHost()) {
+        if (!NetworkManager::instance().isOnlineMode() || NetworkManager::instance().isHost()) {
             chunkSaveQueue.push(chunkPtr->makeSavableCopy());
         }
 
