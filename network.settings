@@ -6,4 +6,4 @@
 mode = CLIENT
 ip = default
 port = 55055
-onlineMode = true
+onlineMode = false

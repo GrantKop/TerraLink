@@ -294,8 +294,6 @@ void Game::renderUI() {
 
 void Game::renderBlockOutline() {
     glLineWidth(2.0f);
-    glEnable(GL_POLYGON_OFFSET_LINE);
-    glPolygonOffset(-1.0f, -1.0f);
 
     auto hit = Player::instance().getHighlightedBlock();
     glm::vec3 pos;
@@ -306,6 +304,8 @@ void Game::renderBlockOutline() {
         if (id == 0) return;
 
         pos = glm::vec3(blockPos);
+    } else {
+        return;
     }
 
     glm::mat4 model = glm::translate(glm::mat4(1.0f), pos - glm::vec3(0.001f));
@@ -318,7 +318,6 @@ void Game::renderBlockOutline() {
     wireFrameVAO->bind();
     glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
     wireFrameVAO->unbind();
-
 }
 
 
