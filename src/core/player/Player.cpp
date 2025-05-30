@@ -108,6 +108,15 @@ void Player::update(float deltaTime) {
             verticalVelocity = -1.0f;
         }
     }
+
+    if (auto hit = camera.raycastToBlock(World::instance())) {
+        highlightedBlock = hit->block;
+        highlightedNormal = hit->normal;
+    } else {
+        highlightedBlock.reset();
+        highlightedNormal = glm::ivec3(0);
+    }
+
     handleInput(deltaTime);
 }
 
@@ -343,21 +352,22 @@ void Player::handleInput(float deltaTime) {
     static bool lastLeftClick = false;
     bool leftNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
     if (leftNow && !lastLeftClick && cursorLocked) {
-        if (auto hit = camera.raycastToBlock(World::instance())) {
-            int blockID = World::instance().getBlockIDAtWorldPosition(hit->block.x, hit->block.y, hit->block.z);
-            World::instance().setBlockAtWorldPosition(hit->block.x, hit->block.y, hit->block.z, 0);
+        if (highlightedBlock.has_value()) {
+            glm::ivec3 blockPos = highlightedBlock.value();
+            int blockID = World::instance().getBlockIDAtWorldPosition(blockPos.x, blockPos.y, blockPos.z);
+            World::instance().setBlockAtWorldPosition(blockPos.x, blockPos.y, blockPos.z, 0);
             BLOCKTYPE type = BlockRegister::instance().getBlockByIndex(blockID).type;
-            AudioManager::playBlockSound(type, glm::vec3(hit->block) + 0.5f, camera.position, "break");
+            AudioManager::playBlockSound(type, glm::vec3(blockPos) + 0.5f, camera.position, "break");
         }
+
     }    
     lastLeftClick = leftNow;
 
     static bool lastRightClick = false;
     bool rightNow = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
     if (rightNow && !lastRightClick && cursorLocked) {
-        if (auto hit = camera.raycastToBlock(World::instance())) {
-            glm::ivec3 placePos = hit->block + hit->normal;
-            glm::vec3 blockCenter = glm::vec3(placePos) + 0.5f;
+        if (highlightedBlock.has_value()) {
+            glm::ivec3 placePos = highlightedBlock.value() + highlightedNormal;
             if (!World::instance().wouldBlockOverlapPlayer(placePos)) {
                 World::instance().setBlockAtWorldPosition(placePos.x, placePos.y, placePos.z, selectedBlockID);
                 BLOCKTYPE placed = BlockRegister::instance().getBlockByIndex(selectedBlockID).type;

@@ -119,6 +119,25 @@ void Game::loadAssets() {
     uiShaderProgram->use();
     crosshairTex->setUniform(*uiShaderProgram, "tex0", 0);
 
+    std::vector<Vertex> cubeVerts = {
+        {{0,0,0}, {}, {}}, {{1,0,0}, {}, {}}, {{1,1,0}, {}, {}}, {{0,1,0}, {}, {}},
+        {{0,0,1}, {}, {}}, {{1,0,1}, {}, {}}, {{1,1,1}, {}, {}}, {{0,1,1}, {}, {}}
+    };
+
+    std::vector<GLuint> cubeLineIndices = {
+        0,1, 1,2, 2,3, 3,0,
+        4,5, 5,6, 6,7, 7,4,
+        0,4, 1,5, 2,6, 3,7 
+    };
+    
+    wireFrameVAO = std::make_unique<VertexArrayObject>();
+    wireFrameVAO->init();
+    wireFrameVAO->bind();
+    wireFrameVAO->addVertexBuffer(cubeVerts);
+    wireFrameVAO->addElementBuffer(cubeLineIndices);
+    wireFrameVAO->addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    wireFrameVAO->unbind();
+
     AudioManager::setMusicVolume(musicVolume);
     AudioManager::setSoundVolume(soundVolume);
     AudioManager::init();
@@ -145,6 +164,11 @@ void Game::setupShadersAndUniforms() {
     uiShaderProgram = std::make_unique<Shader>(
         getBasePath() + "/shaders/ui.vert",
         getBasePath() + "/shaders/ui.frag"
+    );
+
+    wireFrameShaderProgram = std::make_unique<Shader>(
+        getBasePath() + "/shaders/wireframe.vert",
+        getBasePath() + "/shaders/wireframe.frag"
     );
 
     glEnable(GL_DEPTH_TEST);
@@ -220,6 +244,7 @@ void Game::render() {
     }
 
     AudioManager::update(deltaTime);
+    renderBlockOutline();
 }
 
 void Game::shutdown() {
@@ -227,6 +252,7 @@ void Game::shutdown() {
     crosshairTex->deleteTexture();
     shaderProgram->deleteShader();
     uiShaderProgram->deleteShader();
+    wireFrameShaderProgram->deleteShader();
     AudioManager::shutdown();
 
     glfwTerminate();
@@ -265,6 +291,36 @@ void Game::renderUI() {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }
+
+void Game::renderBlockOutline() {
+    glLineWidth(2.0f);
+    glEnable(GL_POLYGON_OFFSET_LINE);
+    glPolygonOffset(-1.0f, -1.0f);
+
+    auto hit = Player::instance().getHighlightedBlock();
+    glm::vec3 pos;
+
+    if (hit.has_value()) {
+        glm::ivec3 blockPos = hit.value();
+        int id = getWorld().getBlockIDAtWorldPosition(blockPos.x, blockPos.y, blockPos.z);
+        if (id == 0) return;
+
+        pos = glm::vec3(blockPos);
+    }
+
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), pos - glm::vec3(0.001f));
+    model = glm::scale(model, glm::vec3(1.002f));
+    glm::mat4 mvp = Player::instance().getCamera().cameraMatrix * model;
+
+    wireFrameShaderProgram->use();
+    wireFrameShaderProgram->setMat4("uMVP", mvp);
+
+    wireFrameVAO->bind();
+    glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
+    wireFrameVAO->unbind();
+
+}
+
 
 std::string Game::getWorldSave() const {
     return curWorldSave;

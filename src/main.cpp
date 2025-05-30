@@ -74,7 +74,7 @@ int main() {
     }
 
     GLFWwindow* window = nullptr;
-    if (!createWindow(window, "TerraLink", 800, 600, !DEV_MODE)) {
+    if (!createWindow(window, "TerraLink", 800, 800, !DEV_MODE)) {
         glfwTerminate();
         shutdownSockets();
         return -1;
