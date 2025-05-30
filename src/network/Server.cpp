@@ -277,7 +277,6 @@ void Server::handleMessage(const Message& msg, const Address& from) {
         saveCompressedChunkToFile(pos, compressedChunk);
     }
     else if (msg.type == MessageType::ClientChunkUpdate) {
-        std::cout << "[Server] Received chunk update from client\n";
         size_t offset = 0;
         int32_t x = Serializer::readInt32(msg.data, offset);
         int32_t y = Serializer::readInt32(msg.data, offset);
@@ -307,8 +306,6 @@ void Server::handleMessage(const Message& msg, const Address& from) {
                 if (client.second->ip == from.ip && client.second->UDP_port == from.port) continue;
                 if (client.second->UDP_port != 0) {
                     Address addr{client.second->ip, client.second->UDP_port};
-                    std::cout << "[Server] Received chunk update from " << from.ip << ":" << from.port << "\n";
-                    std::cout << "[Server] Sending chunk update to " << client.second->clientName << " at " << addr.ip << ":" << addr.port << "\n";
                     if (!socket.sendTo(serialized, addr)) {
                         std::cerr << "[Server] Failed to send chunk update to " << client.second->clientName << "\n";
                     }

@@ -148,7 +148,10 @@ void Game::init() {
     world->createSaveDirectory();
 
     std::cout << "Waiting for spawn chunks...\n";
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // while (world->chunks.size() < 1) {
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // }
 
     world->loadPlayerData(*player, player->getPlayerName());
 }

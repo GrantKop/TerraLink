@@ -117,8 +117,9 @@ private:
     std::thread networkThread;
 
     std::atomic<bool> running = false;
+    std::atomic<bool> udpReceiving = false;
     
-ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
+    ThreadSafeQueue<ChunkPosition> chunkCreationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshGenerationQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> chunkUploadQueue;
     ThreadSafeQueue<std::shared_ptr<Chunk>> meshUploadQueue;
