@@ -69,6 +69,44 @@ namespace GameInit {
         }
     }
 
+    std::string getPlayerName(const std::string& filePath) {
+        std::ifstream file(filePath);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open player name file: " << filePath << std::endl;
+            return "Player";
+        }
+
+        std::string line;
+        while (std::getline(file, line)) {
+            size_t commentLine = line.find("#");
+            if (commentLine != std::string::npos) {
+                line = line.substr(0, commentLine);
+            }
+
+            line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+            if (line.empty()) continue;
+
+            size_t equalPos = line.find("=");
+            if (equalPos == std::string::npos) {
+                std::cerr << "Invalid line in game settings file: " << line << std::endl;
+                continue;
+            }
+
+            std::string key = line.substr(0, equalPos);
+            std::string value = line.substr(equalPos + 1);
+
+            if (key == "playerName") {
+                if (value.empty()) {
+                    std::cerr << "Player name is empty, defaulting to 'Player'" << std::endl;
+                    return "Player";
+                }
+                return value;
+            }
+        }
+
+        return "Player";
+    }
+
     bool parseNetworkSettings(const std::string& filePath) {
         std::ifstream file(filePath);
         if (!file.is_open()) {

@@ -93,8 +93,7 @@ bool NetworkManager::connectTCP() {
         tcpSocket = INVALID_SOCKET;
         return false;
     }
-
-    std::cout << "[Client] Connected to server over TCP\n";
+;
     return true;
 }
 

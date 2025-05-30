@@ -8,18 +8,20 @@
 #include "core/threads/ThreadSafeQueue.h"
 #include "network/TCPSocket.h"
 
+
+struct ClientInfo {
+    SOCKET TCP_socket;
+    uint16_t TCP_port;
+    uint16_t UDP_port;
+
+    std::string ip;
+
+    std::string clientName;
+};
+
 struct PendingRequest {
     ChunkPosition pos;
     Address client;
-};
-
-enum class FileTaskType { Load, Save };
-
-struct FileTask {
-    FileTaskType type;
-    ChunkPosition pos;
-    std::shared_ptr<Chunk> chunkToSave;
-    SOCKET clientSocket;
 };
 
 class Server {
@@ -37,7 +39,7 @@ private:
     SOCKET clientSocket = INVALID_SOCKET;
     ThreadSafeQueue<PendingRequest> chunkRequestQueue;
 
-    std::unordered_map<SOCKET, Address> tcpClients;
+    std::unordered_map<std::string, std::shared_ptr<ClientInfo>> connectedClients;
     std::mutex clientMapMutex;
 
     void handleTCPClient(SOCKET socket);

@@ -67,13 +67,62 @@ void Server::run() {
                 addr.ip = ipStr;
                 addr.port = port;
 
+                std::vector<uint8_t> lengthBuf;
+                if (!TCPSocket::recvAll(clientSocket, lengthBuf, 4)) break;
+
+                uint32_t msgLength;
+                std::memcpy(&msgLength, lengthBuf.data(), 4);
+
+                std::vector<uint8_t> data;
+                if (!TCPSocket::recvAll(clientSocket, data, msgLength)) break;
+
+                std::string clientName = "Player";
+
+                try {
+                    Message msg;
+                    try {
+                        msg = Message::deserialize(data);
+                    } catch (const std::exception& e) {
+                        std::cerr << "[Server] Failed to deserialize message: " << e.what() << "\n";
+                        continue;
+                    }
+                    if (msg.type == MessageType::ClientInfo) {
+                        size_t offset = 0;
+                        clientName = Serializer::readString(msg.data, offset);
+                    }
+                } catch (...) {
+                    std::cerr << "[Server] Failed to parse incoming TCP message\n";
+                    continue;
+                }
+
+                std::shared_ptr<ClientInfo> info = std::make_shared<ClientInfo>();
+                info->TCP_port = addr.port;
+                info->TCP_socket = clientSocket;
+                info->UDP_port = 0;
+                info->ip = addr.ip;
+                info->clientName = clientName;
+
+                std::string key = addr.ip + " | " + clientName;
+
                 {
                     std::lock_guard<std::mutex> lock(clientMapMutex);
-                    tcpClients[clientSocket] = addr;
+
+                    connectedClients[key] = info;
                 }
             
-                std::cout << "[Server] New client connected: " << addr.ip << ":" << addr.port << "\n";
+                std::cout << "[Server] " << clientName << " connected from " << addr.ip << ":" << addr.port << "\n";
                 std::thread(&Server::handleTCPClient, this, clientSocket).detach();
+
+                Message connectAck;
+                connectAck.type = MessageType::ClientConnectAck;
+                Serializer::writeString(connectAck.data, clientName);
+                std::vector<uint8_t> serialized = connectAck.serialize();
+                uint32_t len = static_cast<uint32_t>(serialized.size());
+                std::vector<uint8_t> lengthPrefix(4);
+                std::memcpy(lengthPrefix.data(), &len, 4);
+                if (!TCPSocket::sendAll(clientSocket, lengthPrefix) || !TCPSocket::sendAll(clientSocket, serialized)) {
+                    std::cerr << "[Server] Failed to send connection acknowledgment to " << clientName << "\n";
+                }
             }
         }
     }).detach();
@@ -172,23 +221,25 @@ void Server::handleTCPClient(SOCKET socket) {
                 uint32_t len = static_cast<uint32_t>(serialized.size());
                 std::vector<uint8_t> lengthPrefix(4);
                 std::memcpy(lengthPrefix.data(), &len, 4);
-
-                std::lock_guard<std::mutex> lock(clientMapMutex);
-                for (const auto& [sock, _] : tcpClients) {
-                    if (sock == socket) continue;
-                    TCPSocket::sendAll(sock, lengthPrefix);
-                    TCPSocket::sendAll(sock, serialized);
-                }
             }      
         } catch (...) {
             std::cerr << "[Server] Failed to parse incoming TCP chunk request\n";
         }
     }
 
-    std::cerr << "[Server] Client disconnected\n";
     {
-        std::lock_guard<std::mutex> lock(clientMapMutex);
-        tcpClients.erase(socket);
+        {
+            std::lock_guard<std::mutex> lock(clientMapMutex);
+
+            for (auto it = connectedClients.begin(); it != connectedClients.end();) {
+                if (it->second->TCP_socket == socket) {
+                    std::cout << "[Server] " << it->second->clientName << " disconected.\n";
+                    it = connectedClients.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
     }
 #ifdef _WIN32
     closesocket(socket);
@@ -250,21 +301,36 @@ void Server::handleMessage(const Message& msg, const Address& from) {
         uint32_t len = static_cast<uint32_t>(serialized.size());
         std::vector<uint8_t> lengthPrefix(4);
         std::memcpy(lengthPrefix.data(), &len, 4);
-        
+
         std::lock_guard<std::mutex> lock(clientMapMutex);
-        for (const auto& [sock, addr] : tcpClients) {
-            // if (addr.ip == from.ip && addr.port == from.port) continue;
-            // std::cout << "[Server] Broadcasting chunk update to " << from.ip << ":" << from.port << "\n";
-        
-            TCPSocket::sendAll(sock, lengthPrefix);
-            TCPSocket::sendAll(sock, serialized);
+        for (const auto& client : connectedClients) {
+            if (client.second->ip == from.ip && client.second->UDP_port == from.port) continue;
+            if (client.second->UDP_port != 0) {
+                Address addr{client.second->ip, client.second->UDP_port};
+                if (!socket.sendTo(serialized, addr)) {
+                    std::cerr << "[Server] Failed to send chunk update to " << client.second->clientName << "\n";
+                }
+            }
         }
     }
 
-    else if (msg.type == MessageType::PingPong) {
-        Message pong;
-        pong.type = MessageType::PingPong;
-        socket.sendTo(pong.serialize(), from);
+    else if (msg.type == MessageType::ClientConnect) {
+        Message connectAck;
+        connectAck.type = MessageType::ClientConnectAck;
+        {
+            std::lock_guard<std::mutex> lock(clientMapMutex);
+            for (auto it = connectedClients.begin(); it != connectedClients.end();) {
+                if (it->second->ip == from.ip) {
+                    if (it->second->UDP_port == 0) {
+                        it->second->UDP_port = from.port;
+                        break;
+                    }
+                } else {
+                    ++it;
+                }
+            } 
+        }
+        socket.sendTo(connectAck.serialize(), from);
     }
 }
 

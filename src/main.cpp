@@ -7,17 +7,18 @@
 #include "network/Network.h"
 #include "core/game/GameInit.h"
 #include "network/Server.h"
+#include "network/Serializer.h"
 
 bool DEV_MODE = true;
 float gameVersionMajor = 0.f;
 float gameVersionMinor = 5.f;
-float gameVersionPatch = 3.f;
+float gameVersionPatch = 5.f;
 
 bool waitForServerConnection(UDPSocket& socket, const Address& serverAddr, float timeoutSeconds = 5.0f) {
-    Message ping;
-    ping.type = MessageType::PingPong;
+    Message connect;
+    connect.type = MessageType::ClientConnect;
 
-    socket.sendTo(ping.serialize(), serverAddr);
+    socket.sendTo(connect.serialize(), serverAddr);
 
     double start = glfwGetTime();
     std::vector<uint8_t> buffer;
@@ -27,7 +28,7 @@ bool waitForServerConnection(UDPSocket& socket, const Address& serverAddr, float
         if (socket.receiveFrom(buffer, from)) {
             try {
                 Message msg = Message::deserialize(buffer);
-                if (msg.type == MessageType::PingPong) {
+                if (msg.type == MessageType::ClientConnectAck) {
                     return true;
                 }
             } catch (...) {
@@ -88,18 +89,40 @@ int main() {
     switch (NetworkManager::getRole()) {
         case NetworkRole::CLIENT: {
             NetworkManager::instance().setUDPSocket();
-            TCPSocket tcpSocket;
 
-            if (!tcpSocket.connectTo(NetworkManager::getIP(), NetworkManager::getPort())) {
+            if (!NetworkManager::instance().connectTCP()) {
                 std::cerr << "[Client] [TCP] Failed to connect to server via TCP\n";
                 shutdownSockets();
                 return -1;
+            }
+
+            Message playerNameMsg;
+            playerNameMsg.type = MessageType::ClientInfo;
+            Serializer::writeString(playerNameMsg.data, GameInit::getPlayerName((basePath / "game.settings").string()));
+
+            std::vector<uint8_t> serialized = playerNameMsg.serialize();
+            uint32_t len = static_cast<uint32_t>(serialized.size());
+            std::vector<uint8_t> lengthPrefix(4);
+            std::memcpy(lengthPrefix.data(), &len, 4);
+
+
+            TCPSocket::sendAll(NetworkManager::instance().getTCPSocket(), lengthPrefix);
+            TCPSocket::sendAll(NetworkManager::instance().getTCPSocket(), serialized);
+
+            std::vector<uint8_t> lengthBuf;
+            while (!TCPSocket::recvAll(NetworkManager::instance().getTCPSocket(), lengthBuf, 4)) {
+                uint32_t msgLength;
+                std::memcpy(&msgLength, lengthBuf.data(), 4);
+                std::vector<uint8_t> data;
+                TCPSocket::recvAll(NetworkManager::instance().getTCPSocket(), data, len);
             }
 
             if (!waitForServerConnection(UDPSocket::instance(), NetworkManager::instance().getAddress())) {
                 shutdownSockets();
                 return -1;
             }
+
+            std::cout << "[Client] Connected to server at " << NetworkManager::getIP() << ":" << NetworkManager::getPort() << "\n";
         
             game.init();
             game.gameLoop();

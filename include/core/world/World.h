@@ -44,6 +44,8 @@ public:
     void chunkWorkerThread();
     void meshWorkerThread();
 
+    void chunkUpdateThread();
+
     void networkWorker(ChunkPosition pos);
     bool requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>& outChunk);
     void sendChunkOverUDP(SavableChunk chunk);
@@ -112,6 +114,7 @@ private:
     std::vector<std::thread> chunkGenThreads;
     std::vector<std::thread> meshGenThreads;
     std::thread chunkManagerThread;
+    std::thread networkThread;
 
     std::atomic<bool> running = false;
     

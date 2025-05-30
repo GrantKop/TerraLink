@@ -11,7 +11,11 @@ enum class MessageType : uint8_t {
     ChunkNotFound,
     ClientChunkUpdate,
     ClientDisconnect,
-    PingPong,
+    ClientDisconnectAck,
+    ClientConnect,
+    ClientConnectAck,
+    ClientInfo,
+    Heartbeat
 };
 
 struct Message {

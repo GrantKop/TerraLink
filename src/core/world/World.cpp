@@ -40,6 +40,8 @@ void World::shutdown() {
     for (auto& thread : meshGenThreads) if (thread.joinable()) thread.join();
     std::cout << "Joining chunk manager thread..." << std::endl;
     if (chunkManagerThread.joinable()) chunkManagerThread.join();
+    std::cout << "Joining network thread..." << std::endl;
+    if (networkThread.joinable()) networkThread.join();
 
     if (!NetworkManager::instance().isOnlineMode() || NetworkManager::instance().isHost()) std::cout << "Saving chunks to disk..." << std::endl;
     for (auto& [pos, chunk] : chunks) {
@@ -97,7 +99,60 @@ void World::init() {
     chunkManagerThread = std::thread(&World::managerThread, this);
     if (NetworkManager::instance().isClient() || NetworkManager::instance().isHost()) {
         tcpSocket = NetworkManager::instance().getTCPSocket();
+        networkThread = std::thread(&World::chunkUpdateThread, this, Player::instance().getChunkPosition());
     } 
+}
+
+// Thread function for handeling chunk updates over the network
+void World::chunkUpdateThread() {
+    while (running) {
+        std::vector<uint8_t> buffer;
+        Address from;
+
+        if (UDPSocket::instance().receiveFrom(buffer, from)) {
+            try {
+                Message msg = Message::deserialize(buffer);
+                if (msg.type == MessageType::ClientChunkUpdate) {
+                    size_t offset = 0;
+                    int32_t x = Serializer::readInt32(msg.data, offset);
+                    int32_t y = Serializer::readInt32(msg.data, offset);
+                    int32_t z = Serializer::readInt32(msg.data, offset);
+                    ChunkPosition pos{x, y, z};
+
+                    int32_t compressedSize = Serializer::readInt32(msg.data, offset);
+                    if (msg.data.size() - offset < static_cast<size_t>(compressedSize)) {
+                        std::cerr << "[Client] Invalid chunk update payload\n";
+                        continue;
+                    }
+
+                    std::vector<uint8_t> compressed(msg.data.begin() + offset,
+                                                    msg.data.begin() + offset + compressedSize);
+
+                    size_t decompressedSize = ZSTD_getFrameContentSize(compressed.data(), compressed.size());
+                    if (decompressedSize == ZSTD_CONTENTSIZE_ERROR || decompressedSize == ZSTD_CONTENTSIZE_UNKNOWN) {
+                        std::cerr << "[Client] Could not determine chunk size\n";
+                        continue;
+                    }
+
+                    std::vector<uint8_t> decompressed(decompressedSize);
+                    size_t result = ZSTD_decompress(decompressed.data(), decompressedSize,
+                                                    compressed.data(), compressed.size());
+                    if (ZSTD_isError(result)) {
+                        std::cerr << "[Client] Decompression failed: " << ZSTD_getErrorName(result) << "\n";
+                        continue;
+                    }
+
+                    std::shared_ptr<Chunk> chunk = deserializeChunk(decompressed);
+                    meshUploadQueue.push(chunk);
+                }
+
+            } catch (...) {
+                std::cerr << "[Client] Failed to parse UDP message\n";
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 }
 
 // Thread function for loading chunks around the player
@@ -133,7 +188,8 @@ void World::managerThread() {
 
             saveChunkToFile(chunk);
         }
-        pollTCPMessages();
+
+        // pollTCPMessages();
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
@@ -990,8 +1046,7 @@ bool World::requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>
 void World::sendChunkOverUDP(SavableChunk chunk) {
     Message message;
     if (chunk.hasMeshUpdate) {
-        sendChunkUpdate(chunk);
-        return;
+        message.type = MessageType::ClientChunkUpdate;
     } else {
         message.type = MessageType::ChunkGeneratedByClient;
     }
