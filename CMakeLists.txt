@@ -76,10 +76,12 @@ include(InstallRequiredSystemLibraries)
 
 set(CPACK_PACKAGE_NAME "TerraLink")
 set(CPACK_PACKAGE_VENDOR "Grant Kopczenski")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Procedural terrain engine")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Procedural terrain sandbox engine")
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "5")
 set(CPACK_PACKAGE_VERSION_PATCH "6")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "TerraLink")
+set(CPACK_PACKAGE_FILE_NAME "TerraLink_Setup_${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 set(CPACK_PACKAGE_EXECUTABLES "TerraLink" "TerraLink")
 set(CPACK_GENERATOR "NSIS")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/assets/icon/icon.ico")
@@ -92,12 +94,5 @@ install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/vorbisfile.dl
 install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/vorbis.dll" DESTINATION bin)
 install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/ogg.dll" DESTINATION bin)
 install(FILES "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/bin/fmt.dll" DESTINATION bin)
-
-file(TO_CMAKE_PATH "$ENV{APPDATA}" _appdata_forward)
-string(REPLACE "/" "\\\\" _appdata_win "${_appdata_forward}")
-
-set(CPACK_NSIS_INSTALL_ROOT "${_appdata_win}")
-set(CPACK_NSIS_INSTALL_DIRECTORY "TerraLink")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "TerraLink")
 
 include(CPack)
