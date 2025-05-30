@@ -98,7 +98,7 @@ void World::init() {
     }
 
     chunkManagerThread = std::thread(&World::managerThread, this);
-    if (NetworkManager::instance().isClient() || NetworkManager::instance().isHost()) {
+    if ((NetworkManager::instance().isClient() || NetworkManager::instance().isHost()) && NetworkManager::instance().isOnlineMode()) {
         tcpSocket = NetworkManager::instance().getTCPSocket();
         networkThread = std::thread(&World::chunkUpdateThread, this);
     } 
@@ -469,7 +469,9 @@ void World::unloadDistantChunks() {
         std::shared_ptr<Chunk> chunkPtr = it->second;
         if (!chunkPtr) continue;
 
-        chunkSaveQueue.push(chunkPtr->makeSavableCopy());
+        if (!NetworkManager::instance().isOnlineMode || NetworkManager::instance().isHost()) {
+            chunkSaveQueue.push(chunkPtr->makeSavableCopy());
+        }
 
         if (chunkPtr->mesh.isUploaded) {
             try {
@@ -1018,7 +1020,6 @@ bool World::requestChunkOverUDP(const ChunkPosition& pos, std::shared_ptr<Chunk>
         }
 
         if (response.type == MessageType::ClientChunkUpdate) {
-            std::cout << "[Client] Received chunk update from server\n";
             size_t offset = 0;
             int32_t x = Serializer::readInt32(response.data, offset);
             int32_t y = Serializer::readInt32(response.data, offset);

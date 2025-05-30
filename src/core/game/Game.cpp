@@ -145,7 +145,7 @@ void Game::init() {
 
     world->init();
     world->setSaveDirectory(getWorldSave());
-    world->createSaveDirectory();
+    if (!NetworkManager::instance().isOnlineMode) world->createSaveDirectory();
 
     std::cout << "Waiting for spawn chunks...\n";
 
