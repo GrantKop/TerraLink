@@ -300,7 +300,6 @@ void Player::handleInput(float deltaTime) {
     static bool cursorLocked = true;
     static bool justLocked = true;
 
-
     if (cursorLocked) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         if (justLocked) {
@@ -412,7 +411,6 @@ void Player::handleInput(float deltaTime) {
     }
     lastF3 = f3Down;
     lastR = rDown;
-
 }
 
 static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
