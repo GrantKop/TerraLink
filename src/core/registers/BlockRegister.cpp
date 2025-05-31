@@ -247,6 +247,12 @@ void BlockRegister::linkModelToBlock(Block& block) {
     if (block.model == "covered_cross") {
         link_covered_cross(block);
     }
+    if (block.model == "cross") {
+        link_cross(block);
+    }
+    // if (block.model == "block_ore") {
+    //     link_ore_block(block);
+    // }
     if (block.model == "air") {
         block.vertices.clear();
     }
@@ -362,6 +368,90 @@ void BlockRegister::link_covered_cross(Block& block) {
             if (vertex.y == 0.5210f) vertex.y = 0.5f;
             if (vertex.z == -0.8536f) vertex.z = 0.8536f;
 
+            OBJvertices.push_back(vertex);
+        } else if (line.substr(0, 3) == "vn ") {
+            std::istringstream s(line.substr(3));
+            glm::vec3 normal;
+            s >> normal.x >> normal.y >> normal.z;
+            OBJnormals.push_back(normal);
+        } else if (line.substr(0, 2) == "f ") {
+            std::istringstream s(line.substr(2));
+            std::string faceData;
+            while (s >> faceData) {
+                size_t vPos = faceData.find("//");
+                int vIndex = std::stoi(faceData.substr(0, vPos)) - 1;
+                int nIndex = std::stoi(faceData.substr(vPos + 2)) - 1;
+
+                Vertex vertex;
+                vertex.position = OBJvertices[vIndex];
+                vertex.normal = OBJnormals[nIndex];
+                block.vertices.push_back(vertex);
+            }
+        }
+    }
+}
+
+void BlockRegister::link_cross(Block& block) {
+    std::string modelPath = Game::instance().getBasePath() + "/assets/models/cross.obj";
+    std::ifstream file(modelPath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open block model file: " << modelPath << std::endl;
+        return;
+    }
+
+    std::vector<glm::vec3> OBJvertices;
+    std::vector<glm::vec3> OBJnormals;
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.substr(0, 2) == "v ") {
+            std::istringstream s(line.substr(2));
+            glm::vec3 vertex;
+            s >> vertex.x >> vertex.y >> vertex.z;
+            vertex.x = std::abs(vertex.x);
+            vertex.y = std::abs(vertex.y);
+            vertex.z = std::abs(vertex.z);
+
+            OBJvertices.push_back(vertex);
+        } else if (line.substr(0, 3) == "vn ") {
+            std::istringstream s(line.substr(3));
+            glm::vec3 normal;
+            s >> normal.x >> normal.y >> normal.z;
+            OBJnormals.push_back(normal);
+        } else if (line.substr(0, 2) == "f ") {
+            std::istringstream s(line.substr(2));
+            std::string faceData;
+            while (s >> faceData) {
+                size_t vPos = faceData.find("//");
+                int vIndex = std::stoi(faceData.substr(0, vPos)) - 1;
+                int nIndex = std::stoi(faceData.substr(vPos + 2)) - 1;
+
+                Vertex vertex;
+                vertex.position = OBJvertices[vIndex];
+                vertex.normal = OBJnormals[nIndex];
+                block.vertices.push_back(vertex);
+            }
+        }
+    }
+}
+
+void BlockRegister::link_ore_block(Block& block) {
+    std::string modelPath = Game::instance().getBasePath() + "/assets/models/block_ore.obj";
+    std::ifstream file(modelPath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open block model file: " << modelPath << std::endl;
+        return;
+    }
+
+    std::vector<glm::vec3> OBJvertices;
+    std::vector<glm::vec3> OBJnormals;
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.substr(0, 2) == "v ") {
+            std::istringstream s(line.substr(2));
+            glm::vec3 vertex;
+            s >> vertex.x >> vertex.y >> vertex.z;
             OBJvertices.push_back(vertex);
         } else if (line.substr(0, 3) == "vn ") {
             std::istringstream s(line.substr(3));

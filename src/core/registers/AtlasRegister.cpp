@@ -161,6 +161,10 @@ void Atlas::linkBlocksToAtlas(BlockRegister* blockRegister) {
                 covered_cross_linking(block, texture, textureKey, s, t);
             }
 
+            if (block.model == "cross") {
+                cross_linking(block, texture, textureKey, s, t);
+            }
+
             if (block.model == "air") {
                 block.vertices.clear();
             }
@@ -338,6 +342,32 @@ void Atlas::covered_cross_linking(Block& block, std::string texture, std::string
             }
             if (block.vertices.size() < i) {
                 std::cerr << "Model covered_cross index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
+                continue;
+            }
+            block.vertices[i].texCoords = texCoords;
+        }
+    }
+}
+
+void Atlas::cross_linking(Block& block, std::string texture, std::string textureKey, float s, float t) {
+    glm::vec2 texCoords;
+
+    if (textureKey == "all") {
+        for (int i = 0; i < 16; i++) {
+            if (i % 4 == 1) {
+                texCoords = glm::vec2(s, t);
+            }
+            if (i % 4 == 0) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t);
+            }
+            if (i % 4 == 3) {
+                texCoords = glm::vec2(s + (float)largestTexture / (float)width, t + (float)largestTexture / (float)width);
+            }
+            if (i % 4 == 2) {
+                texCoords = glm::vec2(s, t + (float)largestTexture / (float)width);
+            }
+            if (block.vertices.size() < i) {
+                std::cerr << "Model cross index [" << i << "] outside of range in texture: " << texture << " for face: " << textureKey << std::endl;
                 continue;
             }
             block.vertices[i].texCoords = texCoords;

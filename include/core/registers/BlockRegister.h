@@ -51,6 +51,8 @@ private:
     void linkModelToBlock(Block& block);
     void link_block_full(Block& block);
     void link_covered_cross(Block& block);
+    void link_cross(Block& block);
+    void link_ore_block(Block& block);
 
     static BlockRegister* s_instance;
 };

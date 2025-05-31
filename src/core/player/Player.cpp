@@ -418,8 +418,6 @@ static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 
     player.selectedBlockID += (yoffset > 0) ? 1 : -1;
 
-    if (player.selectedBlockID == 11) player.selectedBlockID += (yoffset > 0) ? 1 : -1;
-
     if (player.selectedBlockID < 1) player.selectedBlockID = player.blockCount;
     else if (player.selectedBlockID > player.blockCount) player.selectedBlockID = 1;
 

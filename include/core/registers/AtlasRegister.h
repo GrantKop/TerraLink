@@ -56,6 +56,7 @@ private:
     // block model linking
     void block_full_linking(Block& block, std::string texture, std::string textureKey, float s, float t);
     void covered_cross_linking(Block& block, std::string texture, std::string textureKey, float s, float t);
+    void cross_linking(Block& block, std::string texture, std::string textureKey, float s, float t);
 };
 
 #endif

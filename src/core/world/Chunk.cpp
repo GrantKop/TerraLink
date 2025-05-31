@@ -1,5 +1,7 @@
 #include "core/world/Chunk.h"
 
+#include <random>
+
 Chunk::Chunk() {
     mesh.isEmpty = true;
 }
@@ -153,6 +155,16 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                     continue;
                 }
 
+                if (block.model == "cross") {
+                    addCrossMesh(
+                        block, x, y, z,
+                        vertices, indices,
+                        indexOffset,
+                        chunkOffset
+                    );
+                    continue;
+                }
+
                 for (int face = 0; face < 6; ++face) {
                     glm::ivec3 offset = FACE_OFFSETS[face];
                     int nx = x + offset.x;
@@ -214,6 +226,46 @@ void Chunk::addCoveredCrossMesh(const Block& block, int x, int y, int z,
     for (const auto& vtx : block.vertices) {
         Vertex v = vtx;
         v.position += chunkOffset + glm::vec3(x, y, z);
+        vertices.push_back(v);
+    }
+
+    for (GLuint i = 0; i < modelVertexCount; i += 4) {
+        indices.insert(indices.end(), {
+            indexOffset + i, indexOffset + i + 2, indexOffset + i + 1,
+            indexOffset + i, indexOffset + i + 3, indexOffset + i + 2
+        });
+    }
+
+    indexOffset += modelVertexCount;
+}
+
+void Chunk::addCrossMesh(const Block& block, int x, int y, int z,
+                         std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                         GLuint& indexOffset, glm::vec3 chunkOffset) const {
+    int modelVertexCount = static_cast<int>(block.vertices.size());
+    if (modelVertexCount % 4 != 0) {
+        std::cerr << "Block model mesh is not quad-based: " << modelVertexCount << " verts" << std::endl;
+        return;
+    }
+
+    // Compute world coordinates
+    int worldX = x + position.x * CHUNK_SIZE;
+    int worldY = y + position.y * CHUNK_SIZE;
+    int worldZ = z + position.z * CHUNK_SIZE;
+
+    // Consistent seed for this block position
+    size_t seed = std::hash<int>()(worldX) ^ (std::hash<int>()(worldY) << 1) ^ (std::hash<int>()(worldZ) << 2);
+    std::mt19937 rng(static_cast<unsigned int>(seed));
+    std::uniform_real_distribution<float> offsetDist(-0.25f, 0.25f);
+
+    float offsetX = offsetDist(rng);
+    float offsetZ = offsetDist(rng);
+
+    glm::vec3 posOffset = glm::vec3(x + offsetX, y, z + offsetZ);
+
+    for (const auto& vtx : block.vertices) {
+        Vertex v = vtx;
+        v.position += chunkOffset + posOffset;
         vertices.push_back(v);
     }
 
