@@ -325,7 +325,7 @@ void Player::handleInput(float deltaTime) {
             
                 glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
             } else {
-                glfwSetWindowMonitor(window, nullptr, 100, 100, 800, 600, 0);
+                glfwSetWindowMonitor(window, nullptr, 100, 100, 800, 800, 0);
             }
         
             f11WasPressed = true;
