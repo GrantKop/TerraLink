@@ -1,5 +1,7 @@
 #include "core/world/Chunk.h"
 
+#include <random>
+
 Chunk::Chunk() {
     mesh.isEmpty = true;
 }
@@ -9,6 +11,7 @@ Chunk::~Chunk() {}
 void Chunk::generateTerrain() {
     int worldMinY = position.y * CHUNK_SIZE;
     int worldMaxY = worldMinY + CHUNK_SIZE;
+    
     // bool hasTerrain = false;
 
     // for (int x = 0; x < CHUNK_SIZE && !hasTerrain; ++x) {
@@ -21,6 +24,9 @@ void Chunk::generateTerrain() {
     // }
 
     // if (!hasTerrain) return;
+
+    std::mt19937 rng(position.x * 73856093 ^ position.y * 19349663 ^ position.z * 83492791);
+    std::uniform_real_distribution<float> scatterChance(0.0f, 1.0f);
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int z = 0; z < CHUNK_SIZE; ++z) {
@@ -74,8 +80,15 @@ void Chunk::generateTerrain() {
                         setBlockID(x, y, z, 1); // Stone
                     else if (worldY < groundHeight)
                         setBlockID(x, y, z, 3); // Dirt
-                    else
+                    else {
                         setBlockID(x, y, z, 2); // Grass
+                        int aboveY = y + 1;
+                        if (aboveY < CHUNK_SIZE && getBlock(x, aboveY, z).isAir) {
+                            if (scatterChance(rng) < 0.08f) {
+                                setBlockID(x, aboveY, z, 11); // Grass plant
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -153,6 +166,16 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                     continue;
                 }
 
+                if (block.model == "cross") {
+                    addCrossMesh(
+                        block, x, y, z,
+                        vertices, indices,
+                        indexOffset,
+                        chunkOffset
+                    );
+                    continue;
+                }
+
                 for (int face = 0; face < 6; ++face) {
                     glm::ivec3 offset = FACE_OFFSETS[face];
                     int nx = x + offset.x;
@@ -214,6 +237,46 @@ void Chunk::addCoveredCrossMesh(const Block& block, int x, int y, int z,
     for (const auto& vtx : block.vertices) {
         Vertex v = vtx;
         v.position += chunkOffset + glm::vec3(x, y, z);
+        vertices.push_back(v);
+    }
+
+    for (GLuint i = 0; i < modelVertexCount; i += 4) {
+        indices.insert(indices.end(), {
+            indexOffset + i, indexOffset + i + 2, indexOffset + i + 1,
+            indexOffset + i, indexOffset + i + 3, indexOffset + i + 2
+        });
+    }
+
+    indexOffset += modelVertexCount;
+}
+
+void Chunk::addCrossMesh(const Block& block, int x, int y, int z,
+                         std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                         GLuint& indexOffset, glm::vec3 chunkOffset) const {
+    int modelVertexCount = static_cast<int>(block.vertices.size());
+    if (modelVertexCount % 4 != 0) {
+        std::cerr << "Block model mesh is not quad-based: " << modelVertexCount << " verts" << std::endl;
+        return;
+    }
+
+    // Compute world coordinates
+    int worldX = x + position.x * CHUNK_SIZE;
+    int worldY = y + position.y * CHUNK_SIZE;
+    int worldZ = z + position.z * CHUNK_SIZE;
+
+    // Consistent seed for this block position
+    size_t seed = std::hash<int>()(worldX) ^ (std::hash<int>()(worldY) << 1) ^ (std::hash<int>()(worldZ) << 2);
+    std::mt19937 rng(static_cast<unsigned int>(seed));
+    std::uniform_real_distribution<float> offsetDist(-0.25f, 0.25f);
+
+    float offsetX = offsetDist(rng);
+    float offsetZ = offsetDist(rng);
+
+    glm::vec3 posOffset = glm::vec3(x + offsetX, y, z + offsetZ);
+
+    for (const auto& vtx : block.vertices) {
+        Vertex v = vtx;
+        v.position += chunkOffset + posOffset;
         vertices.push_back(v);
     }
 

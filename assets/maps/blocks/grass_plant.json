@@ -1,5 +1,5 @@
 {
-    "model": "plant",
+    "model": "cross",
     "block_type": "leaves",
     "solid": false,
     "transparent": true,

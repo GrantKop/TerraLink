@@ -106,6 +106,10 @@ public:
                              std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
                              GLuint& indexOffset, glm::vec3 chunkOffset) const;
 
+    void addCrossMesh(const Block& block, int x, int y, int z,
+                             std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+                             GLuint& indexOffset, glm::vec3 chunkOffset) const;
+
     SavableChunk makeSavableCopy() const;
 
 private:
