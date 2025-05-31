@@ -12,7 +12,7 @@
 bool DEV_MODE = true;
 float gameVersionMajor = 0.f;
 float gameVersionMinor = 5.f;
-float gameVersionPatch = 6.f;
+float gameVersionPatch = 8.f;
 
 bool waitForServerConnection(UDPSocket& socket, const Address& serverAddr, float timeoutSeconds = 5.0f) {
     Message connect;
