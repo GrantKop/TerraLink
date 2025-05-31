@@ -84,7 +84,7 @@ bool NetworkManager::connectTCP() {
     serverAddr.sin_addr.s_addr = inet_addr(serverAddress.ip.c_str());
 
     if (::connect(tcpSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        std::cerr << "[Client] Failed to connect to server over TCP\n";
+        std::cerr << "[Client] [TCP] Failed to connect to server via TCP\n";
 #ifdef _WIN32
         closesocket(tcpSocket);
 #else

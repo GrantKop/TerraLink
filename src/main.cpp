@@ -96,7 +96,6 @@ int main() {
             NetworkManager::instance().setUDPSocket();
 
             if (!NetworkManager::instance().connectTCP()) {
-                std::cerr << "[Client] [TCP] Failed to connect to server via TCP\n";
                 shutdownSockets();
                 return -1;
             }
