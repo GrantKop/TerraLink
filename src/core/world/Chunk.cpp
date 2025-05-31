@@ -11,6 +11,7 @@ Chunk::~Chunk() {}
 void Chunk::generateTerrain() {
     int worldMinY = position.y * CHUNK_SIZE;
     int worldMaxY = worldMinY + CHUNK_SIZE;
+    
     // bool hasTerrain = false;
 
     // for (int x = 0; x < CHUNK_SIZE && !hasTerrain; ++x) {
@@ -23,6 +24,9 @@ void Chunk::generateTerrain() {
     // }
 
     // if (!hasTerrain) return;
+
+    std::mt19937 rng(position.x * 73856093 ^ position.y * 19349663 ^ position.z * 83492791);
+    std::uniform_real_distribution<float> scatterChance(0.0f, 1.0f);
 
     for (int x = 0; x < CHUNK_SIZE; ++x) {
         for (int z = 0; z < CHUNK_SIZE; ++z) {
@@ -76,8 +80,15 @@ void Chunk::generateTerrain() {
                         setBlockID(x, y, z, 1); // Stone
                     else if (worldY < groundHeight)
                         setBlockID(x, y, z, 3); // Dirt
-                    else
+                    else {
                         setBlockID(x, y, z, 2); // Grass
+                        int aboveY = y + 1;
+                        if (aboveY < CHUNK_SIZE && getBlock(x, aboveY, z).isAir) {
+                            if (scatterChance(rng) < 0.08f) {
+                                setBlockID(x, aboveY, z, 11); // Grass plant
+                            }
+                        }
+                    }
                 }
             }
         }
