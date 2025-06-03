@@ -133,7 +133,7 @@ private:
     uint32_t seed = 1;
 
     int minY = -5;
-    int maxY = 5;
+    int maxY = 15;
 
     std::string saveDirectory;
 

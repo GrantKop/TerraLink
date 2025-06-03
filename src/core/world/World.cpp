@@ -82,8 +82,6 @@ void World::shutdown() {
 
 // Initializes the world by starting the chunk generation and meshing threads
 void World::init() {
-    BiomeNoise::initializeNoiseGenerator();
-
     if (running) return;
     running = true;
 
@@ -202,7 +200,8 @@ void World::managerThread() {
 
 // Thread function for generating chunks around the player
 void World::chunkWorkerThread() {
-    constexpr int MIN_GENERATE_Y = 48;
+    BiomeNoise::initializeNoiseGenerator();
+    constexpr int MIN_GENERATE_Y = 32;
     while (running) {
         ChunkPosition pos;
         if (!chunkCreationQueue.waitPop(pos)) return;
@@ -211,7 +210,7 @@ void World::chunkWorkerThread() {
 
         std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
 
-        if (NetworkManager::instance().isClient() && NetworkManager::instance().isOnlineMode()) {
+        if (NetworkManager::instance().isOnlineMode() && NetworkManager::instance().isClient()) {
             if (requestChunkOverUDP(pos, chunk)) {
                 meshUploadQueue.push(chunk);
             } else {
@@ -300,7 +299,7 @@ void World::generateMesh(const std::shared_ptr<Chunk>& chunk) {
         chunk->mesh.stagingVertices.clear();
     }
 
-    if ((!chunk->mesh.isEmpty || chunk->mesh.hasNewMesh) && NetworkManager::instance().isOnlineMode()) sendChunkOverUDP(chunk->makeSavableCopy());
+    if (NetworkManager::instance().isOnlineMode() && (!chunk->mesh.isEmpty || chunk->mesh.hasNewMesh)) sendChunkOverUDP(chunk->makeSavableCopy());
 }
 
 // Sets a block at the specified world position
