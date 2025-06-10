@@ -11,19 +11,32 @@ Chunk::~Chunk() {}
 void Chunk::generateTerrain() {
     int worldMinY = position.y * CHUNK_SIZE;
     int worldMaxY = worldMinY + CHUNK_SIZE;
+
+    if (BiomeNoise::isChunkLikelyEmpty(position)) {
+        mesh.isEmpty = true;
+        return;
+    }
     
-    // bool hasTerrain = false;
+    bool hasSurface = false;
 
-    // for (int x = 0; x < CHUNK_SIZE && !hasTerrain; ++x) {
-    //     for (int z = 0; z < CHUNK_SIZE && !hasTerrain; ++z) {
-    //         int wx = position.x * CHUNK_SIZE + x;
-    //         int wz = position.z * CHUNK_SIZE + z;
-    //         int height = static_cast<int>(BiomeNoise::generatePlains(wx, wz));
-    //         if (height >= worldMinY && height < worldMaxY) hasTerrain = true;
-    //     }
-    // }
+    for (int x = 0; x < CHUNK_SIZE && !hasSurface; ++x) {
+        for (int z = 0; z < CHUNK_SIZE && !hasSurface; ++z) {
+            int wx = position.x * CHUNK_SIZE + x;
+            int wz = position.z * CHUNK_SIZE + z;
 
-    // if (!hasTerrain) return;
+            float height = BiomeNoise::generateBlendedHeight(wx, wz);
+            int groundHeight = static_cast<int>(height);
+
+            if (groundHeight >= worldMinY - 1 && groundHeight < worldMaxY + 1) {
+                hasSurface = true;
+            }
+        }
+    }
+
+    if (!hasSurface) {
+        mesh.isEmpty = true;
+        return;
+    }
 
     std::mt19937 rng(position.x * 73856093 ^ position.y * 19349663 ^ position.z * 83492791);
     std::uniform_real_distribution<float> scatterChance(0.0f, 1.0f);
@@ -33,59 +46,110 @@ void Chunk::generateTerrain() {
             int wx = position.x * CHUNK_SIZE + x;
             int wz = position.z * CHUNK_SIZE + z;
 
-            int biome = BiomeNoise::getBiomeID(wx, wz);
-            float riverMask = BiomeNoise::getRiverMask(wx, wz);
-
-            float height = 0.0f;
-
-            switch (biome) {
-                case _MOUNTAINS:
-                    height = BiomeNoise::generateMountains(wx, wz);
-                    break;
-                case _HILLS:
-                    height = BiomeNoise::generateHills(wx, wz);
-                    break;
-                case _FOREST:
-                case _SAVANNA:
-                    height = BiomeNoise::generateHills(wx, wz);
-                    break;
-                case _DESERT:
-                    height = BiomeNoise::generateHills(wx, wz) * 0.6f + 2.0f * std::abs(std::sin(wx * 0.01f + wz * 0.01f));
-                    break;
-                case _OCEAN:
-                    height = 25.0f;
-                    break;
-                case _RIVER:
-                    height = 28.0f - riverMask * 4.0f;
-                    break;
-                default:
-                    height = BiomeNoise::generatePlains(wx, wz);
-            }
-
+            float height = BiomeNoise::generateBlendedHeight(wx, wz);
             int groundHeight = static_cast<int>(height);
+
+            auto blends = BiomeNoise::getBiomeBlend(wx, wz);
+            int dominantBiome = blends[0].first;
 
             for (int y = 0; y < CHUNK_SIZE; ++y) {
                 int worldY = position.y * CHUNK_SIZE + y;
 
                 if (worldY > groundHeight) continue;
 
-                if (biome == _DESERT) {
+                float roll = scatterChance(rng);
+
+                if (dominantBiome == _DESERT) {
+                    setBlockID(x, y, z, worldY < groundHeight - 3 ? 1 : 7);
+                    int aboveY = y + 1;
+                    if (aboveY < CHUNK_SIZE && getBlock(x, aboveY, z).isAir) {
+                        if (roll < 0.0085f) {
+                            setBlockID(x, aboveY, z, 13);
+                        } else if (roll > 0.999f) {
+                            setBlockID(x, aboveY, z, 12);
+                            if (aboveY + 1 < CHUNK_SIZE && getBlock(x, aboveY + 1, z).isAir) setBlockID(x, aboveY + 1, z, 12);
+                        }
+                    }
+                } else if (dominantBiome == _OCEAN || dominantBiome == _RIVER) {
                     setBlockID(x, y, z, worldY < groundHeight - 2 ? 1 : 7);
-                } else if (biome == _OCEAN || biome == _RIVER) {
-                    setBlockID(x, y, z, worldY < groundHeight - 2 ? 1 : 7);
-                } else if (biome == _MOUNTAINS && worldY >= groundHeight - 1 && worldY > 90) {
-                    setBlockID(x, y, z, 5); // 5 = snow
+                } else if (dominantBiome == _MOUNTAINS) {
+                    if (worldY >= groundHeight - 4 && worldY > 95) {
+                        if (worldY > 135)
+                            setBlockID(x, y, z, 8);
+                        else {
+                            setBlockID(x, y, z, 1);
+                        }
+                    } else {
+                        if (worldY < groundHeight - 4)
+                            setBlockID(x, y, z, 1);
+                        else if (worldY < groundHeight)
+                            setBlockID(x, y, z, 3);
+                        else {
+                            setBlockID(x, y, z, 2);
+                            int aboveY = y + 1;
+                            if (aboveY < CHUNK_SIZE && getBlock(x, aboveY, z).isAir) {
+                                if (roll < 0.08f) {
+                                    setBlockID(x, aboveY, z, 11);
+                                }
+                            }
+                        }
+                    }
                 } else {
                     if (worldY < groundHeight - 4)
-                        setBlockID(x, y, z, 1); // Stone
+                        setBlockID(x, y, z, 1);
                     else if (worldY < groundHeight)
-                        setBlockID(x, y, z, 3); // Dirt
+                        setBlockID(x, y, z, 3);
                     else {
-                        setBlockID(x, y, z, 2); // Grass
+                        setBlockID(x, y, z, 2);
+
                         int aboveY = y + 1;
                         if (aboveY < CHUNK_SIZE && getBlock(x, aboveY, z).isAir) {
-                            if (scatterChance(rng) < 0.08f) {
-                                setBlockID(x, aboveY, z, 11); // Grass plant
+                        
+                            if (roll < 0.08f) {
+                                setBlockID(x, aboveY, z, 11);
+                            }
+                        
+                            bool isForest = dominantBiome == _FOREST;
+                            bool isPlains = dominantBiome == _PLAINS;
+                            bool treeChance = (isForest && roll < 0.065f) || (isPlains && roll < 0.022f);
+                        
+                            if (treeChance) {
+                                bool canPlace = true;
+                                for (int dy = 0; dy < 3; ++dy) {
+                                    int trunkY = y + 1 + dy;
+                                    if (trunkY >= CHUNK_SIZE) continue;
+                                    if (!getBlock(x, trunkY, z).isAir) {
+                                        canPlace = false;
+                                        break;
+                                    }
+                                }
+                            
+                                if (canPlace) {
+                                    for (int dy = 0; dy < 3; ++dy) {
+                                        int trunkY = y + 1 + dy;
+                                        if (trunkY >= CHUNK_SIZE) continue;
+                                        setBlockID(x, trunkY, z, 4);
+                                    }
+                                
+                                    int leafBaseY = y + 3;
+                                    for (int dx = -1; dx <= 1; ++dx) {
+                                        for (int dy = 0; dy <= 2; ++dy) {
+                                            for (int dz = -1; dz <= 1; ++dz) {
+                                                int lx = x + dx;
+                                                int ly = leafBaseY + dy;
+                                                int lz = z + dz;
+                                                if (lx < 0 || lx >= CHUNK_SIZE ||
+                                                    ly < 0 || ly >= CHUNK_SIZE ||
+                                                    lz < 0 || lz >= CHUNK_SIZE) {
+                                                    continue;
+                                                }
+                                                if (getBlock(lx, ly, lz).isAir) {
+                                                    setBlockID(lx, ly, lz, 6);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -93,7 +157,6 @@ void Chunk::generateTerrain() {
             }
         }
     }
-
     mesh.isEmpty = false;
 }
 
@@ -192,7 +255,7 @@ void Chunk::generateMesh(std::vector<Vertex>& vertices, std::vector<GLuint>& ind
                     }
 
                     if (neighborID < 0 || neighborID >= (int)isTransparentCache.size()) continue;
-                    if (!isTransparentCache[neighborID]) continue;
+                    if (!isTransparentCache[neighborID] || neighborID == blockID) continue;
 
                     addBlockFaceMesh(
                         block, x, y, z, face,

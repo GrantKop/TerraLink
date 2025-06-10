@@ -5,10 +5,10 @@
 #include "core/world/Biome.h"
 
 namespace BiomeRegistry {
+    constexpr int NUM_BIOMES = 5;
 
-    constexpr int NUM_BIOMES = 12;
-
-
+    const Biome& getBiome(int biomeID);
+    const std::array<Biome, NUM_BIOMES>& getAllBiomes();
 }
 
 #endif

@@ -9,7 +9,7 @@ sensitivity = 110.0
 # Physics break a bit at <= 40 FPS
 # Min Max Render: 1 - 64
 # Recommended render distance: 4 - 32
-renderDistance = 16
+renderDistance = 20
 distanceFog = true
 
 # ===== Audio Settings =====
@@ -18,5 +18,6 @@ musicVolume = 50
 soundVolume = 50
 
 # ===== World Settings =====
+# Seed must be between 1-9 digits big
 saveName = default_world
-seed = 1234142432
+seed = 453235343

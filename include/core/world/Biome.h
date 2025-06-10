@@ -29,13 +29,16 @@ struct BiomeTerrain {
     float frequency;
     float amplitude;
 
+    float noiseOffsetX;
+    float noiseOffsetZ;
+
     constexpr BiomeTerrain(
         float baseHeight, int octaves, float persistence, float lacunarity,
         float frequency, float amplitude, float noiseOffsetX, float noiseOffsetZ
-    ) : baseHeight(baseHeight), octaves(octaves), persistence(persistence), lacunarity(lacunarity), 
-        frequency(frequency), amplitude(amplitude) {}
+    ) : baseHeight(baseHeight), octaves(octaves), persistence(persistence),
+        lacunarity(lacunarity), frequency(frequency), amplitude(amplitude),
+        noiseOffsetX(noiseOffsetX), noiseOffsetZ(noiseOffsetZ) {}
 };
-
 struct Biome {
     BiomeID id;
     const char* name;
