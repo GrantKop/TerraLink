@@ -12,6 +12,7 @@
 - 💾 Persistent chunk saving and loading using Zstandard compression
 - 🎮 OpenGL-based rendering using a handful of shader programs
 - 🌤️ Multi-Biome blending and domain-warped noise to prevent jumps in terrain
+- 🔊 Ambient music and sound effects using OpenAL
 
 ---
 
