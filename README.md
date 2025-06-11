@@ -30,6 +30,7 @@ If you are interested in the technical side of the systems I built, here is the 
 
 ## Prerequisites
 
+- [Make](https://gnuwin32.sourceforge.net/packages/make.htm)
 - [CMake](https://cmake.org/)
 - [Git](https://git-scm.com/)
 - [CPack](https://cmake.org/cmake/help/latest/module/CPack.html)
