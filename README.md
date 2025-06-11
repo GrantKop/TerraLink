@@ -15,7 +15,7 @@ If you are interested in the technical side of the systems I built, here is the 
 - 🌐 Multiplayer support with UDP chunk streaming and TCP client tracking
 - 💾 Persistent chunk saving and loading using Zstandard compression
 - 🎮 OpenGL-based rendering using a handful of shader programs
-- 🌤️ Multi-Biome blending and domain-warped noise to prevent jumps in terrain
+- 🏔️ Multi-Biome blending and domain-warped noise to prevent jumps in terrain
 - 🔊 Ambient music and sound effects using OpenAL
 
 ---
