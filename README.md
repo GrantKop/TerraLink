@@ -1,6 +1,6 @@
 # TerraLink
 
-**TerraLink** is a procedural terrain engine written in C++ with OpenGL. It features real-time chunk generation, multithreaded streaming, and multiplayer networking using UDP/TCP. Designed to be scalable and performant, TerraLink is a project I completed for 5 credit hours that explores the intersection of procedural graphics, multithreading, and networking.
+**TerraLink** is a procedural terrain engine written in C++ with OpenGL. It features real-time chunk generation, multithreaded streaming, and multiplayer networking using UDP/TCP. Designed to be scalable and performant, TerraLink is a project I completed for 5 credit hours that explores the combination of procedural graphics, multithreading, and networking.
 
 ---
 
