@@ -4,7 +4,7 @@
 
 ---
 
-## 🚀 Features
+## Features
 
 - 🌍 Procedural terrain generation using Perlin noise
 - 🧵 Multithreaded background chunk creation, meshing, and uploading with no mutex locks
@@ -23,7 +23,7 @@
 
 ---
 
-## 🛠️ Prerequisites
+## Prerequisites
 
 - [CMake](https://cmake.org/)
 - [Git](https://git-scm.com/)
@@ -33,7 +33,7 @@ All other dependencies (GLFW, GLAD, GLM, stb, etc.) are installed automatically 
 
 ---
 
-## 🔧 Building the Project
+## Building the Project
 
 Clone the repository and use the provided `Makefile`:
 
