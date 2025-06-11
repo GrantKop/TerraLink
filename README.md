@@ -10,8 +10,8 @@
 - 🧵 Multithreaded background chunk creation, meshing, and uploading with no mutex locks
 - 🌐 Multiplayer support with UDP chunk streaming and TCP client tracking
 - 💾 Persistent chunk saving and loading using Zstandard compression
-- 🎮 OpenGL-based rendering with dynamic LOD
-- 🌤️ Biome blending and domain-warped noise to prevent jumps in terrain
+- 🎮 OpenGL-based rendering using a handful of shader programs
+- 🌤️ Multi-Biome blending and domain-warped noise to prevent jumps in terrain
 
 ---
 
