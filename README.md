@@ -4,6 +4,8 @@
 
 I have spent around 12 weeks and 350+ hours on this project in total.
 
+If you are interested in the technical side of the systems I built, here is the [wiki](https://github.com/GrantKop/TerraLink/wiki)
+
 ---
 
 ## Features
