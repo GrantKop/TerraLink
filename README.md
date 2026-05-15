@@ -25,15 +25,15 @@ If you are interested in the technical side of the systems I built, here is the 
 ## Selected-block name HUD
 
 Whenever the player changes their currently selected block, the block's
-human-readable name (e.g. "Birch Log", "Cobble Stone") is drawn near the
-bottom of the screen and fades out over 3 seconds — 2 seconds solid plus a
-1-second linear fade. Picking a different block immediately resets the timer
-and swaps the label text.
+human-readable name (e.g. "Birch Log", "Cobble Stone") is drawn directly
+underneath the held-block preview in the bottom-right corner and fades out
+over 3 seconds — 2 seconds solid plus a 1-second linear fade. Picking a
+different block immediately resets the timer and swaps the label text.
 
-A small 3D preview of the same block is also drawn in the bottom-right
-corner, similar to Minecraft's held-item slot. It always reflects whatever
-block would be placed by a right-click, so it stays visible (no fade) and
-updates instantly when the selection changes.
+The 3D held-block preview itself sits just above the label, similar to
+Minecraft's held-item slot. It always reflects whatever block would be
+placed by a right-click, so it stays visible (no fade) and updates instantly
+when the selection changes.
 
 **How it's wired together**
 
@@ -52,8 +52,9 @@ updates instantly when the selection changes.
   dynamic VBO upload + one `glDrawArrays`. The minimal text shader lives at
   `shaders/text.vert` / `shaders/text.frag`.
 - `Game::renderUI()` ticks the HUD with the current `selectedBlockID` and,
-  while it is visible, draws the label centered horizontally at roughly 85%
-  down the screen. The crosshair draw above is untouched.
+  while it is visible, draws the label centered horizontally underneath the
+  held-block preview in the bottom-right. The label X is clamped so very
+  long block names stay on screen. The crosshair draw above is untouched.
 - `include/core/ui/HeldBlockHUD.h` owns the held-block preview. It rebuilds a
   small VAO/EBO from `Block::vertices` only when the selected ID changes
   (one upload per scroll/middle-click), then draws into a square viewport
@@ -64,18 +65,21 @@ updates instantly when the selection changes.
 **Manual test**
 
 1. `make run` (DEV_MODE must be `TRUE` in `src/main.cpp`).
-2. After spawn, the label for the default selected block fades in/out once,
-   and the held-block preview is visible in the bottom-right corner.
-3. Scroll the mouse wheel — the label for each new block appears, stays solid
-   for ~2 seconds, then fades out over the next ~1 second. The bottom-right
-   preview swaps to the new block on the same frame and stays visible.
-4. Aim at any placed block and middle-click — the picked block's name
-   replaces the label, the timer resets, and the held-block preview updates.
+2. After spawn, the held-block preview is visible in the bottom-right corner,
+   and the label for the default selected block fades in/out underneath it.
+3. Scroll the mouse wheel — the label appears underneath the icon for each
+   new block, stays solid for ~2 seconds, then fades out over the next ~1
+   second. The icon above it swaps to the new block on the same frame and
+   stays visible.
+4. Aim at any placed block and middle-click — the picked block's name appears
+   under the icon, the timer resets, and the held-block preview updates.
 5. Wait 3 seconds without changing selection; the label fully disappears,
    while the held-block preview remains.
 6. Confirm the held-block preview shows three faces (top + right + front)
    shaded by the world's directional light. Non-cube blocks like grass
    plants render as their actual crossed-plane geometry.
+7. Verify long block names like "Mushroom Block Stem" stay fully on screen
+   (the label is shifted leftward instead of running off the right edge).
 
 ---
 

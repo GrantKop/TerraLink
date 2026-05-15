@@ -302,6 +302,16 @@ void Game::renderUI() {
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     crosshairVAO->unbind();
 
+    // --- Bottom-right held-block HUD geometry -------------------------
+    // Hoisted above both the text label and the cube draw so the label can
+    // anchor itself under the icon.  All sizes scale with frame height so
+    // the HUD looks the same at any window size.
+    int hudSize    = std::max(80, winH / 6);     // ~16.7% of frame height
+    int rightInset = std::max(8,  winH / 50);    // small gap from the right edge
+    int bottomLift = std::max(20, winH / 10);    // raise the icon off the screen bottom
+    int hudX       = winW - hudSize - rightInset;
+    int hudY       = bottomLift;                 // GL viewport origin is bottom-left
+
     // --- Selected-block name HUD --------------------------------------
     // The lookup is intentionally kept outside both the renderer and the
     // HUD state: blockNameById() wraps the BlockRegister so neither
@@ -314,8 +324,24 @@ void Game::renderUI() {
             const std::string& label = blockNameHUD->name();
             float cellPx     = winH * 0.025f;                  // glyph cell ~2.5% of frame height
             float textWidth  = textRenderer->measureWidth(label, cellPx);
-            float xPx        = winW * 0.5f - textWidth * 0.5f; // bottom-centered
-            float yPx        = winH * 0.85f - cellPx * 0.5f;   // ~85% down
+
+            // Center the label horizontally on the icon, then drop it just
+            // below the icon's bottom edge.  In the text renderer's ortho
+            // (down-Y pixel space), the icon's bottom edge is at
+            // (winH - hudY).  A small gap separates them.
+            float iconCenterX = static_cast<float>(hudX) + hudSize * 0.5f;
+            float iconBottomY = static_cast<float>(winH) - hudY;
+            float gap         = cellPx * 0.35f;
+            float xPx         = iconCenterX - textWidth * 0.5f;
+            float yPx         = iconBottomY + gap;
+
+            // Long block names (e.g. "Mushroom Block Stem") would otherwise
+            // run off the right edge.  Clamp so the label stays on screen,
+            // shifting it leftward when needed.
+            float xMin = static_cast<float>(rightInset);
+            float xMax = static_cast<float>(winW - rightInset) - textWidth;
+            if (xPx > xMax) xPx = xMax;
+            if (xPx < xMin) xPx = xMin;
 
             textRenderer->setProjection(projection);
             textRenderer->drawString(label, xPx, yPx, cellPx,
@@ -329,15 +355,7 @@ void Game::renderUI() {
     // depth state and viewport, so 2D UI state (blend on, depth off) is
     // restored afterwards by the existing glDisable/glEnable below.
     if (heldBlockHUD && shaderProgram && atlas) {
-        int selectedID = Player::instance().selectedBlockID;
-        heldBlockHUD->update(selectedID);
-
-        int hudSize    = std::max(64, winH / 7);     // ~14% of frame height
-        int rightInset = std::max(8,  winH / 50);    // small gap from the right edge
-        int bottomLift = std::max(16, winH / 12);    // raise the icon off the screen bottom
-        int hudX       = winW - hudSize - rightInset;
-        int hudY       = bottomLift;                 // GL viewport origin is bottom-left
-
+        heldBlockHUD->update(Player::instance().selectedBlockID);
         atlas->bind();                           // ensure tex0 sees the block atlas
         heldBlockHUD->draw(*shaderProgram, hudX, hudY, hudSize);
     }
