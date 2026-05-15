@@ -44,19 +44,21 @@ void HeldBlockHUD::rebuildFor(int blockID) {
         return;
     }
 
-    // Block geometry stored on each Block is a flat list of CCW quads (4
-    // vertices per face).  Same triangulation the chunk mesher uses:
-    // (0,1,2) and (0,2,3) preserves winding so back-face culling keeps the
-    // outward-facing triangles.
+    // Block geometry stored on each Block is a flat list of quads (4 verts
+    // per face).  The OBJ vertex order is the one the chunk mesher already
+    // triangulates with -- see Chunk::addBlockFaceMesh, which emits
+    // (0,2,1)(0,3,2) per quad.  Using a different pattern here would invert
+    // the winding and the cube would render its inner surfaces (everything
+    // outward gets back-face culled).  Match the mesher exactly.
     std::vector<GLuint> indices;
     indices.reserve((verts.size() / 4) * 6);
     for (GLuint base = 0; base < static_cast<GLuint>(verts.size()); base += 4) {
         indices.push_back(base + 0);
+        indices.push_back(base + 2);
         indices.push_back(base + 1);
-        indices.push_back(base + 2);
         indices.push_back(base + 0);
-        indices.push_back(base + 2);
         indices.push_back(base + 3);
+        indices.push_back(base + 2);
     }
 
     glBindVertexArray(VAO);
