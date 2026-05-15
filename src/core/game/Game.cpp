@@ -3,6 +3,7 @@
 #include "audio/AudioManager.h"
 #include "core/player/Player.h"
 #include "core/registers/AtlasRegister.h"
+#include "core/registers/BlockNameLookup.h"
 #include "core/game/GameInit.h"
 #include "graphics/Shader.h"
 #include "network/Network.h"
@@ -171,6 +172,12 @@ void Game::setupShadersAndUniforms() {
         getBasePath() + "/shaders/wireframe.frag"
     );
 
+    // Selected-block HUD: shader + font atlas live in TextRenderer, the
+    // 3-second timer + current name live in BlockNameHUD.  Both are
+    // constructed once here and torn down in shutdown().
+    textRenderer = std::make_unique<TextRenderer>(getBasePath());
+    blockNameHUD = std::make_unique<BlockNameHUD>();
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 }
@@ -253,6 +260,7 @@ void Game::shutdown() {
     shaderProgram->deleteShader();
     uiShaderProgram->deleteShader();
     wireFrameShaderProgram->deleteShader();
+    if (textRenderer) textRenderer->release();
     AudioManager::shutdown();
 
     glfwTerminate();
@@ -287,6 +295,27 @@ void Game::renderUI() {
     crosshairVAO->bind();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     crosshairVAO->unbind();
+
+    // --- Selected-block name HUD --------------------------------------
+    // The lookup is intentionally kept outside both the renderer and the
+    // HUD state: blockNameById() wraps the BlockRegister so neither
+    // BlockNameHUD nor TextRenderer needs to know it exists.
+    if (blockNameHUD && textRenderer) {
+        int selectedID = Player::instance().selectedBlockID;
+        blockNameHUD->update(deltaTime, selectedID, blockNameById(selectedID));
+
+        if (blockNameHUD->visible()) {
+            const std::string& label = blockNameHUD->name();
+            float cellPx     = winH * 0.025f;                  // glyph cell ~2.5% of frame height
+            float textWidth  = textRenderer->measureWidth(label, cellPx);
+            float xPx        = winW * 0.5f - textWidth * 0.5f; // bottom-centered
+            float yPx        = winH * 0.85f - cellPx * 0.5f;   // ~85% down
+
+            textRenderer->setProjection(projection);
+            textRenderer->drawString(label, xPx, yPx, cellPx,
+                                     glm::vec4(1.0f, 1.0f, 1.0f, blockNameHUD->alpha()));
+        }
+    }
 
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);

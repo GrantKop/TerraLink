@@ -17,6 +17,48 @@ If you are interested in the technical side of the systems I built, here is the 
 - 🎮 OpenGL-based rendering using a handful of shader programs
 - 🏔️ Multi-Biome blending and domain-warped noise to prevent jumps in terrain
 - 🔊 Ambient music and sound effects using OpenAL
+- 🏷️ Selected-block name HUD that fades after 3 seconds
+
+---
+
+## Selected-block name HUD
+
+Whenever the player changes their currently selected block, the block's
+human-readable name (e.g. "Birch Log", "Cobble Stone") is drawn near the
+bottom of the screen and fades out over 3 seconds — 2 seconds solid plus a
+1-second linear fade. Picking a different block immediately resets the timer
+and swaps the label text.
+
+**How it's wired together**
+
+- Block selection itself is unchanged: `Player::selectedBlockID` is still
+  driven by the scroll wheel (`scrollCallback`) and middle mouse
+  (`Player::handleInput`).
+- `include/core/registers/BlockNameLookup.h` (`blockNameById`) wraps
+  `BlockRegister::getBlockByIndex(id).name`, keeping the name lookup separate
+  from any rendering code.
+- `include/core/ui/BlockNameHUD.h` owns the timer + last-seen-ID state and
+  produces a 0–1 alpha. It contains no GL calls and is straightforward to
+  unit-test.
+- `include/core/ui/TextRenderer.h` draws the label using an embedded 8×8
+  bitmap font (see `include/core/ui/Font8x8.h`). At construction it builds a
+  single R8 glyph atlas texture, and `drawString` batches each call into one
+  dynamic VBO upload + one `glDrawArrays`. The minimal text shader lives at
+  `shaders/text.vert` / `shaders/text.frag`.
+- `Game::renderUI()` ticks the HUD with the current `selectedBlockID` and,
+  while it is visible, draws the label centered horizontally at roughly 85%
+  down the screen. The crosshair draw above is untouched.
+
+**Manual test**
+
+1. `make run` (DEV_MODE must be `TRUE` in `src/main.cpp`).
+2. After spawn, the label for the default selected block fades in/out once.
+3. Scroll the mouse wheel — the label for each new block appears, stays solid
+   for ~2 seconds, then fades out over the next ~1 second.
+4. Aim at any placed block and middle-click — the picked block's name
+   replaces the label and the timer resets.
+5. Wait 3 seconds without changing selection; the label fully disappears
+   until the next selection change.
 
 ---
 

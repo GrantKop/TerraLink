@@ -10,6 +10,8 @@
 
 #include "core/player/Player.h"
 #include "core/registers/BlockRegister.h"
+#include "core/ui/BlockNameHUD.h"
+#include "core/ui/TextRenderer.h"
 #include "graphics/Shader.h"
 #include "graphics/Texture.h"
 
@@ -95,6 +97,12 @@ private:
     std::unique_ptr<Texture> crosshairTex;
     std::unique_ptr<VertexArrayObject> crosshairVAO;
     std::unique_ptr<VertexArrayObject> wireFrameVAO;
+
+    // Selected-block name HUD: BlockNameHUD owns the timer/fade state,
+    // TextRenderer draws the label.  Kept separate so the lookup, the timer,
+    // and the rendering are independently testable.
+    std::unique_ptr<TextRenderer> textRenderer;
+    std::unique_ptr<BlockNameHUD> blockNameHUD;
     
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
