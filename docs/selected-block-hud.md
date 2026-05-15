@@ -75,6 +75,12 @@ a new one:
   ~45deg/-30deg so three faces are visible. Because it does not use the world
   view matrix, the cube stays anchored to the screen no matter where the player
   looks or moves.
+- `glm::perspective`'s FOV is *vertical*, so the horizontal frustum width
+  depends on the window aspect ratio. Rather than a hardcoded eye-space x/y
+  (which drifts off a narrow/square window), the cube is anchored a fixed
+  inset in from the visible frustum edge at its depth
+  (`halfW = depth * tan(fovY/2) * aspect`). Its on-screen position is therefore
+  identical at any window size or aspect ratio.
 - Depth is cleared (`glClear(GL_DEPTH_BUFFER_BIT)`) right before the draw so
   the cube sits on top of the world without altering any world colors; the
   global depth test + face culling then let the cube self-sort normally. Fog
@@ -126,6 +132,9 @@ with no extra wiring.
    not part of the world) and is never fogged, even far out or underground.
 10. Right-click to place a block and confirm it places the same block shown in
     the corner.
+11. Toggle fullscreen (F11) and resize the window between square and
+    widescreen: the corner block stays fully on screen in the same relative
+    bottom-right spot at every aspect ratio.
 
 ## Notes / limitations
 
@@ -134,9 +143,11 @@ with no extra wiring.
 - Names come straight from the block registry (`registry/block_registry.json`
   / `assets/maps/blocks/*.json`); if a name is missing it falls back to
   `Block <id>`.
-- The held block is static (no walk/swing bob). The corner offset, scale and
-  tilt are constants at the top of `Game::renderHeldBlock()` and are easy to
-  tune. Cross/plant models (e.g. Grass Plant, Dead Bush) are quad-based too, so
+- The held block is static (no walk/swing bob). The corner insets
+  (`insetX`/`insetY`), `depth`, scale and tilt are constants in
+  `Game::renderHeldBlock()` and are easy to tune; the insets are in eye-space
+  units measured in from the visible frustum edge, so tuning them holds across
+  window sizes. Cross/plant models (e.g. Grass Plant, Dead Bush) are quad-based too, so
   they render as their crossed-plane sprites in hand — the same way they look
   in the world.
 - This environment (Linux, no vcpkg/Windows toolchain) cannot compile or run

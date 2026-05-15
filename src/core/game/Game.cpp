@@ -434,11 +434,22 @@ void Game::renderHeldBlock() {
     if (winW <= 0 || winH <= 0) return;
     float aspect = static_cast<float>(winW) / static_cast<float>(winH);
 
-    // Its own little perspective view; the cube sits ~1 unit in front.
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.01f, 10.0f);
+    // Its own little perspective view; the cube sits 'depth' units in front.
+    const float fovY  = glm::radians(45.0f);
+    const float depth = 1.15f;
+    glm::mat4 proj = glm::perspective(fovY, aspect, 0.01f, 10.0f);
+
+    // glm::perspective's FOV is vertical, so the horizontal frustum width
+    // depends on the window aspect ratio. Anchor the cube to the visible
+    // frustum edge at 'depth' (a fixed inset in from the bottom-right corner)
+    // so its on-screen position is identical at any window size / aspect.
+    const float halfH = depth * glm::tan(fovY * 0.5f);
+    const float halfW = halfH * aspect;
+    const float insetX = 0.30f; // eye-space units in from the right edge
+    const float insetY = 0.26f; // eye-space units up from the bottom edge
 
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.62f, -0.40f, -1.15f)); // bottom-right
+    model = glm::translate(model, glm::vec3(halfW - insetX, -halfH + insetY, -depth));
     model = glm::rotate(model, glm::radians(45.0f),  glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(-30.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.36f));
