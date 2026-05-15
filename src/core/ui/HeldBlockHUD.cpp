@@ -114,7 +114,12 @@ void HeldBlockHUD::draw(Shader& blockShader, int xPx, int yPx, int sizePx) {
     // top (+Y), right (+X) and front (+Z) faces are all visible, matching
     // Minecraft's held-item corner perspective.  Aspect = 1.0 because the
     // viewport is square.
-    const glm::vec3 eye(2.2f, 1.7f, 2.2f);
+    //
+    // The eye is dollied slightly farther from the target than a tight
+    // framing would suggest, so the projected cube leaves a margin inside
+    // the square viewport.  Without that margin the bottom of the cube sits
+    // right at the viewport edge and reads as "cut off" on screen.
+    const glm::vec3 eye(2.9f, 2.2f, 2.9f);
     const glm::vec3 target(0.5f, 0.5f, 0.5f);
     const glm::mat4 view = glm::lookAt(eye, target, glm::vec3(0.0f, 1.0f, 0.0f));
     const glm::mat4 proj = glm::perspective(glm::radians(28.0f), 1.0f, 0.1f, 20.0f);

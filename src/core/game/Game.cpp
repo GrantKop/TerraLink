@@ -332,10 +332,11 @@ void Game::renderUI() {
         int selectedID = Player::instance().selectedBlockID;
         heldBlockHUD->update(selectedID);
 
-        int hudSize = std::max(64, winH / 7);    // ~14% of frame height
-        int margin  = std::max(8,  winH / 50);
-        int hudX    = winW - hudSize - margin;   // right edge minus block + margin
-        int hudY    = margin;                    // GL viewport origin is bottom-left
+        int hudSize    = std::max(64, winH / 7);     // ~14% of frame height
+        int rightInset = std::max(8,  winH / 50);    // small gap from the right edge
+        int bottomLift = std::max(16, winH / 12);    // raise the icon off the screen bottom
+        int hudX       = winW - hudSize - rightInset;
+        int hudY       = bottomLift;                 // GL viewport origin is bottom-left
 
         atlas->bind();                           // ensure tex0 sees the block atlas
         heldBlockHUD->draw(*shaderProgram, hudX, hudY, hudSize);
