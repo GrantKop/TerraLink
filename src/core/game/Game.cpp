@@ -178,6 +178,11 @@ void Game::setupShadersAndUniforms() {
     textRenderer = std::make_unique<TextRenderer>(getBasePath());
     blockNameHUD = std::make_unique<BlockNameHUD>();
 
+    // Bottom-right held-block preview.  The actual geometry upload happens
+    // lazily inside update() on the first frame, after BlockRegister has
+    // been populated by loadAssets().
+    heldBlockHUD = std::make_unique<HeldBlockHUD>();
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 }
@@ -261,6 +266,7 @@ void Game::shutdown() {
     uiShaderProgram->deleteShader();
     wireFrameShaderProgram->deleteShader();
     if (textRenderer) textRenderer->release();
+    if (heldBlockHUD) heldBlockHUD->release();
     AudioManager::shutdown();
 
     glfwTerminate();
@@ -315,6 +321,24 @@ void Game::renderUI() {
             textRenderer->drawString(label, xPx, yPx, cellPx,
                                      glm::vec4(1.0f, 1.0f, 1.0f, blockNameHUD->alpha()));
         }
+    }
+
+    // --- 3D held-block preview (bottom-right corner) ------------------
+    // Reuses the world block shader + atlas; HeldBlockHUD only owns its own
+    // VAO and rebuilds it when the selected ID changes.  It manages its own
+    // depth state and viewport, so 2D UI state (blend on, depth off) is
+    // restored afterwards by the existing glDisable/glEnable below.
+    if (heldBlockHUD && shaderProgram && atlas) {
+        int selectedID = Player::instance().selectedBlockID;
+        heldBlockHUD->update(selectedID);
+
+        int hudSize = std::max(64, winH / 7);    // ~14% of frame height
+        int margin  = std::max(8,  winH / 50);
+        int hudX    = winW - hudSize - margin;   // right edge minus block + margin
+        int hudY    = margin;                    // GL viewport origin is bottom-left
+
+        atlas->bind();                           // ensure tex0 sees the block atlas
+        heldBlockHUD->draw(*shaderProgram, hudX, hudY, hudSize);
     }
 
     glDisable(GL_BLEND);

@@ -11,6 +11,7 @@
 #include "core/player/Player.h"
 #include "core/registers/BlockRegister.h"
 #include "core/ui/BlockNameHUD.h"
+#include "core/ui/HeldBlockHUD.h"
 #include "core/ui/TextRenderer.h"
 #include "graphics/Shader.h"
 #include "graphics/Texture.h"
@@ -103,6 +104,11 @@ private:
     // and the rendering are independently testable.
     std::unique_ptr<TextRenderer> textRenderer;
     std::unique_ptr<BlockNameHUD> blockNameHUD;
+
+    // 3D "held block" preview in the bottom-right corner.  Owns its own VAO
+    // and rebuilds geometry from BlockRegister on selection change; reuses
+    // the world's block shader and atlas for the actual draw.
+    std::unique_ptr<HeldBlockHUD> heldBlockHUD;
     
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
