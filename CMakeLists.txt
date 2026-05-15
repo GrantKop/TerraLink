@@ -7,7 +7,11 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Source files
-file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c" "src/*.rc")
+# CONFIGURE_DEPENDS makes the build tool re-check the glob on each build, so
+# newly added .cpp files (e.g. under src/core/ui/) are picked up without
+# having to manually re-run cmake.  Requires CMake >= 3.12 (we require 3.16).
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
+    "src/*.cpp" "src/*.c" "src/*.rc")
 add_executable(TerraLink ${SOURCES})
 
 # OpenMP
