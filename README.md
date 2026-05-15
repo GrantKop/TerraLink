@@ -52,3 +52,10 @@ make run
 
 # If you want to make the installer, inside src/main.cpp, DEV_MODE must be set to FALSE
 make installer
+```
+
+---
+
+## Developer notes
+
+- [Selected-block name HUD](docs/selected-block-hud.md) — in-game label showing the selected block's human-readable name, fading out 3 seconds after selection. Includes architecture overview and manual test steps.

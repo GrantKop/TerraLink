@@ -138,6 +138,9 @@ void Game::loadAssets() {
     wireFrameVAO->addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
     wireFrameVAO->unbind();
 
+    textRenderer = std::make_unique<TextRenderer>();
+    textRenderer->init(getBasePath());
+
     AudioManager::setMusicVolume(musicVolume);
     AudioManager::setSoundVolume(soundVolume);
     AudioManager::init();
@@ -228,6 +231,7 @@ void Game::tick() {
 
 void Game::render() {
     Player::instance().update(deltaTime);
+    updateSelectedBlockHUD(deltaTime);
 
     shaderProgram->use();
 
@@ -253,6 +257,7 @@ void Game::shutdown() {
     shaderProgram->deleteShader();
     uiShaderProgram->deleteShader();
     wireFrameShaderProgram->deleteShader();
+    if (textRenderer) textRenderer->shutdown();
     AudioManager::shutdown();
 
     glfwTerminate();
@@ -288,8 +293,59 @@ void Game::renderUI() {
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     crosshairVAO->unbind();
 
+    // Selected-block name label (drawn while alpha blending is still enabled).
+    renderSelectedBlockHUD(projection, winW, winH);
+
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
+}
+
+// Resolves the selected block's human-readable name (lookup kept here, out of
+// the renderer) and advances the fade timer. Called once per frame.
+void Game::updateSelectedBlockHUD(float deltaTime) {
+    int selected = Player::instance().selectedBlockID;
+
+    if (selected != hudLastSelectedBlockID) {
+        hudLastSelectedBlockID = selected;
+
+        Block block = BlockRegister::instance().getBlockByIndex(selected);
+        hudBlockName = block.name.empty()
+            ? ("Block " + std::to_string(selected))
+            : block.name;
+
+        hudLabelTimer = 0.0f; // restart the show/fade cycle
+    }
+
+    if (hudLabelTimer < HUD_FADE_TIME) {
+        hudLabelTimer += deltaTime;
+    }
+}
+
+// Draws the resolved label, centered horizontally, with a fade-out alpha.
+void Game::renderSelectedBlockHUD(const glm::mat4& projection, int winW, int winH) {
+    if (!textRenderer || !textRenderer->isReady()) return;
+    if (hudBlockName.empty() || hudLabelTimer >= HUD_FADE_TIME) return;
+
+    float alpha;
+    if (hudLabelTimer <= HUD_HOLD_TIME) {
+        alpha = 1.0f;
+    } else {
+        alpha = 1.0f - (hudLabelTimer - HUD_HOLD_TIME) / (HUD_FADE_TIME - HUD_HOLD_TIME);
+    }
+    if (alpha <= 0.0f) return;
+
+    float pixelHeight = winH * 0.035f;
+    float textWidth = textRenderer->measureWidth(hudBlockName, pixelHeight);
+    float x = (winW - textWidth) * 0.5f;
+    float y = winH * 0.78f; // below the crosshair, above the bottom edge
+
+    // Drop shadow first for legibility over the bright sky, then the label.
+    float shadowOffset = pixelHeight * 0.08f;
+    textRenderer->drawText(hudBlockName, x + shadowOffset, y + shadowOffset,
+                           pixelHeight, glm::vec4(0.0f, 0.0f, 0.0f, alpha * 0.6f),
+                           projection);
+    textRenderer->drawText(hudBlockName, x, y, pixelHeight,
+                           glm::vec4(1.0f, 1.0f, 1.0f, alpha), projection);
 }
 
 void Game::renderBlockOutline() {

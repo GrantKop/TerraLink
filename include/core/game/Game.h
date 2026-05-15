@@ -12,6 +12,7 @@
 #include "core/registers/BlockRegister.h"
 #include "graphics/Shader.h"
 #include "graphics/Texture.h"
+#include "graphics/TextRenderer.h"
 
 class World;
 
@@ -38,6 +39,12 @@ public:
 
     void renderUI();
     void renderBlockOutline();
+
+    // Selected-block name HUD (see docs/selected-block-hud.md).
+    // updateSelectedBlockHUD does the block-name *lookup* and runs the fade
+    // timer; renderSelectedBlockHUD only draws the resolved string.
+    void updateSelectedBlockHUD(float deltaTime);
+    void renderSelectedBlockHUD(const glm::mat4& projection, int winW, int winH);
 
     void setWorldSave(const std::string& saveName);
     std::string getWorldSave() const;
@@ -95,7 +102,19 @@ private:
     std::unique_ptr<Texture> crosshairTex;
     std::unique_ptr<VertexArrayObject> crosshairVAO;
     std::unique_ptr<VertexArrayObject> wireFrameVAO;
-    
+
+    std::unique_ptr<TextRenderer> textRenderer;
+
+    // Selected-block HUD state. The label is shown for HUD_HOLD_TIME seconds
+    // at full opacity, then fades to nothing over the next
+    // (HUD_FADE_TIME - HUD_HOLD_TIME) seconds, and stays hidden until the
+    // player selects a different block.
+    static constexpr float HUD_HOLD_TIME = 2.0f;
+    static constexpr float HUD_FADE_TIME = 3.0f;
+    std::string hudBlockName;
+    float hudLabelTimer = HUD_FADE_TIME; // start fully expired (nothing shown)
+    int hudLastSelectedBlockID = -1;
+
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 };
