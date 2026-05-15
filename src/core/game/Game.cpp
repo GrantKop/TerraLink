@@ -438,10 +438,10 @@ void Game::renderHeldBlock() {
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.01f, 10.0f);
 
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.62f, -0.50f, -1.15f)); // bottom-right
+    model = glm::translate(model, glm::vec3(0.62f, -0.40f, -1.15f)); // bottom-right
     model = glm::rotate(model, glm::radians(45.0f),  glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(-30.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.42f));
+    model = glm::scale(model, glm::vec3(0.36f));
     model = glm::translate(model, glm::vec3(-0.5f)); // rotate about cube center
 
     // Draw over the world without touching its colors: only depth is cleared.
