@@ -436,7 +436,7 @@ void Game::renderHeldBlock() {
 
     // Its own little perspective view; the cube sits 'depth' units in front.
     const float fovY  = glm::radians(45.0f);
-    const float depth = 1.15f;
+    const float depth = 1.05f; // distance in front of camera (smaller = forward)
     glm::mat4 proj = glm::perspective(fovY, aspect, 0.01f, 10.0f);
 
     // glm::perspective's FOV is vertical, so the horizontal frustum width
@@ -451,7 +451,7 @@ void Game::renderHeldBlock() {
     // for every block size. Larger values pull it fully on screen; negative
     // values push more of it off.
     const float insetX = 0.02f; // eye-space units in from the right edge
-    const float insetY = -0.02f; // eye-space units up from the bottom edge
+    const float insetY = 0.05f; // eye-space units up from the bottom edge (raise)
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(halfW - insetX, -halfH + insetY, -depth));
