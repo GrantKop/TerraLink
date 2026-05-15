@@ -143,13 +143,19 @@ void TextRenderer::drawString(const std::string& text,
         // Two triangles per glyph quad.  Texture origin is top-left in our
         // ortho projection, which is also how the atlas was uploaded, so UVs
         // are passed straight through.
-        verts.push_back({x0, y0, u0, v0});
-        verts.push_back({x1, y0, u1, v0});
-        verts.push_back({x1, y1, u1, v1});
+        //
+        // Vertices are wound counter-clockwise in screen space so they match
+        // the engine's default front-face (GL_CCW) under the Y-flipped ortho
+        // and survive back-face culling, which is left enabled by the world
+        // pass.  This is the same winding the crosshair quad uses
+        // (indices 0,2,1 / 0,3,2).
+        verts.push_back({x0, y0, u0, v0}); // TL
+        verts.push_back({x1, y1, u1, v1}); // BR
+        verts.push_back({x1, y0, u1, v0}); // TR
 
-        verts.push_back({x0, y0, u0, v0});
-        verts.push_back({x1, y1, u1, v1});
-        verts.push_back({x0, y1, u0, v1});
+        verts.push_back({x0, y0, u0, v0}); // TL
+        verts.push_back({x0, y1, u0, v1}); // BL
+        verts.push_back({x1, y1, u1, v1}); // BR
 
         penX += cellPx;
     }
