@@ -1,11 +1,17 @@
-# Selected-block name HUD
+# Selected-block HUD & held block
 
-A small heads-up display that shows the human-readable name of the block the
-player currently has selected. The label appears centered on screen, holds at
-full opacity for ~2 seconds, then fades out over the following ~1 second
-(3 seconds total) and stays hidden until a different block is selected.
+Two related bits of player feedback for the currently selected (to-be-placed)
+block:
 
-## How it works
+1. **Name HUD** — a label, centered on screen, showing the block's
+   human-readable name. It holds at full opacity for ~2 seconds, then fades
+   out over the following ~1 second (3 seconds total) and stays hidden until a
+   different block is selected.
+2. **Held block** — the selected block drawn as a small 3D cube in the
+   bottom-right corner, so it always reflects what right-click will place
+   (similar to a Minecraft held item).
+
+## Name HUD — how it works
 
 The feature is split into three independent pieces so that block-name lookup,
 fade/state logic, and rendering stay separate:
@@ -49,6 +55,40 @@ the engine or chunk-rendering pipeline.
 | `include/core/game/Game.h`, `src/core/game/Game.cpp` | HUD state, lookup, per-frame update, draw call |
 | `docs/selected-block-hud.md` | This note (new) |
 
+## Held block — how it works
+
+The held block reuses the **existing** world block pipeline rather than adding
+a new one:
+
+- Every `Block` already carries a render-ready vertex list
+  (`Block::vertices`): positions/normals from the model `.obj` and atlas UVs
+  baked in by `Atlas::linkBlocksToAtlas`. The chunk mesher turns those quads
+  into triangles with a fixed winding (`{o, o+2, o+1, o, o+3, o+2}`).
+- `Game::buildHeldBlockMesh()` copies that vertex list and generates the same
+  quad indices into a dedicated VAO. It runs only when
+  `Player::selectedBlockID` changes (cached in `Game::heldBlockID`).
+- `Game::renderHeldBlock()` (called at the end of `Game::render()`) draws that
+  VAO with the **same** `block.vert` / `block.frag` shader and the same atlas
+  texture. The only difference from world geometry is the transforms: instead
+  of the world camera it uses a small private `glm::perspective` projection and
+  a fixed model matrix that places the cube down-right, scales it, and tilts it
+  ~45deg/-30deg so three faces are visible. Because it does not use the world
+  view matrix, the cube stays anchored to the screen no matter where the player
+  looks or moves.
+- Depth is cleared (`glClear(GL_DEPTH_BUFFER_BIT)`) right before the draw so
+  the cube sits on top of the world without altering any world colors; the
+  global depth test + face culling then let the cube self-sort normally. Fog
+  is disabled for this one draw and immediately restored.
+
+This adds no new shader, texture, or source file — only methods on `Game` — so
+the engine and chunk-rendering pipeline are untouched.
+
+### Files touched (held block)
+
+| File | Purpose |
+|---|---|
+| `include/core/game/Game.h`, `src/core/game/Game.cpp` | `heldBlockVAO`/cache, `buildHeldBlockMesh()`, `renderHeldBlock()`, draw call + cleanup |
+
 ## Building
 
 CMake discovers sources with `file(GLOB_RECURSE ...)`, so the new
@@ -77,6 +117,15 @@ with no extra wiring.
    re-trigger, confirming it only reacts to genuine selection changes.
 6. Verify the label is horizontally centered and readable against the bright
    sky (it is drawn with a dark drop shadow).
+7. Confirm a small 3D block sits in the bottom-right corner showing the
+   selected block's textures (e.g. grass top/side), tilted so three faces are
+   visible.
+8. Scroll / middle-click to change the selection: the corner block swaps to
+   the new block immediately and matches the name label.
+9. Look and walk around: the corner block stays anchored to the screen (it is
+   not part of the world) and is never fogged, even far out or underground.
+10. Right-click to place a block and confirm it places the same block shown in
+    the corner.
 
 ## Notes / limitations
 
@@ -85,6 +134,11 @@ with no extra wiring.
 - Names come straight from the block registry (`registry/block_registry.json`
   / `assets/maps/blocks/*.json`); if a name is missing it falls back to
   `Block <id>`.
+- The held block is static (no walk/swing bob). The corner offset, scale and
+  tilt are constants at the top of `Game::renderHeldBlock()` and are easy to
+  tune. Cross/plant models (e.g. Grass Plant, Dead Bush) are quad-based too, so
+  they render as their crossed-plane sprites in hand — the same way they look
+  in the world.
 - This environment (Linux, no vcpkg/Windows toolchain) cannot compile or run
   the OpenGL client, so the steps above are the intended verification path on
   a normal Windows dev setup.

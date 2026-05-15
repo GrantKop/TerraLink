@@ -40,6 +40,10 @@ public:
     void renderUI();
     void renderBlockOutline();
 
+    // First-person "held block": the selected (to-be-placed) block drawn as a
+    // small 3D cube in the bottom-right corner. See docs/selected-block-hud.md.
+    void renderHeldBlock();
+
     // Selected-block name HUD (see docs/selected-block-hud.md).
     // updateSelectedBlockHUD does the block-name *lookup* and runs the fade
     // timer; renderSelectedBlockHUD only draws the resolved string.
@@ -104,6 +108,12 @@ private:
     std::unique_ptr<VertexArrayObject> wireFrameVAO;
 
     std::unique_ptr<TextRenderer> textRenderer;
+
+    // Held-block view model. Rebuilt only when the selection changes.
+    std::unique_ptr<VertexArrayObject> heldBlockVAO;
+    int heldBlockID = -1;
+    int heldBlockIndexCount = 0;
+    void buildHeldBlockMesh(int blockID);
 
     // Selected-block HUD state. The label is shown for HUD_HOLD_TIME seconds
     // at full opacity, then fades to nothing over the next

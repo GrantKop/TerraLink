@@ -249,6 +249,7 @@ void Game::render() {
 
     AudioManager::update(deltaTime);
     renderBlockOutline();
+    renderHeldBlock();
 }
 
 void Game::shutdown() {
@@ -258,6 +259,7 @@ void Game::shutdown() {
     uiShaderProgram->deleteShader();
     wireFrameShaderProgram->deleteShader();
     if (textRenderer) textRenderer->shutdown();
+    if (heldBlockVAO) heldBlockVAO->deleteBuffers();
     AudioManager::shutdown();
 
     glfwTerminate();
@@ -374,6 +376,89 @@ void Game::renderBlockOutline() {
     wireFrameVAO->bind();
     glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
     wireFrameVAO->unbind();
+}
+
+// Builds (or rebuilds) the held-block mesh from the block's render-ready
+// vertices. block.vertices already carries atlas UVs (set by Atlas linking);
+// we only need to add the engine's standard quad -> triangle indices.
+void Game::buildHeldBlockMesh(int blockID) {
+    heldBlockID = blockID;
+    heldBlockIndexCount = 0;
+
+    Block block = BlockRegister::instance().getBlockByIndex(blockID);
+    if (block.vertices.empty() || block.vertices.size() % 4 != 0) {
+        return; // air / non-quad model: nothing sensible to hold
+    }
+
+    std::vector<Vertex> verts = block.vertices;
+    std::vector<GLuint> indices;
+    indices.reserve(verts.size() / 4 * 6);
+    for (GLuint i = 0; i < verts.size(); i += 4) {
+        // Same quad winding the chunk mesher uses, so global GL_CULL_FACE
+        // shows the outward faces just like world blocks.
+        indices.insert(indices.end(), {
+            i, i + 2, i + 1,
+            i, i + 3, i + 2
+        });
+    }
+
+    if (!heldBlockVAO) {
+        heldBlockVAO = std::make_unique<VertexArrayObject>();
+        heldBlockVAO->init();
+    }
+
+    heldBlockVAO->bind();
+    heldBlockVAO->addVertexBuffer(verts, GL_DYNAMIC_DRAW);
+    heldBlockVAO->addElementBuffer(indices, GL_DYNAMIC_DRAW);
+    heldBlockVAO->addAttribute(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    heldBlockVAO->addAttribute(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    heldBlockVAO->addAttribute(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
+    heldBlockVAO->unbind();
+
+    heldBlockIndexCount = static_cast<int>(indices.size());
+}
+
+// Draws the selected (to-be-placed) block as a small 3D cube in the
+// bottom-right corner. Reuses the world block shader + atlas; the only
+// difference is a screen-anchored projection/model instead of the world
+// camera, so the block stays put regardless of where the player looks.
+void Game::renderHeldBlock() {
+    int id = Player::instance().selectedBlockID;
+    if (id != heldBlockID) {
+        buildHeldBlockMesh(id);
+    }
+    if (heldBlockIndexCount == 0 || !heldBlockVAO) return;
+
+    int winW, winH;
+    glfwGetFramebufferSize(window, &winW, &winH);
+    if (winW <= 0 || winH <= 0) return;
+    float aspect = static_cast<float>(winW) / static_cast<float>(winH);
+
+    // Its own little perspective view; the cube sits ~1 unit in front.
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.01f, 10.0f);
+
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.62f, -0.50f, -1.15f)); // bottom-right
+    model = glm::rotate(model, glm::radians(45.0f),  glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(-30.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.42f));
+    model = glm::translate(model, glm::vec3(-0.5f)); // rotate about cube center
+
+    // Draw over the world without touching its colors: only depth is cleared.
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    shaderProgram->use();
+    shaderProgram->setUniform4("cameraMatrix", proj);
+    shaderProgram->setMat4("model", model);
+    shaderProgram->setUniform3("camPos", Player::instance().getCamera().position);
+    shaderProgram->setInt("useFog", 0); // never fog the held item
+    atlas->bind();
+
+    heldBlockVAO->bind();
+    glDrawElements(GL_TRIANGLES, heldBlockIndexCount, GL_UNSIGNED_INT, 0);
+    heldBlockVAO->unbind();
+
+    shaderProgram->setInt("useFog", isFogEnabled() ? 1 : 0); // restore world state
 }
 
 
