@@ -445,8 +445,13 @@ void Game::renderHeldBlock() {
     // so its on-screen position is identical at any window size / aspect.
     const float halfH = depth * glm::tan(fovY * 0.5f);
     const float halfW = halfH * aspect;
-    const float insetX = 0.30f; // eye-space units in from the right edge
-    const float insetY = 0.26f; // eye-space units up from the bottom edge
+    // Inset of the cube *centre* from the frustum edge. Kept small/negative on
+    // purpose: the centre sits right at the bottom-right corner so the block
+    // is always partly clipped off-screen (like a held item), consistently
+    // for every block size. Larger values pull it fully on screen; negative
+    // values push more of it off.
+    const float insetX = 0.02f; // eye-space units in from the right edge
+    const float insetY = -0.02f; // eye-space units up from the bottom edge
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(halfW - insetX, -halfH + insetY, -depth));

@@ -77,10 +77,12 @@ a new one:
   looks or moves.
 - `glm::perspective`'s FOV is *vertical*, so the horizontal frustum width
   depends on the window aspect ratio. Rather than a hardcoded eye-space x/y
-  (which drifts off a narrow/square window), the cube is anchored a fixed
-  inset in from the visible frustum edge at its depth
-  (`halfW = depth * tan(fovY/2) * aspect`). Its on-screen position is therefore
-  identical at any window size or aspect ratio.
+  (which drifts off a narrow/square window), the cube centre is anchored a
+  small inset from the visible frustum edge at its depth
+  (`halfW = depth * tan(fovY/2) * aspect`). The insets are intentionally tiny,
+  so the centre sits right at the bottom-right corner and the block is always
+  *partly clipped* off-screen like a held item — and that clip is identical at
+  any window size or aspect ratio.
 - Depth is cleared (`glClear(GL_DEPTH_BUFFER_BIT)`) right before the draw so
   the cube sits on top of the world without altering any world colors; the
   global depth test + face culling then let the cube self-sort normally. Fog
@@ -133,8 +135,8 @@ with no extra wiring.
 10. Right-click to place a block and confirm it places the same block shown in
     the corner.
 11. Toggle fullscreen (F11) and resize the window between square and
-    widescreen: the corner block stays fully on screen in the same relative
-    bottom-right spot at every aspect ratio.
+    widescreen: the corner block stays partly clipped in the same relative
+    bottom-right spot, by the same amount, at every aspect ratio.
 
 ## Notes / limitations
 
@@ -147,7 +149,9 @@ with no extra wiring.
   (`insetX`/`insetY`), `depth`, scale and tilt are constants in
   `Game::renderHeldBlock()` and are easy to tune; the insets are in eye-space
   units measured in from the visible frustum edge, so tuning them holds across
-  window sizes. Cross/plant models (e.g. Grass Plant, Dead Bush) are quad-based too, so
+  window sizes. They are deliberately tiny (one slightly negative) so the
+  block is always partly clipped at the corner; raise them to pull it fully
+  on screen, lower them to push more of it off. Cross/plant models (e.g. Grass Plant, Dead Bush) are quad-based too, so
   they render as their crossed-plane sprites in hand — the same way they look
   in the world.
 - This environment (Linux, no vcpkg/Windows toolchain) cannot compile or run
